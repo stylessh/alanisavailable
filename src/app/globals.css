@@ -1,26 +1,85 @@
 @import "tailwindcss";
+@plugin "@tailwindcss/typography";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+@layer base {
+  :root {
+    color-scheme: light dark;
+
+    --background: #fbfbfb;
+    --foreground: #171717;
+    --muted-foreground: #737373;
+    --border: #e5e5e5;
+    --accent: #ffb162;
+    --accent-foreground: #171717;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --background: #0a0a0a;
+      --foreground: #fafafa;
+      --muted-foreground: #a3a3a3;
+      --border: #262626;
+    }
+  }
+
+  body {
+    @apply bg-background text-[14px] text-foreground;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  ::selection {
+    @apply bg-accent text-accent-foreground;
+  }
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+
+  --font-sans: var(--font-inter), system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  --font-pixel: var(--font-pixelify), ui-monospace, monospace;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@layer utilities {
+  .text-normal {
+    @apply text-[14px] leading-relaxed;
   }
-}
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  .text-highlight {
+    @apply text-[14px] font-medium tracking-tight text-foreground;
+  }
+
+  .text-label {
+    @apply text-[12px] font-normal uppercase tracking-[0.1em] text-muted-foreground;
+  }
+
+  /* Stacked shadows that grow with distance, so the card reads as lifted.
+     Depth only: each card draws its own inset edge (see ProductCard), so
+     there's no tight 1px contact layer that would double the bottom edge. */
+  .shadow-card {
+    --card-shadow: rgb(0 0 0 / var(--card-shadow-alpha, 0.06));
+    box-shadow:
+      0 3px 3px -1.5px var(--card-shadow),
+      0 6px 6px -3px var(--card-shadow),
+      0 12px 12px -6px var(--card-shadow),
+      0 24px 24px -12px var(--card-shadow);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .shadow-card {
+      --card-shadow: rgb(0 0 0 / 0.4);
+    }
+  }
+
+  .link {
+    @apply underline decoration-border underline-offset-4 transition-colors hover:decoration-foreground;
+  }
 }
