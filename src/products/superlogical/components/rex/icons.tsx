@@ -122,3 +122,4 @@ export const EyeIcon = (p: P) =>
     <path d="M0.8 5C2.4 2.2 4.8 0.7 7.5 0.7S12.6 2.2 14.2 5c-1.6 2.8-4 4.3-6.7 4.3S2.4 7.8 0.8 5z" strokeWidth={1.2} />
     <circle cx={7.5} cy={5} r={1.9} fill="currentColor" stroke="none" />
   </>);
+

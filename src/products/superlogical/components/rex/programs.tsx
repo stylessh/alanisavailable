@@ -5,7 +5,7 @@
 import { ClaudeIcon, NodeIcon, OpenAIIcon, PlusMinusCircleIcon, TerminalIcon } from "./icons";
 import type { ProgramKind } from "./model";
 
-const BunLogo = ({ size }: { size: number }) => (
+const BunLogo = ({ size, header = false }: { size: number; header?: boolean }) => (
   // svgl.app/library/bun.svg, monochrome like Rex draws it: grayscale, and
   // multiply so the logo's light fills take the card's color.
   // eslint-disable-next-line @next/next/no-img-element
@@ -14,7 +14,8 @@ const BunLogo = ({ size }: { size: number }) => (
     alt=""
     width={size}
     height={size * 0.875}
-    className="max-w-none"
+    // on a dark pane, multiply would erase it: the header mark inverts instead
+    className={`max-w-none ${header ? "rex-bun-header" : ""}`}
     style={{ filter: "grayscale(1) contrast(1.4)", mixBlendMode: "multiply", opacity: 0.9 }}
   />
 );
@@ -38,37 +39,37 @@ type ProgramStyle = {
 
 export const PROGRAMS: Record<ProgramKind, ProgramStyle> = {
   codex: {
-    icon: { node: <OpenAIIcon style={{ color: "#424345" }} />, x: 11, y: 10 },
+    icon: { node: <OpenAIIcon style={{ color: "var(--rex-icon-strong)" }} />, x: 11, y: 10 },
     front: "linear-gradient(#fbfbfc, #f0f0f1)",
     logo: <OpenAIIcon size={11} style={{ color: "#3a3b3d" }} />,
     back: "#3b3c3f",
   },
   lazygit: {
-    icon: { node: <PlusMinusCircleIcon style={{ color: "#666666" }} />, x: 11, y: 10.5 },
+    icon: { node: <PlusMinusCircleIcon style={{ color: "var(--rex-icon-soft)" }} />, x: 11, y: 10.5 },
     front: "linear-gradient(#7cc275, #62a95b)",
     logo: <PlusMinusCircleIcon style={{ color: "#fff", transform: "scale(0.82)" }} />,
     back: "#6fb768",
   },
   snake: {
-    icon: { node: <NodeIcon style={{ color: "#616365" }} />, x: 12, y: 10 },
+    icon: { node: <NodeIcon style={{ color: "var(--rex-icon)" }} />, x: 12, y: 10 },
     front: "linear-gradient(#5c9a57, #467f43)",
     logo: <NodeIcon style={{ color: "#fff", transform: "scale(0.78)" }} />,
     back: "#4f8a4b",
   },
   bun: {
-    icon: { node: <BunLogo size={13} />, x: 11, y: 11 },
+    icon: { node: <BunLogo size={13} header />, x: 11, y: 11 },
     front: "linear-gradient(#f6f2ea, #ece6da)",
     logo: <BunLogo size={10} />,
     back: "#ddd0b4",
   },
   shell: {
-    icon: { node: <TerminalIcon style={{ color: "#616365" }} />, x: 11, y: 11 },
+    icon: { node: <TerminalIcon style={{ color: "var(--rex-icon)" }} />, x: 11, y: 11 },
     front: "linear-gradient(#45474b, #2a2c2f)",
     logo: <Prompt />,
     back: "#5d85b2",
   },
   claude: {
-    icon: { node: <ClaudeIcon style={{ color: "#616365" }} />, x: 11.5, y: 10.5 },
+    icon: { node: <ClaudeIcon style={{ color: "var(--rex-icon)" }} />, x: 11.5, y: 10.5 },
     front: "linear-gradient(#fbf8f4, #f1ebe3)",
     logo: <ClaudeIcon size={10} style={{ color: "#3a3b3d" }} />,
     back: "linear-gradient(#e7b562, #ea7a5a 50%, #a66dd0)",

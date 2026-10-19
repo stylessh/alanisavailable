@@ -44,11 +44,10 @@ export function CommandPalette({ commands, onClose }: { commands: Command[]; onC
         aria-label="Command palette"
         className="rex-ui absolute top-[52px] left-[270px] w-[460px] overflow-hidden rounded-[12px]"
         style={{
-          background: "rgb(252 252 253 / 0.82)",
+          background: "var(--rex-beam), var(--rex-popover-bg)",
           backdropFilter: "blur(30px) saturate(1.8)",
           WebkitBackdropFilter: "blur(30px) saturate(1.8)",
-          boxShadow:
-            "inset 0 0.5px 0 rgb(255 255 255 / 0.9), 0 0 0 0.5px rgb(0 0 0 / 0.12), 0 12px 40px rgb(0 0 0 / 0.18), 0 2px 8px rgb(0 0 0 / 0.08)",
+          boxShadow: "var(--rex-popover-shadow)",
         }}
       >
         <input
@@ -61,7 +60,7 @@ export function CommandPalette({ commands, onClose }: { commands: Command[]; onC
           onKeyDown={onKeyDown}
           placeholder="Search actions…"
           aria-label="Search actions"
-          className="h-[40px] w-full border-b border-[rgb(0_0_0/0.07)] bg-transparent px-[14px] text-[13px] text-[#29292c] outline-none placeholder:text-[#9a9a9e]"
+          className="h-[40px] w-full border-b border-[var(--rex-popover-rule)] bg-transparent px-[14px] text-[13px] text-[var(--rex-ink)] outline-none placeholder:text-[var(--rex-ink-faint)]"
         />
         <ul role="listbox" className="max-h-[330px] overflow-y-auto p-[5px]">
           {matches.map((c, i) => {
@@ -69,7 +68,7 @@ export function CommandPalette({ commands, onClose }: { commands: Command[]; onC
             return (
               <li key={c.id}>
                 {header && (
-                  <div className="px-[9px] pt-[7px] pb-[3px] text-[10.5px] font-semibold text-[#8e8e92]">{c.group}</div>
+                  <div className="px-[9px] pt-[7px] pb-[3px] text-[10.5px] font-semibold text-[var(--rex-ink-muted)]">{c.group}</div>
                 )}
                 <button
                   type="button"
@@ -78,18 +77,18 @@ export function CommandPalette({ commands, onClose }: { commands: Command[]; onC
                   tabIndex={-1}
                   onPointerMove={() => setIndex(i)}
                   onClick={c.run}
-                  className="flex h-[28px] w-full cursor-default items-center justify-between rounded-[7px] px-[9px] text-left text-[12.5px] text-[#29292c]"
-                  style={{ background: i === selected ? "rgb(0 0 0 / 0.06)" : undefined }}
+                  className="flex h-[28px] w-full cursor-default items-center justify-between rounded-[7px] px-[9px] text-left text-[12.5px] text-[var(--rex-ink)]"
+                  style={{ background: i === selected ? "var(--rex-hover)" : undefined }}
                 >
                   <span className="truncate">{c.title}</span>
                   {c.shortcut && (
-                    <kbd className="ml-[12px] shrink-0 font-sans text-[11.5px] tracking-[0.06em] text-[#8e8e92]">{c.shortcut}</kbd>
+                    <kbd className="ml-[12px] shrink-0 font-sans text-[11.5px] tracking-[0.06em] text-[var(--rex-ink-muted)]">{c.shortcut}</kbd>
                   )}
                 </button>
               </li>
             );
           })}
-          {!matches.length && <li className="px-[9px] py-[8px] text-[12.5px] text-[#8e8e92]">No matching actions</li>}
+          {!matches.length && <li className="px-[9px] py-[8px] text-[12.5px] text-[var(--rex-ink-muted)]">No matching actions</li>}
         </ul>
       </div>
     </motion.div>

@@ -39,6 +39,8 @@ export type Pane = {
 
 export type Tab = { id: string; session: string; root: Node; focus: string; zoom: boolean };
 export type State = {
+  /** the window's size; the OS window manager can zoom or full-screen it */
+  size: { w: number; h: number };
   /** Rex shows tabs either as a strip in the title bar or in a sidebar */
   view: "tabs" | "sidebar";
   /** Activity Mode: the sidebar lists only running programs, with their status */
@@ -58,9 +60,10 @@ export type Action =
   | { type: "goto-tab"; index: number }
   | { type: "new-tab"; command?: string }
   | { type: "close-tab"; tab: string }
-  | { type: "split"; dir: SplitDir; command?: string }
+  /** pane defaults to the focused one; the header controls pass their own */
+  | { type: "split"; dir: SplitDir; command?: string; pane?: string }
   | { type: "close-pane"; pane?: string }
-  | { type: "zoom" }
+  | { type: "zoom"; pane?: string }
   | { type: "move-focus"; dir: "left" | "right" | "up" | "down" }
   | { type: "resize"; split: string; ratio: number }
   | { type: "key"; key: Key }
@@ -71,16 +74,24 @@ export type Action =
   | { type: "tick"; pane: string }
   | { type: "palette"; open: boolean }
   | { type: "toggle-sidebar" }
+  | { type: "window-size"; w: number; h: number }
   | { type: "toggle-activity" };
 
 // ─── Geometry (window-relative px, measured from the reference) ────────────
 
-/** The area panes tile into: 8pt inset, below the 44pt title bar. */
-export const AREA: Rect = { x: 8, y: 44, w: 984.5, h: 553 };
-/** With the sidebar, panes start right of it and run up to the top edge. */
+/** The window in the reference screenshot. */
+export const WINDOW = { w: 1000, h: 604.5 };
 export const SIDEBAR_W = 248;
-export const SIDEBAR_AREA: Rect = { x: SIDEBAR_W, y: 8, w: AREA.x + AREA.w - SIDEBAR_W, h: AREA.y + AREA.h - 8 };
-export const areaOf = (st: Pick<State, "view">) => (st.view === "sidebar" ? SIDEBAR_AREA : AREA);
+
+/** The area panes tile into: 8pt from the left, 7.5pt from the right and bottom, below the 44pt title bar. */
+const tabsArea = (w: number, h: number): Rect => ({ x: 8, y: 44, w: w - 15.5, h: h - 51.5 });
+/** With the sidebar, panes start right of it and run up to 8pt from the top. */
+const sidebarArea = (w: number, h: number): Rect => ({ x: SIDEBAR_W, y: 8, w: w - 7.5 - SIDEBAR_W, h: h - 15.5 });
+
+/** The pane area at the reference size: 984.5 × 553 at (8, 44). */
+export const AREA = tabsArea(WINDOW.w, WINDOW.h);
+export const areaOf = (st: Pick<State, "view" | "size">) =>
+  (st.view === "sidebar" ? sidebarArea : tabsArea)(st.size.w, st.size.h);
 export const GAP = { x: 8, y: 7.5 };
 /** First terminal row is centered 43pt below the pane top; column 0 sits 9pt in. */
 export const TERM = { top: 43 - 15.15 / 2 + 0.75, left: 9, line: 15.15, cell: 7.1 };
@@ -93,6 +104,20 @@ export const gridSize = (r: Rect) => ({
 
 export type Divider = { split: string; dir: Dir; rect: Rect; parent: Rect };
 
+type SplitNode = Extract<Node, { kind: "split" }>;
+
+/** A split's two halves, with the gap between them. */
+function halves(n: SplitNode, r: Rect): [Rect, Rect] {
+  if (n.dir === "right") {
+    const avail = r.w - GAP.x;
+    const aw = avail * n.ratio;
+    return [{ ...r, w: aw }, { x: r.x + aw + GAP.x, y: r.y, w: avail - aw, h: r.h }];
+  }
+  const avail = r.h - GAP.y;
+  const ah = avail * n.ratio;
+  return [{ ...r, h: ah }, { x: r.x, y: r.y + ah + GAP.y, w: r.w, h: avail - ah }];
+}
+
 export function layout(
   node: Node,
   r: Rect = AREA,
@@ -102,18 +127,98 @@ export function layout(
     out.panes[node.id] = r;
     return out;
   }
-  if (node.dir === "right") {
-    const avail = r.w - GAP.x;
-    const aw = avail * node.ratio;
-    layout(node.a, { ...r, w: aw }, out);
-    layout(node.b, { x: r.x + aw + GAP.x, y: r.y, w: avail - aw, h: r.h }, out);
-    out.dividers.push({ split: node.id, dir: "right", rect: { x: r.x + aw, y: r.y, w: GAP.x, h: r.h }, parent: r });
+  const [ra, rb] = halves(node, r);
+  layout(node.a, ra, out);
+  layout(node.b, rb, out);
+  out.dividers.push(
+    node.dir === "right"
+      ? { split: node.id, dir: "right", rect: { x: ra.x + ra.w, y: r.y, w: GAP.x, h: r.h }, parent: r }
+      : { split: node.id, dir: "down", rect: { x: r.x, y: ra.y + ra.h, w: r.w, h: GAP.y }, parent: r },
+  );
+  return out;
+}
+
+// Panes animate without ever overlapping: a pane that appears or goes away
+// grows out of / collapses into the outer edge of its half of the split, and
+// zoom collapses everything but the zoomed pane into the window's edges. All
+// panes ride the same critically damped spring, so two edges that share a
+// gap move in step and the gap never closes.
+
+/** `r` collapsed to nothing against its left/top (start) or right/bottom (end) edge. */
+export const collapse = (r: Rect, dir: Dir, toEnd: boolean): Rect =>
+  dir === "right"
+    ? { x: toEnd ? r.x + r.w : r.x, y: r.y, w: 0, h: r.h }
+    : { x: r.x, y: toEnd ? r.y + r.h : r.y, w: r.w, h: 0 };
+
+/** Where pane `id` grows from, or collapses to: the outer edge of its half of its parent split. */
+export function collapsedRect(root: Node, area: Rect, id: string): Rect | null {
+  const walk = (n: Node, r: Rect): Rect | null => {
+    if (n.kind === "pane") return null;
+    const [ra, rb] = halves(n, r);
+    if (n.a.kind === "pane" && n.a.id === id) return collapse(ra, n.dir, false);
+    if (n.b.kind === "pane" && n.b.id === id) return collapse(rb, n.dir, true);
+    return walk(n.a, ra) ?? walk(n.b, rb);
+  };
+  return walk(root, area);
+}
+
+/** The split pane `id` sits in: its direction, whether it's the second (right/bottom) half, and its sibling. */
+export function splitOf(root: Node, id: string): { dir: Dir; end: boolean; sibling: Node } | null {
+  if (root.kind === "pane") return null;
+  if (root.a.kind === "pane" && root.a.id === id) return { dir: root.dir, end: false, sibling: root.b };
+  if (root.b.kind === "pane" && root.b.id === id) return { dir: root.dir, end: true, sibling: root.a };
+  return splitOf(root.a, id) ?? splitOf(root.b, id);
+}
+
+/** The smallest rect around `rects`. */
+export function bounds(rects: Rect[]): Rect | null {
+  if (!rects.length) return null;
+  const x = Math.min(...rects.map((r) => r.x));
+  const y = Math.min(...rects.map((r) => r.y));
+  return {
+    x,
+    y,
+    w: Math.max(...rects.map((r) => r.x + r.w)) - x,
+    h: Math.max(...rects.map((r) => r.y + r.h)) - y,
+  };
+}
+
+/**
+ * Zoomed layout: the focused pane gets the whole area and the rest make way,
+ * sliding out past the area's edge a full gap away, keeping their size and
+ * fading (alpha 0). Past the right and bottom (and the left without the
+ * sidebar) that's beyond the window's padding, so the window frame crops
+ * them; the pane layer crops them softly at the title bar and the sidebar.
+ * Their gap to the growing zoomed pane stays the same the whole way.
+ */
+export function zoomLayout(
+  node: Node,
+  r: Rect,
+  focus: string,
+  /** the unzoomed layout: panes make way from where they actually are */
+  tiled: Record<string, Rect>,
+  out: Record<string, Rect & { a?: number }> = {},
+) {
+  if (node.kind === "pane") {
+    out[node.id] = r;
+    return out;
+  }
+  const inA = leaves(node.a).includes(focus);
+  const makeWay = (child: Node, toEnd: boolean) => {
+    const ids = leaves(child);
+    const group = bounds(ids.map((id) => tiled[id]));
+    if (!group) return;
+    const across = node.dir === "right";
+    const dx = !across ? 0 : toEnd ? r.x + r.w + GAP.x - group.x : r.x - GAP.x - (group.x + group.w);
+    const dy = across ? 0 : toEnd ? r.y + r.h + GAP.y - group.y : r.y - GAP.y - (group.y + group.h);
+    for (const id of ids) out[id] = { ...tiled[id], x: tiled[id].x + dx, y: tiled[id].y + dy, a: 0 };
+  };
+  if (inA) {
+    zoomLayout(node.a, r, focus, tiled, out);
+    makeWay(node.b, true);
   } else {
-    const avail = r.h - GAP.y;
-    const ah = avail * node.ratio;
-    layout(node.a, { ...r, h: ah }, out);
-    layout(node.b, { x: r.x, y: r.y + ah + GAP.y, w: r.w, h: avail - ah }, out);
-    out.dividers.push({ split: node.id, dir: "down", rect: { x: r.x, y: r.y + ah, w: r.w, h: GAP.y }, parent: r });
+    makeWay(node.a, false);
+    zoomLayout(node.b, r, focus, tiled, out);
   }
   return out;
 }
@@ -755,12 +860,14 @@ export function reducer(st: State, a: Action): State {
     case "close-tab":
       return closeTab(st, a.tab);
     case "split":
-      return splitPane(st, activeTab(st).focus, a.dir, a.command) ?? st;
+      return splitPane(st, a.pane ?? activeTab(st).focus, a.dir, a.command) ?? st;
     case "close-pane":
       return closePane(st, a.pane ?? activeTab(st).focus);
     case "zoom": {
+      // Zooming a pane (from its own header) also focuses it: the zoomed pane is the focused one.
       const tab = activeTab(st);
-      return leaves(tab.root).length > 1 ? putTab(st, tab.id, (t) => ({ zoom: !t.zoom })) : st;
+      if (leaves(tab.root).length < 2) return st;
+      return putTab(st, tab.id, (t) => ({ zoom: !t.zoom, focus: a.pane ?? t.focus }));
     }
     case "move-focus": {
       const tab = activeTab(st);
@@ -838,6 +945,8 @@ export function reducer(st: State, a: Action): State {
     }
     case "palette":
       return { ...st, palette: a.open };
+    case "window-size":
+      return st.size.w === a.w && st.size.h === a.h ? st : { ...st, size: { w: a.w, h: a.h } };
     case "toggle-sidebar":
       return { ...st, view: st.view === "sidebar" ? "tabs" : "sidebar" };
     case "toggle-activity":
@@ -909,6 +1018,7 @@ export function initialState(): State {
     ],
     active: "t1",
     panes,
+    size: WINDOW,
     view: "tabs",
     activity: false,
     palette: false,

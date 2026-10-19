@@ -24,3 +24,28 @@ and `/<slug>` route pick it up from there.
 
 Site-wide pieces (the homepage title, product cards, layout) live in
 `src/components` and `src/lib`, not here.
+
+## Desktop apps
+
+Products that are desktop apps run on the shared macOS layer in `src/os/macos`
+(assets in `public/os/macos`). It's the one thing products share, so every app
+gets the same windowing:
+
+```tsx
+<MacOS dock={dockWith({ id: "rex", name: "Rex", icon: "/products/<slug>/…/dock-icon.png" })}>
+  <MacWindow id="rex" app={{ id: "rex", name: "Rex", menus: […] }} width={1000} height={600}>
+    <div {...DRAG_REGION}>…title bar… <TrafficLights left={14} top={14} /></div>
+    …the app…
+  </MacWindow>
+</MacOS>
+```
+
+- Windows drag by any element marked `DRAG_REGION` (buttons, tabs and inputs
+  inside it keep their clicks); double-clicking it zooms.
+- The traffic lights close, minimize into the app's Dock icon and go full screen
+  (Option-click zooms). ⌃⌘F toggles full screen.
+- Clicking the desktop gives focus to Finder; the Dock brings windows back.
+  Closed and minimized windows stay mounted, so apps keep their state.
+- Inside a window, `useMacWindow()` gives the app its size (reflow to it), its
+  focus (only take keys while focused) and the window controls.
+- The product supplies only its app: window content, Dock icon, menus.

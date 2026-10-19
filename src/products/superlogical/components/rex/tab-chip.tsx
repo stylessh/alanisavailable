@@ -23,8 +23,7 @@ function Card({
       className="absolute grid place-items-center overflow-hidden"
       style={{
         borderRadius: FRONT.r,
-        boxShadow:
-          "0 0 0 0.75px rgb(255 255 255 / 0.95), 0 0 0 1.25px rgb(0 0 0 / 0.07), 0 1px 2px rgb(0 0 0 / 0.12)",
+        boxShadow: "var(--rex-chip-ring)",
         ...style,
       }}
     >

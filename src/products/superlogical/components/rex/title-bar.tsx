@@ -1,22 +1,35 @@
 "use client";
 
-import { motion } from "motion/react";
+import { AnimatePresence, animate, type AnimationPlaybackControls, motion, useMotionTemplate, useMotionValue } from "motion/react";
+import { useEffect, useRef } from "react";
+import { DRAG_REGION, TrafficLights, useMacWindow } from "@/os/macos";
 import { CloseIcon, CommandIcon, HostIcon, PlusIcon } from "./icons";
 import type { ProgramKind } from "./model";
 import { TabChip, TITLE_OFFSET } from "./tab-chip";
-import { TrafficLights } from "./traffic-lights";
 
 export type TabView = { id: string; title: string; front: ProgramKind; back: ProgramKind[] };
 
 // Tab strip geometry (window-relative px, from the reference): the track
-// spans 190–820 and three tabs split it into 210pt slots; the active tab is a
-// white pill 2pt inside its slot.
-const TRACK = { left: 190, w: 630 };
-const fade = "linear-gradient(to right, #000 calc(100% - 22px), transparent)";
+// starts at 190 and each tab takes a 210pt slot (three tabs end at 820); the
+// active tab is a pill 2pt inside its slot. The track grows with its tabs
+// until it reaches the ⌘ and + buttons, which hang off the right edge, and
+// scrolls from there.
+const TRACK_LEFT = 190;
+const SLOT = 210;
+/** The track stops this far short of the window's right edge (8pt before the ⌘ button). */
+const ACTIONS_INSET = 72.5;
+/** Edge fade when the strip scrolls */
+const EDGE = 18;
+/** The traffic lights' share of the bar: in full screen they leave it and
+    everything after them moves in by this much (the session chip goes from
+    86pt to the lights' 14.5pt). */
+export const LIGHTS_SPACE = 71.5;
+const GLIDE = "320ms cubic-bezier(0.2, 0.85, 0.25, 1)";
 const SPRING = { type: "spring", stiffness: 520, damping: 42 } as const;
 
 /** Traffic lights, session, tab strip and window actions (window-relative px). */
 export function TitleBar({
+  width,
   tabs,
   active,
   session,
@@ -27,6 +40,8 @@ export function TitleBar({
   onNew,
   onPalette,
 }: {
+  /** the window's width */
+  width: number;
   tabs: TabView[];
   active: string;
   /** the active tab's session, shown beside the traffic lights */
@@ -39,11 +54,79 @@ export function TitleBar({
   onNew: () => void;
   onPalette: () => void;
 }) {
-  const pitch = TRACK.w / tabs.length;
+  const inset = useMacWindow()?.mode === "fullscreen" ? LIGHTS_SPACE : 0;
+  const content = tabs.length * SLOT;
+  const room = Math.max(SLOT, width - ACTIONS_INSET - (TRACK_LEFT - inset));
+  const track = { left: TRACK_LEFT - inset, w: Math.min(content, room) };
+  const pitch = SLOT;
   const activeIndex = tabs.findIndex((t) => t.id === active);
 
+  // Adding or closing a tab moves the strip's width, its scroll and the
+  // active pill. All three ride the same spring, from where they are now to
+  // where they'll end up, so they move as one. (A CSS glide for the width
+  // plus the browser's smooth scroll, aimed at the strip's old width,
+  // overshot and bounced back while the pill was still on its way.)
+  const scroller = useRef<HTMLDivElement>(null);
+  const trackW = useMotionValue(track.w);
+  const lastContent = useRef(content);
+  useEffect(() => {
+    // more tabs: the pill's spring; a window resize: the window's glide
+    const grew = lastContent.current !== content;
+    lastContent.current = content;
+    const run = animate(trackW, track.w, grew ? SPRING : { duration: 0.32, ease: [0.2, 0.85, 0.25, 1] });
+    return () => run.stop();
+  }, [trackW, track.w, content]);
+
+  // Scrolling once the strip is full: an ordinary mouse wheel scrolls it
+  // sideways, the active tab is kept in view, and the edges fade in with
+  // how much is hidden past them (so they never pop).
+  const fadeStart = useMotionValue(0);
+  const fadeEnd = useMotionValue(0);
+  const fadeMask = useMotionTemplate`linear-gradient(to right, rgb(0 0 0 / ${fadeStart}), #000 ${EDGE}px, #000 calc(100% - ${EDGE}px), rgb(0 0 0 / ${fadeEnd}))`;
+  const measure = () => {
+    const el = scroller.current;
+    if (!el) return;
+    const hidden = (px: number) => 1 - Math.min(1, Math.max(0, px / EDGE));
+    fadeStart.set(hidden(el.scrollLeft));
+    fadeEnd.set(hidden(content - trackW.get() - el.scrollLeft));
+  };
+  useEffect(() => {
+    measure();
+    return trackW.on("change", measure);
+  });
+  const scrolling = useRef<AnimationPlaybackControls | null>(null);
+  useEffect(() => {
+    const el = scroller.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      if (Math.abs(e.deltaY) <= Math.abs(e.deltaX) || el.scrollWidth <= el.clientWidth) return;
+      e.preventDefault();
+      scrolling.current?.stop();
+      el.scrollLeft += e.deltaY;
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, []);
+  useEffect(() => {
+    const el = scroller.current;
+    if (!el || activeIndex < 0) return;
+    // aimed at the strip's final width, not the one it has mid-animation
+    const max = Math.max(0, content - track.w);
+    const start = activeIndex * pitch;
+    const end = start + pitch;
+    const from = el.scrollLeft;
+    let to = from;
+    if (start < from + EDGE) to = start - EDGE;
+    else if (end > from + track.w - EDGE) to = end - track.w + EDGE;
+    to = Math.min(max, Math.max(0, to));
+    if (Math.abs(to - from) < 0.5) return;
+    scrolling.current = animate(from, to, { ...SPRING, onUpdate: (v) => (el.scrollLeft = v) });
+    return () => scrolling.current?.stop();
+  }, [activeIndex, pitch, track.w, content]);
+
   return (
-    <div className="rex-ui absolute inset-x-0 top-0 h-[44px]">
+    // The whole bar drags the window; tabs and buttons keep their clicks.
+    <div {...DRAG_REGION} className="rex-ui absolute inset-x-0 top-0 h-[44px]">
       <TrafficLights left={14.5} top={14.75} />
 
       <motion.div
@@ -54,84 +137,123 @@ export function TitleBar({
         style={{ pointerEvents: sidebar ? "none" : "auto" }}
       >
         {/* The session and its host. Clicking it opens the sidebar. */}
-        <button
-          type="button"
-          aria-label="Show sidebar (⌃⌘S)"
-          title="Show sidebar (⌃⌘S)"
-          tabIndex={-1}
-          onClick={onToggleSidebar}
-          className="absolute top-[7px] left-[86px] h-[30px] w-[96px] cursor-default rounded-[8px] transition-colors hover:bg-[rgb(0_0_0/0.045)]"
-        />
-        <HostIcon className="pointer-events-none absolute" style={{ left: 92, top: 16.5, color: "var(--rex-chrome-ink)" }} />
-        <div className="pointer-events-none absolute left-[114.5px] top-[9px] leading-[13px] [-webkit-text-stroke:0.1px_currentColor]">
-          <div className="text-[11.5px] font-semibold text-[#606063]">{session}</div>
-          <div className="text-[9.5px] leading-[12px] font-medium text-[#8e8e92]">Mac Studio</div>
+        <div className="absolute inset-0" style={{ transform: `translateX(${-inset}px)`, transition: `transform ${GLIDE}` }}>
+          <button
+            type="button"
+            aria-label="Show sidebar (⌃⌘S)"
+            title="Show sidebar (⌃⌘S)"
+            tabIndex={-1}
+            onClick={onToggleSidebar}
+            className="absolute top-[7px] left-[86px] h-[30px] w-[96px] cursor-default rounded-[8px] transition-colors hover:bg-[var(--rex-hover-soft)]"
+          />
+          <HostIcon className="pointer-events-none absolute" style={{ left: 92, top: 16.5, color: "var(--rex-chrome-ink)" }} />
+          {/* ends 6pt short of the tab track; long session names truncate */}
+          <div className="pointer-events-none absolute left-[114.5px] top-[9px] w-[69.5px] leading-[13px] [-webkit-text-stroke:0.1px_currentColor]">
+            <div className="truncate text-[11.5px] font-semibold text-[var(--rex-session-ink)]">{session}</div>
+            <div className="truncate text-[9.5px] leading-[12px] font-medium text-[var(--rex-ink-muted)]">Mac Studio</div>
+          </div>
         </div>
 
-        <div
-          className="absolute top-[5.5px] h-[32.5px] rounded-full"
-          style={{ left: TRACK.left, width: TRACK.w, background: "var(--rex-track)" }}
-        />
         <motion.div
-          className="absolute top-[7.75px] h-[28.25px] rounded-full"
+          className="absolute top-[5.5px] h-[32.5px] rounded-full"
+          style={{ left: track.left, width: trackW, background: "var(--rex-track)", transition: `left ${GLIDE}` }}
+        >
+        <motion.div
+          ref={scroller}
+          onScroll={measure}
+          className="absolute inset-0 overflow-x-auto overflow-y-hidden rounded-full [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          style={{ maskImage: fadeMask, WebkitMaskImage: fadeMask }}
+        >
+        <div className="relative h-full" style={{ width: content }}>
+        <motion.div
+          className="absolute top-[2.25px] h-[28.25px] rounded-full"
           initial={false}
-          animate={{ left: TRACK.left + 2 + activeIndex * pitch, width: pitch - 2 }}
+          animate={{ left: 2 + activeIndex * pitch, width: pitch - 2 }}
           transition={SPRING}
           style={{
             background: "var(--rex-tab-active)",
-            boxShadow: "0 0 0 0.5px rgb(0 0 0 / 0.06), 0 1px 3px rgb(0 0 0 / 0.08)",
+            boxShadow: "var(--rex-tab-shadow)",
           }}
         />
 
         <div role="tablist" aria-label="Tabs">
+          {/* a new tab fades in where it lands; the pill slides over to it */}
+          <AnimatePresence initial={false}>
           {tabs.map((tab, i) => {
             const isActive = tab.id === active;
-            const left = TRACK.left + 2 + i * pitch;
+            const left = 2 + i * pitch;
             const textLeft = TITLE_OFFSET[Math.min(tab.back.length, 2)];
             const right = pitch - 2; // tab width
             // A hairline sits between two inactive neighbours.
             const divider = i > 0 && !isActive && tabs[i - 1].id !== active;
             return (
-              <div
+              <motion.div
                 key={tab.id}
                 role="tab"
                 aria-selected={isActive}
                 aria-label={tab.title}
                 onPointerDown={() => onSelect(tab.id)}
-                className="group absolute top-[7.75px] h-[28.25px]"
-                style={{ left, width: right }}
+                className="group absolute top-[2.25px] h-[28.25px]"
+                initial={{ opacity: 0, left }}
+                animate={{ opacity: 1, left }}
+                transition={{ left: SPRING, opacity: { duration: 0.2 } }}
+                style={{ width: right }}
               >
-                {divider && <div className="absolute -left-[2.5px] top-[5.25px] h-[17px] w-[1px] bg-[rgb(0_0_0/0.1)]" />}
+                {/* dividers fade as the pill passes rather than blinking */}
+                {i > 0 && (
+                  <div
+                    className="absolute -left-[2.5px] top-[5.25px] h-[17px] w-[1px] bg-[var(--rex-tab-divider)] transition-opacity duration-150"
+                    style={{ opacity: divider ? 1 : 0 }}
+                  />
+                )}
                 <TabChip left={6.5} top={-0.75} front={tab.front} back={tab.back} />
                 <div
-                  className="absolute top-[4.75px] overflow-hidden text-[12px] leading-[17px] font-medium whitespace-nowrap [-webkit-text-stroke:0.1px_currentColor]"
+                  className={`absolute top-[4.75px] overflow-hidden text-[12px] leading-[17px] font-medium whitespace-nowrap [-webkit-text-stroke:0.1px_currentColor] ${
+                    // Titles fade out at their tail (the reference fades the
+                    // active title's last letter into the divider). On hover the
+                    // fade starts earlier, so nothing visible sits under the ×.
+                    isActive
+                      ? "[mask-image:linear-gradient(to_right,#000_calc(100%-16px),transparent)] group-hover:[mask-image:linear-gradient(to_right,#000_calc(100%-24px),transparent_calc(100%-7px))]"
+                      : "[mask-image:linear-gradient(to_right,#000_calc(100%-22px),transparent)] group-hover:[mask-image:linear-gradient(to_right,#000_calc(100%-28px),transparent_calc(100%-9px))]"
+                  }`}
                   style={{
+                    transition: "color 150ms",
                     left: textLeft,
-                    width: right - textLeft - (isActive ? 18 : 12),
+                    // up to the divider (active) or 12pt short of the tab's end
+                    width: right - textLeft - (isActive ? 14 : 12),
                     color: isActive ? "var(--rex-tab-text)" : "var(--rex-tab-text-muted)",
-                    // inactive titles fade out; the active one has room to the divider
-                    maskImage: isActive ? undefined : fade,
-                    textOverflow: isActive ? "ellipsis" : undefined,
                   }}
                 >
                   {tab.title}
                 </div>
-                {isActive && <div className="absolute top-[6.25px] h-[13px] w-[1px] bg-[#d6d6d9]" style={{ left: right - 14 }} />}
+                {/* The active tab's divider and the close button share one spot:
+                    the divider at rest, the close button on hover. */}
+                <div
+                  className={`absolute top-[6.25px] h-[13px] w-[1px] bg-[var(--rex-tab-divider-active)] transition-opacity duration-150 ${
+                    isActive ? "group-hover:opacity-0" : "opacity-0"
+                  }`}
+                  style={{ left: right - 14 }}
+                />
                 <button
                   type="button"
                   aria-label={`Close ${tab.title}`}
                   tabIndex={-1}
                   onPointerDown={(e) => e.stopPropagation()}
                   onClick={() => onClose(tab.id)}
-                  className="absolute top-[7.5px] grid size-[13px] cursor-default place-items-center rounded-full text-[#8e8e92] opacity-0 transition-opacity group-hover:opacity-100 hover:bg-[rgb(0_0_0/0.07)]"
-                  style={{ left: right - 11.5 }}
+                  className="absolute top-[5.75px] grid size-[14px] cursor-default place-items-center rounded-full text-[var(--rex-ink-muted)] opacity-0 transition-[opacity,background-color] duration-100 group-hover:opacity-100 hover:bg-[var(--rex-hover)] hover:text-[var(--rex-ink)]"
+                  // centred on the divider (x right − 13.5, y 12.75)
+                  style={{ left: right - 20.5 }}
                 >
                   <CloseIcon style={{ transform: "scale(0.75)" }} />
                 </button>
-              </div>
+              </motion.div>
             );
           })}
+          </AnimatePresence>
         </div>
+        </div>
+        </motion.div>
+        </motion.div>
 
         <button
           type="button"
@@ -139,10 +261,10 @@ export function TitleBar({
           title="Command palette (⇧⌘P)"
           tabIndex={-1}
           onClick={onPalette}
-          className="absolute grid cursor-default place-items-center rounded-[6px] p-[5px] transition-colors hover:bg-[rgb(0_0_0/0.06)]"
-          style={{ left: 935.5, top: 11 }}
+          className="absolute grid cursor-default place-items-center rounded-[6px] p-[5px] transition-colors hover:bg-[var(--rex-hover)]"
+          style={{ left: width - 64.5, top: 11 }}
         >
-          <CommandIcon style={{ color: "#59595c" }} />
+          <CommandIcon style={{ color: "var(--rex-command-ink)" }} />
         </button>
         <button
           type="button"
@@ -150,8 +272,8 @@ export function TitleBar({
           title="New tab (⌥⌘T)"
           tabIndex={-1}
           onClick={onNew}
-          className="absolute grid cursor-default place-items-center rounded-[6px] p-[5px] transition-colors hover:bg-[rgb(0_0_0/0.06)]"
-          style={{ left: 968, top: 11.5 }}
+          className="absolute grid cursor-default place-items-center rounded-[6px] p-[5px] transition-colors hover:bg-[var(--rex-hover)]"
+          style={{ left: width - 32, top: 11.5 }}
         >
           <PlusIcon style={{ color: "var(--rex-chrome-ink)" }} />
         </button>

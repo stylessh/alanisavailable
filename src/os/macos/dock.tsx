@@ -1,11 +1,13 @@
 "use client";
 
 /* eslint-disable @next/next/no-img-element */
+import { motion } from "motion/react";
 import { useEffect, useRef } from "react";
-import { DOCK_ITEMS } from "./data";
+import { DOCK_H, type DockItem } from "./data";
+import { useOS } from "./window-manager";
 
-// One point. The dock keeps its real size and shrinks only when the
-// viewport is narrower than the dock itself (407.5pt + 12pt each side).
+// One point. The screen scales as a whole on small viewports, so the dock
+// itself always uses real points.
 const U = "var(--u)";
 
 const TILE = 68; // resting tile size, pt
@@ -17,27 +19,45 @@ const EASE_OUT_MS = 90;
 // Tile size in points, from a CSS variable the magnifier updates.
 const size = (pt: number) => `calc(var(--size) * ${pt / TILE} * ${U})`;
 
-/** macOS 27 Liquid Glass dock with 68pt tiles and hover magnification. */
-export function Dock() {
+/**
+ * macOS 27 Liquid Glass dock with 68pt tiles and hover magnification.
+ * Clicking an app with windows brings its frontmost window back (restoring
+ * it if minimized or closed); clicking Finder focuses the desktop.
+ */
+export function Dock({ items, hidden = false }: { items: DockItem[]; hidden?: boolean }) {
   const listRef = useRef<HTMLUListElement>(null);
   useMagnification(listRef);
+  const { state, dispatch } = useOS();
+  const hasWindows = (app: string) => Object.values(state.windows).some((w) => w.app.id === app);
 
   return (
-    <div
-      className="mac-dock absolute inset-x-0 bottom-[calc(5.5*var(--u))] flex justify-center [--u:min(1px,calc((100vw-24px)/407.5))]"
+    <motion.div
+      initial={false}
+      animate={{ y: hidden ? DOCK_H + 12 : 0 }}
+      transition={{ type: "spring", stiffness: 420, damping: 40 }}
+      className="mac-dock absolute inset-x-0 bottom-[calc(5.5*var(--u))] z-[1000] flex justify-center [--u:1px]"
       role="toolbar"
       aria-label="Dock"
     >
       <ul
         ref={listRef}
-        className="relative flex items-end rounded-[calc(28*var(--u))] bg-[rgb(92_93_97/0.6)] shadow-[inset_0_0_0_1px_rgb(255_255_255/0.05),inset_0_1px_0.5px_rgb(255_255_255/0.36),inset_0_-1px_0.5px_rgb(255_255_255/0.36),0_8px_24px_rgb(0_0_0/0.2)] backdrop-blur-[20px] backdrop-brightness-[0.7] backdrop-saturate-[1.6]"
+        className="relative flex items-end rounded-[calc(36*var(--u))] [corner-shape:superellipse(1.4)] backdrop-blur-[20px] backdrop-brightness-[0.7] backdrop-saturate-[1.6]"
         style={{
+          // Dark appearance (measured on a dark-mode capture): near-black
+          // glass with a faint rim all around.
+          background: "light-dark(rgb(92 93 97 / 0.6), rgb(31 32 33 / 0.6))",
+          boxShadow: [
+            "inset 0 0 0 1px light-dark(rgb(255 255 255 / 0.05), rgb(255 255 255 / 0.14))",
+            "inset 0 1px 0.5px light-dark(rgb(255 255 255 / 0.36), rgb(255 255 255 / 0.16))",
+            "inset 0 -1px 0.5px light-dark(rgb(255 255 255 / 0.36), rgb(255 255 255 / 0.16))",
+            "0 8px 24px rgb(0 0 0 / 0.2)",
+          ].join(", "),
           height: `calc(88 * ${U})`,
           paddingInline: `calc(7.75 * ${U})`,
           paddingBottom: `calc(10 * ${U})`,
         }}
       >
-        {DOCK_ITEMS.map((item, i) =>
+        {items.map((item, i) =>
           item === "separator" ? (
             <li
               key={`sep-${i}`}
@@ -54,6 +74,7 @@ export function Dock() {
             <li
               key={item.id}
               data-tile
+              data-dock-app={item.id}
               className="relative [--size:68]"
               style={{
                 width: size(TILE),
@@ -61,17 +82,30 @@ export function Dock() {
                 marginInline: `calc(2 * ${U})`,
               }}
             >
-              <img
-                src={`/products/superlogical/macos/dock/${item.id}.png`}
-                alt={item.name}
-                draggable={false}
-                className="size-full"
-                style={
-                  item.offsetY
-                    ? { translate: `0 ${size(item.offsetY)}` }
-                    : undefined
+              <button
+                type="button"
+                aria-label={item.name}
+                title={item.name}
+                tabIndex={-1}
+                onClick={() =>
+                  item.id === "finder"
+                    ? dispatch({ type: "focus", id: null })
+                    : dispatch({ type: "activate-app", app: item.id })
                 }
-              />
+                className="block size-full cursor-default"
+              >
+                <img
+                  src={item.icon}
+                  alt=""
+                  draggable={false}
+                  className="size-full"
+                  style={
+                    item.offsetY
+                      ? { translate: `0 ${size(item.offsetY)}` }
+                      : undefined
+                  }
+                />
+              </button>
               {item.badge && (
                 <span
                   className="absolute flex items-center justify-center rounded-full bg-[#ee3b30] font-[-apple-system,BlinkMacSystemFont,Inter,sans-serif] leading-none font-normal text-white tabular-nums"
@@ -86,11 +120,12 @@ export function Dock() {
                   {item.badge}
                 </span>
               )}
-              {item.running && (
+              {(item.running || hasWindows(item.id)) && (
                 <span
                   aria-hidden
-                  className="absolute left-1/2 -translate-x-1/2 rounded-full bg-black"
+                  className="absolute left-1/2 -translate-x-1/2 rounded-full"
                   style={{
+                    background: "light-dark(#000, #919292)",
                     width: `calc(4 * ${U})`,
                     height: `calc(4 * ${U})`,
                     top: `calc(100% + 2 * ${U})`,
@@ -101,7 +136,7 @@ export function Dock() {
           ),
         )}
       </ul>
-    </div>
+    </motion.div>
   );
 }
 

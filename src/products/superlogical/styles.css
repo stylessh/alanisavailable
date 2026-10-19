@@ -1,32 +1,132 @@
-/* Superlogical style guide. Every value is measured from a 2x screenshot of
-   Rex (1000 × 604.5pt window); see components/rex for where each is used. */
+/* Superlogical style guide. Every light value is measured from a 2x
+   screenshot of Rex (1000 × 604.5pt window); dark values are read from the
+   same frame in Rex's dark appearance. See components/rex for where each is
+   used.
+
+   Colors are light-dark(light, dark): they follow the macOS screen's
+   color-scheme (src/os/macos), which tracks the system appearance unless the
+   desktop overrides it. Non-color tokens that differ by appearance key off
+   the screen's resolved [data-appearance]. */
 
 .superlogical {
-  /* Window */
-  --rex-window-radius: 15px;
+  /* Window: its corners (21pt continuous) come from the OS window, src/os/macos */
   /* Liquid Glass: the window has no fill of its own. It tints and blurs
      whatever is behind it (the desktop wallpaper); the pink-to-sand colors
      in the reference were its wallpaper showing through. */
-  --rex-glass-tint: rgb(250 250 252 / 0.72);
+  --rex-glass-tint: light-dark(rgb(250 250 252 / 0.72), rgb(30 30 32 / 0.72));
   --rex-glass-filter: blur(36px) saturate(1.8) brightness(1.08);
+  /* Light beams: a lit rim spills a little light into the glass under it.
+     Solved from the light reference as white light over the surface below:
+     right under the window's top rim ~20% white, gone by ~4.5pt; under a
+     pane's top rim ~50% white, gone by ~3.5pt. Dark glass shows light far
+     more, so its alphas are much lower. Each surface paints its beam as a
+     background layer above its own fill. */
+  --rex-beam: linear-gradient(
+    to bottom,
+    light-dark(rgb(255 255 255 / 0.22), rgb(255 255 255 / 0.07)) 0,
+    light-dark(rgb(255 255 255 / 0.09), rgb(255 255 255 / 0.03)) 2px,
+    transparent 4.5px
+  );
+  /* dark: measured on Rex's dark frame, ~6.4% white a point under the rim,
+     easing out over ~6.5pt (longer than light's, which is gone by 3.5pt) */
+  --rex-pane-beam: linear-gradient(
+    to bottom,
+    light-dark(rgb(255 255 255 / 0.5), rgb(255 255 255 / 0.07)) 0,
+    light-dark(rgb(255 255 255 / 0.2), rgb(255 255 255 / 0.055)) 1.5px,
+    light-dark(transparent, rgb(255 255 255 / 0.025)) 3.5px,
+    transparent 6.5px
+  );
+
+  /* Glass rim: a bright specular edge on top, a soft one all around. */
+  --rex-window-shadow:
+    inset 0 1px 0 light-dark(rgb(255 255 255 / 0.85), rgb(255 255 255 / 0.16)),
+    inset 0 0 0 1px light-dark(rgb(255 255 255 / 0.35), rgb(255 255 255 / 0.08)),
+    0 0 0 0.5px light-dark(rgb(0 0 0 / 0.25), rgb(0 0 0 / 0.6)),
+    0 24px 70px rgb(0 0 0 / 0.45),
+    0 8px 20px rgb(0 0 0 / 0.25);
 
   /* Tabs. The track is a slightly darker pass of the same glass (the
      reference read 9 levels below the title bar), so it follows whatever the
      glass shows; grays are neutral because the reference's pink cast came
      from its wallpaper. */
-  --rex-track: rgb(0 0 0 / 0.045);
-  --rex-tab-active: #fdfdfd; /* opaque: the active tab's icon is a white card cropped on white */
-  --rex-tab-text: #29292c;
-  --rex-tab-text-muted: #87878b;
-  --rex-chrome-ink: #616164;
+  --rex-track: light-dark(rgb(0 0 0 / 0.045), rgb(255 255 255 / 0.06));
+  /* The active tab (and the sidebar's selection, which reuses these) is a Liquid Glass slot.
+     Light reads as solid white in the reference. Dark (measured from Rex's
+     dark frame) is translucent: lighter toward the top, with a bright
+     specular rim along the top, a softer one along the bottom, and a dark
+     outer edge. The rims are transparent in light, so light is unchanged. */
+  --rex-tab-active: linear-gradient(
+    to bottom,
+    light-dark(#fdfdfd, rgb(255 255 255 / 0.12)),
+    light-dark(#fdfdfd, rgb(255 255 255 / 0.03))
+  );
+  --rex-slot-rims:
+    inset 0 0.75px 0 light-dark(transparent, rgb(255 255 255 / 0.3)),
+    inset 0 -0.5px 0 light-dark(transparent, rgb(255 255 255 / 0.15)),
+    inset 0 0 0 0.75px light-dark(transparent, rgb(255 255 255 / 0.07));
+  --rex-tab-shadow:
+    var(--rex-slot-rims),
+    0 0 0 0.5px light-dark(rgb(0 0 0 / 0.06), rgb(0 0 0 / 0.4)),
+    0 1px 3px light-dark(rgb(0 0 0 / 0.08), rgb(0 0 0 / 0.3));
+  --rex-tab-text: light-dark(#29292c, #f2f2f4);
+  --rex-tab-text-muted: light-dark(#87878b, #8e8e93);
+  --rex-tab-divider: light-dark(rgb(0 0 0 / 0.1), rgb(255 255 255 / 0.12));
+  --rex-tab-divider-active: light-dark(#d6d6d9, rgb(255 255 255 / 0.14));
+  --rex-chrome-ink: light-dark(#616164, #c7c7cc);
+  --rex-session-ink: light-dark(#606063, #e5e5ea);
+  --rex-command-ink: light-dark(#59595c, #d1d1d6);
+  --rex-chip-ring:
+    0 0 0 0.75px light-dark(rgb(255 255 255 / 0.95), rgb(0 0 0 / 0.55)),
+    0 0 0 1.25px light-dark(rgb(0 0 0 / 0.07), rgb(255 255 255 / 0.1)),
+    0 1px 2px light-dark(rgb(0 0 0 / 0.12), rgb(0 0 0 / 0.4));
+
+  /* UI text and states (sidebar, palette, buttons) */
+  --rex-ink: light-dark(#29292c, #f2f2f4);
+  --rex-ink-2: light-dark(#3a3a3d, #e5e5ea);
+  --rex-ink-muted: light-dark(#8e8e92, #8e8e93);
+  --rex-ink-faint: light-dark(#9a9a9e, #7c7c80);
+  --rex-hover: light-dark(rgb(0 0 0 / 0.06), rgb(255 255 255 / 0.08));
+  --rex-hover-soft: light-dark(rgb(0 0 0 / 0.045), rgb(255 255 255 / 0.06));
+  --rex-selected: light-dark(rgb(0 0 0 / 0.065), rgb(255 255 255 / 0.09));
+  --rex-pressed: light-dark(rgb(0 0 0 / 0.08), rgb(255 255 255 / 0.12));
+  --rex-working: light-dark(#7c7c80, #aeaeb2);
+  --rex-icon-ring:
+    0 0 0 0.5px light-dark(rgb(0 0 0 / 0.12), rgb(255 255 255 / 0.14)),
+    0 1px 1.5px light-dark(rgb(0 0 0 / 0.1), rgb(0 0 0 / 0.4));
+  --rex-popover-bg: light-dark(rgb(252 252 253 / 0.82), rgb(38 38 40 / 0.86));
+  --rex-popover-rule: light-dark(rgb(0 0 0 / 0.07), rgb(255 255 255 / 0.08));
+  --rex-popover-shadow:
+    inset 0 0.5px 0 light-dark(rgb(255 255 255 / 0.9), rgb(255 255 255 / 0.1)),
+    0 0 0 0.5px light-dark(rgb(0 0 0 / 0.12), rgb(0 0 0 / 0.5)),
+    0 12px 40px light-dark(rgb(0 0 0 / 0.18), rgb(0 0 0 / 0.5)),
+    0 2px 8px rgb(0 0 0 / 0.08);
 
   /* Panes */
   --rex-pane-radius: 10px;
-  --rex-pane-active: #ffffff;
-  --rex-pane-inactive: rgb(255 255 255 / 0.62); /* glass reads through */
-  --rex-pane-title: #28292b;
-  --rex-pane-title-muted: #626364;
-  --rex-pane-control: #a0a1a1;
+  /* light: the focused pane is solid white; dark: both are glass, the focused
+     one a touch lighter, as the reference shows the wallpaper warming them */
+  --rex-pane-active: light-dark(#ffffff, rgb(255 255 255 / 0.075));
+  --rex-pane-inactive: light-dark(rgb(255 255 255 / 0.62), rgb(255 255 255 / 0.04)); /* glass reads through */
+  /* Pane edge. Light: a faint dark ring and a white top highlight (measured).
+     Dark (Rex's dark frame): no outer ring; a single bright top highlight, a
+     faint light rim around the inside, and a flat dark line outside the
+     left and right sides only (x-offset shadows, so the top stays clean). */
+  --rex-pane-shadow:
+    0 0 0 0.5px light-dark(rgb(0 0 0 / 0.08), transparent),
+    -0.5px 0 0 light-dark(transparent, rgb(0 0 0 / 0.6)),
+    0.5px 0 0 light-dark(transparent, rgb(0 0 0 / 0.6)),
+    inset 0 0.5px 0 light-dark(rgb(255 255 255 / 0.9), transparent),
+    inset 0 0.75px 0 light-dark(transparent, rgb(255 255 255 / 0.24)),
+    inset 0 0 0 0.75px light-dark(transparent, rgb(255 255 255 / 0.08)),
+    0 1px 2px light-dark(rgb(0 0 0 / 0.04), rgb(0 0 0 / 0.2));
+  --rex-pane-title: light-dark(#28292b, #f2f2f4);
+  --rex-pane-title-muted: light-dark(#626364, #c7c7cc);
+  --rex-pane-control: light-dark(#a0a1a1, #8e8e93);
+  --rex-pane-control-hover: light-dark(#6e6f71, #d1d1d6);
+  /* pane header glyphs, measured per program */
+  --rex-icon-strong: light-dark(#424345, #e5e5ea);
+  --rex-icon: light-dark(#616365, #c7c7cc);
+  --rex-icon-soft: light-dark(#666666, #c7c7cc);
 
   /* Terminal grid: 7.1pt advance, 15.15pt rows */
   --rex-mono: var(--font-rex-mono), "SF Mono", ui-monospace, monospace;
@@ -36,43 +136,51 @@
 
   /* Terminal colors (focused pane), calibrated against the reference by
      comparing each token's glyph-core color in both renders */
-  --t-fg: #37393a;
-  --t-strong: #2e3032;
-  --t-dim: #828282;
-  --t-slate: #646374;
-  --t-blue: #4675d2;
-  --t-teal: #448c8f;
-  --t-red: #b65d66;
-  --t-green: #598b4e;
-  --t-bullet: #1c6031;
-  --t-bullet-dim: #787777;
+  --t-fg: light-dark(#37393a, #e5e5e7);
+  --t-strong: light-dark(#2e3032, #f5f5f7);
+  --t-dim: light-dark(#828282, #9a9a9e);
+  --t-slate: light-dark(#646374, #b0b0c0);
+  --t-blue: light-dark(#4675d2, #5b9cf5);
+  --t-teal: light-dark(#448c8f, #5cc0c4);
+  --t-red: light-dark(#b65d66, #ff7262);
+  --t-green: light-dark(#598b4e, #6fcf6a);
+  --t-bullet: light-dark(#1c6031, #3fbf5a);
+  --t-bullet-dim: light-dark(#787777, #8e8e93);
 
   /* Rex dims unfocused panes. Content is drawn in its true colors and the
-     pane fades it to --rex-dim; the lazygit and snake colors below were
-     solved from their dimmed values in the reference (pane background 228). */
+     pane fades it to --rex-dim; the light lazygit and snake colors below were
+     solved from their dimmed values in the reference (pane background 228).
+     Dark panes dim far less (see [data-appearance="dark"] below). */
   --rex-dim: 0.72;
-  --g-border: #484844; /* dims to #747471 */
-  --g-strong: #323436; /* dims to #646567 */
-  --g-fg: #3b3c3b; /* dims to #6a6b6a */
-  --g-red: #b2484b; /* dims to #c07476 */
-  --g-green: #386e42; /* dims to #688f6f */
-  --g-cyan: #468386; /* dims to #729ea0 */
-  --g-blue: #3b75a4; /* dims to #6a94b6 */
-  --g-purple: #8872a1; /* dims to #a292b4 */
-  --g-gold: #93722e; /* dims to #aa9261 */
-  --g-version: #3c3d2e; /* dims to #6b6c61 */
+  --g-border: light-dark(#484844, #cfcfcf); /* light dims to #747471 */
+  --g-strong: light-dark(#323436, #f5f5f7); /* dims to #646567 */
+  --g-fg: light-dark(#3b3c3b, #e5e5e7); /* dims to #6a6b6a */
+  --g-red: light-dark(#b2484b, #ff6f61); /* dims to #c07476 */
+  --g-green: light-dark(#386e42, #4cc764); /* dims to #688f6f */
+  --g-cyan: light-dark(#468386, #4fc3d9); /* dims to #729ea0 */
+  --g-blue: light-dark(#3b75a4, #4ea4ef); /* dims to #6a94b6 */
+  --g-purple: light-dark(#8872a1, #b892f5); /* dims to #a292b4 */
+  --g-gold: light-dark(#93722e, #e7a83c); /* dims to #aa9261 */
+  --g-version: light-dark(#3c3d2e, #e5e5e7); /* dims to #6b6c61 */
 
-  --s-title: #5d8f9c; /* dims to #83a7b0 */
-  --s-border: #4b7c84; /* dims to #76999f */
-  --s-snake: #226b36; /* dims to #588d67 */
-  --s-head: #157d2f; /* dims to #4f9a62 */
-  --s-food: #a61d34; /* dims to #b75565 */
-  --s-footer: #878778; /* dims to #a1a196 */
+  --s-title: light-dark(#5d8f9c, #45c2d0); /* light dims to #83a7b0 */
+  --s-border: light-dark(#4b7c84, #3cb5c4); /* dims to #76999f */
+  --s-snake: light-dark(#226b36, #3ac25f); /* dims to #588d67 */
+  --s-head: light-dark(#157d2f, #3ac25f); /* dims to #4f9a62 */
+  --s-food: light-dark(#a61d34, #f2877c); /* dims to #b75565 */
+  --s-footer: light-dark(#878778, #8e8e93); /* dims to #a1a196 */
 
   /* Not in the reference: colors for programs started in the demo */
-  --t-gold: #93722e;
-  --t-claude: #d97757;
-  --t-cursor: #3a3b3d;
+  --t-gold: light-dark(#93722e, #e0b04a);
+  --t-claude: light-dark(#d97757, #e0896a);
+  --t-cursor: light-dark(#3a3b3d, #e5e5ea);
+  --t-cursor-ink: light-dark(#ffffff, #1c1c1e);
+}
+
+/* Dark panes fade unfocused content only slightly: in Rex's dark frame the
+   unfocused lazygit and snake panes read almost at full strength. */
+.superlogical [data-appearance="dark"] {
+  --rex-dim: 0.9;
 }
 
 .rex-mono {
@@ -89,12 +197,11 @@
   -webkit-font-smoothing: antialiased;
 }
 
-
 /* Terminal cursor: a solid blinking block in the focused pane, a hollow box
    elsewhere (like most terminals). */
 .rex-cursor {
   background: var(--t-cursor);
-  color: #fff;
+  color: var(--t-cursor-ink);
   animation: rex-blink 1.1s steps(1, end) infinite;
 }
 .rex-cursor-idle {
@@ -130,4 +237,11 @@
     animation: none;
     opacity: 0.7;
   }
+}
+
+/* The Bun mark is drawn monochrome by multiplying it onto its card; on a
+   dark pane header that would erase it, so there it's inverted and screened. */
+.superlogical [data-appearance="dark"] .rex-bun-header {
+  filter: grayscale(1) contrast(1.4) invert(0.85) !important;
+  mix-blend-mode: screen !important;
 }
