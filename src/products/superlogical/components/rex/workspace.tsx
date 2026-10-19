@@ -6,7 +6,7 @@ import { type Command, CommandPalette } from "./command-palette";
 import {
   type Action,
   activeTab,
-  AREA,
+  areaOf,
   type Divider,
   gridSize,
   type Key,
@@ -21,6 +21,7 @@ import {
   titles,
 } from "./model";
 import { Pane } from "./pane";
+import { Sidebar } from "./sidebar";
 import { PROGRAMS } from "./programs";
 import { Terminal } from "./terminal";
 import { type TabView, TitleBar } from "./title-bar";
@@ -36,6 +37,8 @@ const SHORTCUTS: Shortcut[] = [
   { code: "KeyW", meta: true, alt: true, action: { type: "close-pane" }, label: "⌥⌘W" },
   { code: "KeyT", meta: true, alt: true, action: { type: "new-tab" }, label: "⌥⌘T" },
   { code: "KeyK", meta: true, action: { type: "clear" }, label: "⌘K" },
+  { code: "KeyS", meta: true, ctrl: true, action: { type: "toggle-sidebar" }, label: "⌃⌘S" },
+  { code: "Period", meta: true, action: { type: "toggle-activity" }, label: "⌘." },
   { code: "ArrowLeft", meta: true, alt: true, action: { type: "move-focus", dir: "left" }, label: "⌥⌘←" },
   { code: "ArrowRight", meta: true, alt: true, action: { type: "move-focus", dir: "right" }, label: "⌥⌘→" },
   { code: "ArrowUp", meta: true, alt: true, action: { type: "move-focus", dir: "up" }, label: "⌥⌘↑" },
@@ -79,7 +82,7 @@ const charKey = (ch: string): Key => ({
 function PaneClock({ pane, visible, dispatch }: { pane: PaneState; visible: boolean; dispatch: (a: Action) => void }) {
   useEffect(() => {
     if (!pane.busy) return;
-    const t = setTimeout(() => dispatch({ type: "done", pane: pane.id }), pane.program === "bun" ? 900 : 1700);
+    const t = setTimeout(() => dispatch({ type: "done", pane: pane.id }), pane.program === "bun" ? 1200 : 3200);
     return () => clearTimeout(t);
   }, [pane.busy, pane.id, pane.program, dispatch]);
 
@@ -141,7 +144,8 @@ export function Workspace() {
   }, [state.palette]);
 
   const tab = activeTab(state);
-  const { panes: rects, dividers } = layout(tab.root);
+  const area = areaOf(state);
+  const { panes: rects, dividers } = layout(tab.root, area);
   const visible = tab.zoom ? [tab.focus] : leaves(tab.root);
 
   const tabs: TabView[] = state.tabs.map((t) => {
@@ -187,6 +191,8 @@ export function Workspace() {
     { id: "zoom", group: "Pane", title: tab.zoom ? "Unzoom Pane" : "Zoom Pane", shortcut: label("zoom"), run: run({ type: "zoom" }) },
     { id: "close-pane", group: "Pane", title: "Close Pane", shortcut: label("close-pane"), run: run({ type: "close-pane" }) },
     { id: "clear", group: "Pane", title: "Clear Screen", shortcut: label("clear"), run: run({ type: "clear" }) },
+    { id: "sidebar", group: "View", title: state.view === "sidebar" ? "Show Tab Bar" : "Show Sidebar", shortcut: label("toggle-sidebar"), run: run({ type: "toggle-sidebar" }) },
+    { id: "activity", group: "View", title: state.activity ? "Hide Activity" : "Show Activity", shortcut: label("toggle-activity"), run: run({ type: "toggle-activity" }) },
     { id: "new-tab", group: "Tab", title: "New Tab", shortcut: label("new-tab"), run: run({ type: "new-tab" }) },
     { id: "close-tab", group: "Tab", title: "Close Tab", run: run({ type: "close-tab", tab: tab.id }) },
     ...tabs.map((t, i): Command => ({
@@ -223,6 +229,9 @@ export function Workspace() {
         <TitleBar
           tabs={tabs}
           active={state.active}
+          session={tab.session}
+          sidebar={state.view === "sidebar"}
+          onToggleSidebar={() => dispatch({ type: "toggle-sidebar" })}
           onSelect={(id) => dispatch({ type: "select-tab", tab: id })}
           onClose={(id) => dispatch({ type: "close-tab", tab: id })}
           onNew={() => dispatch({ type: "new-tab" })}
@@ -230,9 +239,23 @@ export function Workspace() {
         />
 
         <AnimatePresence initial={false}>
+          {state.view === "sidebar" && (
+            <Sidebar
+              key="sidebar"
+              state={state}
+              onSelect={(id) => dispatch({ type: "select-tab", tab: id })}
+              onToggleSidebar={() => dispatch({ type: "toggle-sidebar" })}
+              onToggleActivity={() => dispatch({ type: "toggle-activity" })}
+              onPalette={() => dispatch({ type: "palette", open: true })}
+              onNewTab={() => dispatch({ type: "new-tab" })}
+            />
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence initial={false}>
           {visible.map((id) => {
             const pane = state.panes[id];
-            const rect = tab.zoom ? AREA : rects[id];
+            const rect = tab.zoom ? area : rects[id];
             const { cols, rows } = gridSize(rect);
             const fullScreen = pane.program === "lazygit" || pane.program === "snake";
             let lines = paneRows(pane, cols);

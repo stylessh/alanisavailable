@@ -111,3 +111,23 @@
     animation: none;
   }
 }
+
+/* Activity: Rex's working indicator, three dots pulsing in turn */
+.rex-working-dot {
+  animation: rex-working 1s ease-in-out infinite;
+  opacity: 0.35;
+}
+@keyframes rex-working {
+  30% {
+    opacity: 1;
+  }
+  60% {
+    opacity: 0.35;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rex-working-dot {
+    animation: none;
+    opacity: 0.7;
+  }
+}

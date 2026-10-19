@@ -32,11 +32,17 @@ export type Pane = {
   follow: boolean;
   /** non-zero while the program is working; each bump restarts its timer */
   busy: number;
+  /** when the program last did something (ms), for Activity Mode */
+  activeAt: number;
   snake?: SnakeState;
 };
 
-export type Tab = { id: string; root: Node; focus: string; zoom: boolean };
+export type Tab = { id: string; session: string; root: Node; focus: string; zoom: boolean };
 export type State = {
+  /** Rex shows tabs either as a strip in the title bar or in a sidebar */
+  view: "tabs" | "sidebar";
+  /** Activity Mode: the sidebar lists only running programs, with their status */
+  activity: boolean;
   tabs: Tab[];
   active: string;
   panes: Record<string, Pane>;
@@ -63,12 +69,18 @@ export type Action =
   | { type: "launch"; command: string; cwd?: string }
   | { type: "done"; pane: string }
   | { type: "tick"; pane: string }
-  | { type: "palette"; open: boolean };
+  | { type: "palette"; open: boolean }
+  | { type: "toggle-sidebar" }
+  | { type: "toggle-activity" };
 
 // ─── Geometry (window-relative px, measured from the reference) ────────────
 
 /** The area panes tile into: 8pt inset, below the 44pt title bar. */
 export const AREA: Rect = { x: 8, y: 44, w: 984.5, h: 553 };
+/** With the sidebar, panes start right of it and run up to the top edge. */
+export const SIDEBAR_W = 248;
+export const SIDEBAR_AREA: Rect = { x: SIDEBAR_W, y: 8, w: AREA.x + AREA.w - SIDEBAR_W, h: AREA.y + AREA.h - 8 };
+export const areaOf = (st: Pick<State, "view">) => (st.view === "sidebar" ? SIDEBAR_AREA : AREA);
 export const GAP = { x: 8, y: 7.5 };
 /** First terminal row is centered 43pt below the pane top; column 0 sits 9pt in. */
 export const TERM = { top: 43 - 15.15 / 2 + 0.75, left: 9, line: 15.15, cell: 7.1 };
@@ -145,7 +157,8 @@ const tabOf = (st: State, pane: string) => st.tabs.find((t) => leaves(t.root).in
 
 export function paneRect(st: State, pane: string): Rect {
   const tab = tabOf(st, pane);
-  return tab.zoom && tab.focus === pane ? AREA : (layout(tab.root).panes[pane] ?? AREA);
+  const area = areaOf(st);
+  return tab.zoom && tab.focus === pane ? area : (layout(tab.root, area).panes[pane] ?? area);
 }
 
 // ─── Programs: titles and screens ───────────────────────────────────────────
@@ -271,6 +284,39 @@ function agentReply(kind: "codex" | "claude"): Row[] {
   ];
 }
 
+export type Activity = { label: string; working: boolean; at: number };
+
+/** What Activity Mode reports for a pane (Rex gets this from OSC 7501); null for an idle shell. */
+export function activityOf(p: Pane): Activity | null {
+  const at = p.activeAt;
+  switch (p.program) {
+    case "codex":
+    case "claude":
+      if (p.busy) return { label: "Working", working: true, at };
+      return { label: p.task ? "Done" : "Waiting for a prompt", working: false, at };
+    case "bun":
+      return p.busy
+        ? { label: "Starting…", working: true, at }
+        : { label: "Ready on localhost:3000", working: false, at };
+    case "snake": {
+      const g = p.snake!;
+      const state = g.status === "running" ? "Playing" : g.status === "paused" ? "Paused" : "Game over";
+      return { label: `${state} · score ${g.score}`, working: g.status === "running", at };
+    }
+    case "lazygit":
+      return { label: "Idle", working: false, at };
+    default:
+      return null;
+  }
+}
+
+/** The pane a tab is represented by in Activity Mode: its focused pane if it's running something. */
+export function activePaneOf(st: State, tab: Tab): Pane | null {
+  const order = [tab.focus, ...leaves(tab.root).filter((id) => id !== tab.focus)];
+  for (const id of order) if (activityOf(st.panes[id])) return st.panes[id];
+  return null;
+}
+
 /** Everything a pane shows, top to bottom, at `cols` columns. */
 export function paneRows(p: Pane, cols: number): Row[] {
   switch (p.program) {
@@ -372,6 +418,7 @@ function makePane(id: string, cwd: string, extra: Partial<Pane> = {}): Pane {
     recall: null,
     follow: true,
     busy: 0,
+    activeAt: Date.now(),
     ...extra,
   };
 }
@@ -384,7 +431,10 @@ function newTab(st: State, cwd: string, command?: string): State {
   [paneId, st] = nextId(st, "p");
   st = {
     ...st,
-    tabs: [...st.tabs, { id: tabId, root: { kind: "pane", id: paneId }, focus: paneId, zoom: false }],
+    tabs: [
+      ...st.tabs,
+      { id: tabId, session: activeTab(st)?.session ?? "rex-snake", root: { kind: "pane", id: paneId }, focus: paneId, zoom: false },
+    ],
     active: tabId,
     panes: { ...st.panes, [paneId]: makePane(paneId, cwd) },
   };
@@ -439,7 +489,7 @@ function closePane(st: State, pane: string): State {
 }
 
 function startProgram(st: State, id: string, program: ProgramKind, extra: Partial<Pane> = {}): State {
-  return put(st, id, () => ({ program, input: "", busy: 0, follow: true, ...extra }));
+  return put(st, id, () => ({ program, input: "", busy: 0, follow: true, activeAt: Date.now(), ...extra }));
 }
 
 function exitProgram(st: State, id: string, rows: Row[] = []): State {
@@ -462,6 +512,7 @@ function submitToAgent(st: State, id: string, text: string): State {
     input: "",
     task: p.task ?? taskTitle(text),
     busy: p.busy + 1,
+    activeAt: Date.now(),
   }));
 }
 
@@ -591,11 +642,15 @@ function rexCli(st: State, id: string, args: string[]): State {
     return putTab(st, tab.id, (t) => ({ zoom: !t.zoom, focus: id }));
   }
   if (sub === "ls") {
-    const rows: Row[] = [[s("SESSION rex-snake", "--t-dim")]];
-    st.tabs.forEach((t, i) => {
-      rows.push([s(`window ${i + 1}  `, "--t-dim"), s(titles(st.panes[t.focus]).tab, "--t-strong", b)]);
-      for (const pid of leaves(t.root)) rows.push([s("  block  ", "--t-dim"), s(titles(st.panes[pid]).pane, "--t-fg")]);
-    });
+    const rows: Row[] = [];
+    for (const session of [...new Set(st.tabs.map((t) => t.session))]) {
+      rows.push([s(`SESSION ${session}`, "--t-dim")]);
+      st.tabs.forEach((t, i) => {
+        if (t.session !== session) return;
+        rows.push([s(`  window ${i + 1}  `, "--t-dim"), s(titles(st.panes[t.focus]).tab, "--t-strong", b)]);
+        for (const pid of leaves(t.root)) rows.push([s("    block  ", "--t-dim"), s(titles(st.panes[pid]).pane, "--t-fg")]);
+      });
+    }
     return out(...rows);
   }
   return out(
@@ -710,7 +765,7 @@ export function reducer(st: State, a: Action): State {
     case "move-focus": {
       const tab = activeTab(st);
       if (tab.zoom) return st;
-      const rects = layout(tab.root).panes;
+      const rects = layout(tab.root, areaOf(st)).panes;
       const from = rects[tab.focus];
       const cx = from.x + from.w / 2;
       const cy = from.y + from.h / 2;
@@ -764,11 +819,18 @@ export function reducer(st: State, a: Action): State {
     case "done": {
       const p = st.panes[a.pane];
       if (!p?.busy) return st;
-      if (p.program === "bun") return put(print(st, a.pane, [[s(" ✓ ", "--t-green"), s("Ready in 812ms", "--t-fg")]]), a.pane, () => ({ busy: 0 }));
-      if (p.program === "codex" || p.program === "claude") {
-        return put(st, a.pane, (q) => ({ busy: 0, screen: [...q.screen.slice(0, -1), ...agentReply(p.program as "codex")] }));
+      const now = Date.now();
+      if (p.program === "bun") {
+        return put(print(st, a.pane, [[s(" ✓ ", "--t-green"), s("Ready in 812ms", "--t-fg")]]), a.pane, () => ({ busy: 0, activeAt: now }));
       }
-      return put(st, a.pane, () => ({ busy: 0 }));
+      if (p.program === "codex" || p.program === "claude") {
+        return put(st, a.pane, (q) => ({
+          busy: 0,
+          activeAt: now,
+          screen: [...q.screen.slice(0, -1), ...agentReply(p.program as "codex")],
+        }));
+      }
+      return put(st, a.pane, () => ({ busy: 0, activeAt: now }));
     }
     case "tick": {
       const p = st.panes[a.pane];
@@ -776,6 +838,11 @@ export function reducer(st: State, a: Action): State {
     }
     case "palette":
       return { ...st, palette: a.open };
+    case "toggle-sidebar":
+      return { ...st, view: st.view === "sidebar" ? "tabs" : "sidebar" };
+    case "toggle-activity":
+      // Activity lives in the sidebar, so turning it on shows the sidebar.
+      return st.activity ? { ...st, activity: false } : { ...st, activity: true, view: "sidebar" };
   }
 }
 
@@ -794,6 +861,7 @@ const BUN_LOG: Row[] = [
 
 export function initialState(): State {
   const snakeCwd = "~/Sites/rex-snake";
+  const ago = (minutes: number) => Date.now() - minutes * 60_000;
   const panes: Record<string, Pane> = {
     p1: makePane("p1", snakeCwd, {
       program: "codex",
@@ -801,21 +869,24 @@ export function initialState(): State {
       screen: AGENT,
       shell: [prompt(snakeCwd, "codex")],
       follow: false,
+      activeAt: ago(4),
     }),
-    p2: makePane("p2", snakeCwd, { program: "lazygit", shell: [prompt(snakeCwd, "lazygit")], follow: false }),
+    p2: makePane("p2", snakeCwd, { program: "lazygit", shell: [prompt(snakeCwd, "lazygit")], follow: false, activeAt: ago(9) }),
     p3: makePane("p3", snakeCwd, {
       program: "snake",
       snake: INITIAL_SNAKE,
       shell: [prompt(snakeCwd, "node demo/snake.mjs")],
       follow: false,
+      activeAt: ago(2),
     }),
-    p4: makePane("p4", "~/sites/announcements", { program: "bun", shell: BUN_LOG }),
+    p4: makePane("p4", "~/sites/announcements", { program: "bun", shell: BUN_LOG, activeAt: ago(12) }),
     p5: makePane("p5", "~/sites/announcements"),
     p6: makePane("p6", "~/sites/macos-client-ui"),
     p7: makePane("p7", "~/sites/macos-client-ui", {
       program: "claude",
       screen: claudeWelcome("~/sites/macos-client-ui"),
       shell: [prompt("~/sites/macos-client-ui", "claude")],
+      activeAt: ago(26),
     }),
   };
   const leaf = (id: string): Node => ({ kind: "pane", id });
@@ -829,14 +900,17 @@ export function initialState(): State {
           a: { kind: "split", id: "s2", dir: "down", ratio: 236 / (AREA.h - GAP.y), a: leaf("p1"), b: leaf("p2") },
           b: leaf("p3"),
         },
+        session: "rex-snake",
         focus: "p1",
         zoom: false,
       },
-      { id: "t2", root: { kind: "split", id: "s3", dir: "right", ratio: 0.58, a: leaf("p4"), b: leaf("p5") }, focus: "p4", zoom: false },
-      { id: "t3", root: { kind: "split", id: "s4", dir: "right", ratio: 0.5, a: leaf("p6"), b: leaf("p7") }, focus: "p6", zoom: false },
+      { id: "t2", session: "announcements", root: { kind: "split", id: "s3", dir: "right", ratio: 0.58, a: leaf("p4"), b: leaf("p5") }, focus: "p4", zoom: false },
+      { id: "t3", session: "macos-client-ui", root: { kind: "split", id: "s4", dir: "right", ratio: 0.5, a: leaf("p6"), b: leaf("p7") }, focus: "p6", zoom: false },
     ],
     active: "t1",
     panes,
+    view: "tabs",
+    activity: false,
     palette: false,
     seq: 10,
   };
