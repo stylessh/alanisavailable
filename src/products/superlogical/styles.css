@@ -1,0 +1,113 @@
+/* Superlogical style guide. Every value is measured from a 2x screenshot of
+   Rex (1000 × 604.5pt window); see components/rex for where each is used. */
+
+.superlogical {
+  /* Window */
+  --rex-window-radius: 15px;
+  /* Liquid Glass: the window has no fill of its own. It tints and blurs
+     whatever is behind it (the desktop wallpaper); the pink-to-sand colors
+     in the reference were its wallpaper showing through. */
+  --rex-glass-tint: rgb(250 250 252 / 0.72);
+  --rex-glass-filter: blur(36px) saturate(1.8) brightness(1.08);
+
+  /* Tabs. The track is a slightly darker pass of the same glass (the
+     reference read 9 levels below the title bar), so it follows whatever the
+     glass shows; grays are neutral because the reference's pink cast came
+     from its wallpaper. */
+  --rex-track: rgb(0 0 0 / 0.045);
+  --rex-tab-active: #fdfdfd; /* opaque: the active tab's icon is a white card cropped on white */
+  --rex-tab-text: #29292c;
+  --rex-tab-text-muted: #87878b;
+  --rex-chrome-ink: #616164;
+
+  /* Panes */
+  --rex-pane-radius: 10px;
+  --rex-pane-active: #ffffff;
+  --rex-pane-inactive: rgb(255 255 255 / 0.62); /* glass reads through */
+  --rex-pane-title: #28292b;
+  --rex-pane-title-muted: #626364;
+  --rex-pane-control: #a0a1a1;
+
+  /* Terminal grid: 7.1pt advance, 15.15pt rows */
+  --rex-mono: var(--font-rex-mono), "SF Mono", ui-monospace, monospace;
+  --rex-mono-size: 11.83px;
+  --rex-line: 15.15px;
+  --rex-cell: 7.1px;
+
+  /* Terminal colors (focused pane), calibrated against the reference by
+     comparing each token's glyph-core color in both renders */
+  --t-fg: #37393a;
+  --t-strong: #2e3032;
+  --t-dim: #828282;
+  --t-slate: #646374;
+  --t-blue: #4675d2;
+  --t-teal: #448c8f;
+  --t-red: #b65d66;
+  --t-green: #598b4e;
+  --t-bullet: #1c6031;
+  --t-bullet-dim: #787777;
+
+  /* Rex dims unfocused panes. Content is drawn in its true colors and the
+     pane fades it to --rex-dim; the lazygit and snake colors below were
+     solved from their dimmed values in the reference (pane background 228). */
+  --rex-dim: 0.72;
+  --g-border: #484844; /* dims to #747471 */
+  --g-strong: #323436; /* dims to #646567 */
+  --g-fg: #3b3c3b; /* dims to #6a6b6a */
+  --g-red: #b2484b; /* dims to #c07476 */
+  --g-green: #386e42; /* dims to #688f6f */
+  --g-cyan: #468386; /* dims to #729ea0 */
+  --g-blue: #3b75a4; /* dims to #6a94b6 */
+  --g-purple: #8872a1; /* dims to #a292b4 */
+  --g-gold: #93722e; /* dims to #aa9261 */
+  --g-version: #3c3d2e; /* dims to #6b6c61 */
+
+  --s-title: #5d8f9c; /* dims to #83a7b0 */
+  --s-border: #4b7c84; /* dims to #76999f */
+  --s-snake: #226b36; /* dims to #588d67 */
+  --s-head: #157d2f; /* dims to #4f9a62 */
+  --s-food: #a61d34; /* dims to #b75565 */
+  --s-footer: #878778; /* dims to #a1a196 */
+
+  /* Not in the reference: colors for programs started in the demo */
+  --t-gold: #93722e;
+  --t-claude: #d97757;
+  --t-cursor: #3a3b3d;
+}
+
+.rex-mono {
+  font-family: var(--rex-mono);
+  font-size: var(--rex-mono-size);
+  line-height: var(--rex-line);
+  font-variant-ligatures: none;
+  white-space: pre;
+  -webkit-font-smoothing: antialiased;
+}
+
+.rex-ui {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", Inter, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+
+/* Terminal cursor: a solid blinking block in the focused pane, a hollow box
+   elsewhere (like most terminals). */
+.rex-cursor {
+  background: var(--t-cursor);
+  color: #fff;
+  animation: rex-blink 1.1s steps(1, end) infinite;
+}
+.rex-cursor-idle {
+  box-shadow: inset 0 0 0 1px var(--t-dim);
+}
+@keyframes rex-blink {
+  50% {
+    background: transparent;
+    color: inherit;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rex-cursor {
+    animation: none;
+  }
+}

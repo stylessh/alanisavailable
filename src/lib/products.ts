@@ -1,13 +1,14 @@
-import { PRODUCTS } from "@/content/products";
+import { PRODUCTS } from "@/products";
 
-// Each product is an .mdx file in src/content/products, registered in its
-// index.ts, that exports `metadata` matching this shape.
+// Each product is a folder in src/products whose index.mdx exports
+// `metadata` matching this shape; folders are registered in
+// src/products/index.ts.
 export type ProductMeta = {
   company: string;
   role?: string;
   summary?: string;
   favorite?: boolean;
-  /** Single-color SVG in /public/logos; it's recolored with `foreground`. */
+  /** Single-color SVG in /public/products/<slug>/; recolored with `foreground`. */
   logo?: string;
   /** Card fill: any CSS background (a color or a gradient). */
   background?: string;

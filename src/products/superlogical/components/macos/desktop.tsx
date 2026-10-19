@@ -19,8 +19,8 @@ export function MacDesktop({
       {/* "Mono Dark Distortion 2" from raycast.com/wallpapers */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src="/macos/wallpaper/mono-dark-distortion-2-1920.webp"
-        srcSet="/macos/wallpaper/mono-dark-distortion-2-1920.webp 1920w, /macos/wallpaper/mono-dark-distortion-2-3840.webp 3840w"
+        src="/products/superlogical/macos/wallpaper/mono-dark-distortion-2-1920.webp"
+        srcSet="/products/superlogical/macos/wallpaper/mono-dark-distortion-2-1920.webp 1920w, /products/superlogical/macos/wallpaper/mono-dark-distortion-2-3840.webp 3840w"
         sizes="100vw"
         alt=""
         fetchPriority="high"

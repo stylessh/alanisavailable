@@ -10,7 +10,7 @@ export function MenuBar({ app }: { app: AppMenus }) {
   return (
     <div className="mac-menubar absolute inset-x-0 top-0 h-[33px] bg-[linear-gradient(to_bottom,#000,rgb(0_0_0/0))] font-[-apple-system,BlinkMacSystemFont,'SF_Pro_Text',Inter,sans-serif] text-[13px] leading-[33px] text-white antialiased select-none [-webkit-text-stroke:0.3px_currentColor]">
       <img
-        src="/macos/menubar/apple.png"
+        src="/products/superlogical/macos/menubar/apple.png"
         alt="Apple"
         width={15}
         height={33}
@@ -30,7 +30,7 @@ export function MenuBar({ app }: { app: AppMenus }) {
         {STATUS_ITEMS.map((item) => (
           <img
             key={item.id}
-            src={`/macos/menubar/${item.id}.png`}
+            src={`/products/superlogical/macos/menubar/${item.id}.png`}
             alt={item.label}
             width={item.width}
             height={33}

@@ -62,7 +62,7 @@ export function Dock() {
               }}
             >
               <img
-                src={`/macos/dock/${item.id}.png`}
+                src={`/products/superlogical/macos/dock/${item.id}.png`}
                 alt={item.name}
                 draggable={false}
                 className="size-full"
