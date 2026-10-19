@@ -5,7 +5,7 @@ import { WINDOW } from "./rex/model";
 import { RexWindow } from "./rex/rex-window";
 
 /** Rex and the phone side by side, centered together when the screen has room. */
-const PHONE_W = 317;
+const PHONE_W = 324;
 const GAP = 40;
 const groupLeft = (w: number) => Math.max(24, (w - WINDOW.w - GAP - PHONE_W) / 2);
 

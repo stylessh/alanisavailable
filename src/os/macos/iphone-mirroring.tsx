@@ -1,16 +1,17 @@
 "use client";
 
-import { motion } from "motion/react";
-import { useState, useSyncExternalStore } from "react";
+import { motion, useMotionValue, useTransform } from "motion/react";
+import { useRef, useState, useSyncExternalStore } from "react";
 import type { AppInfo } from "./data";
 import { TrafficLights } from "./traffic-lights";
 import { DRAG_REGION, MacWindow } from "./window";
 
-// macOS iPhone Mirroring: the window IS the phone. At rest it's the iPhone's
-// screen in a thin glass bezel, shaped like the device. Pointing at the top
-// of it morphs the bezel into a window: it grows outward into a title bar
-// (traffic lights, Home Screen, App Switcher) and the screen drops into it.
-// Measured from captures of macOS 27 mirroring an iPhone.
+// macOS iPhone Mirroring: the window IS the phone. At rest there is no
+// window at all, just the iPhone's screen with a lit glass rim (a 1pt ring
+// of ~9% white inside a 0.5pt dark outline, the same on every side).
+// Pointing at the top of it grows a Liquid Glass window out around the
+// screen, which stays put, with a title bar (traffic lights, Home Screen,
+// App Switcher). Measured from 2x captures of macOS 27 mirroring an iPhone.
 //
 // The screen is laid out in iOS points (iPhone 18 Pro: 402×874pt, the
 // 2622×1206 panel at 3x) and drawn at the size macOS mirrors it.
@@ -23,29 +24,39 @@ export const IPHONE_MIRRORING_APP: AppInfo = {
 
 /** iPhone 18 Pro screen, in iOS points */
 export const IPHONE_SCREEN = { w: 402, h: 874 };
-/** display corner radius, iOS points */
-const SCREEN_RADIUS = 62;
-/** Mac points per iOS point (the mirrored screen is 295pt wide) */
-const SCALE = 295 / IPHONE_SCREEN.w;
+/** Mac points per iOS point (the mirrored screen is 302pt wide) */
+const SCALE = 302 / IPHONE_SCREEN.w;
 
 const SW = IPHONE_SCREEN.w * SCALE;
 const SH = IPHONE_SCREEN.h * SCALE;
-const SR = SCREEN_RADIUS * SCALE;
-/** the glass bezel around the screen at rest */
-const BEZEL = 3.5;
+/** The screen's corner, fitted to the capture's outline (within 0.7px): a
+    superellipse(1.4) at 56pt. A rounder curve needs far less radius, which is
+    what made the corners look off. */
+const SR = 56;
+const CORNER = "[corner-shape:superellipse(1.4)]";
 /** as a window: title bar height, padding around the screen, top corner radius */
 const TITLE = 40;
 const PAD = 11;
 const TOP_RADIUS = 24;
-/** how far the screen drops when the title bar opens (the rest is the window growing up) */
-const DROP = 22;
 
 const W = SW + 2 * PAD;
 const H = TITLE + SH + PAD;
-const REST_TOP = TITLE - DROP;
+
+/** Liquid Glass, as on macOS windows: fill, beam under the top rim, rims (the shadow is the shell's) */
+const GLASS = {
+  background: [
+    "linear-gradient(to bottom, light-dark(rgb(255 255 255 / 0.22), rgb(255 255 255 / 0.07)) 0, light-dark(rgb(255 255 255 / 0.09), rgb(255 255 255 / 0.03)) 2px, transparent 4.5px)",
+    "light-dark(rgb(250 250 252 / 0.72), rgb(30 30 32 / 0.72))",
+  ].join(", "),
+  backdropFilter: "blur(36px) saturate(1.8) brightness(1.08)",
+  WebkitBackdropFilter: "blur(36px) saturate(1.8) brightness(1.08)",
+  boxShadow: [
+    "inset 0 1px 0 light-dark(rgb(255 255 255 / 0.85), rgb(255 255 255 / 0.16))",
+    "inset 0 0 0 1px light-dark(rgb(255 255 255 / 0.35), rgb(255 255 255 / 0.08))",
+  ].join(", "),
+};
 
 const SPRING = { type: "spring", stiffness: 380, damping: 30, mass: 0.9 } as const;
-const FADE = { duration: 0.18 };
 
 /** The default wallpaper: brushed graphite, lit from the top left. */
 const WALLPAPER = [
@@ -77,21 +88,43 @@ export function IPhoneMirroring({
 }) {
   const [open, setOpen] = useState(false);
   // Hovering the top of the phone opens the title bar; it closes once the
-  // pointer leaves or heads well down into the screen.
+  // pointer leaves or heads well down into the screen. While a button is
+  // held (dragging the window) it stays open, and decides on release.
+  const shellRef = useRef<HTMLDivElement>(null);
+  const holding = useRef(false);
   const track = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (holding.current) return;
     const box = e.currentTarget.getBoundingClientRect();
-    const scale = box.height / H;
-    const y = (e.clientY - box.top) / scale;
-    if (y < REST_TOP + 64) setOpen(true);
+    const y = (e.clientY - box.top) / (box.height / H);
+    if (y < TITLE + 64) setOpen(true);
     else if (y > TITLE + 120) setOpen(false);
   };
+  const hold = () => {
+    holding.current = true;
+    window.addEventListener(
+      "pointerup",
+      (e) => {
+        holding.current = false;
+        const box = shellRef.current?.getBoundingClientRect();
+        const inside = box && e.clientX >= box.left && e.clientX <= box.right && e.clientY >= box.top && e.clientY <= box.bottom;
+        if (!inside) setOpen(false);
+      },
+      { once: true },
+    );
+  };
 
+  // The screen never moves: the glass grows and shrinks around it, and the
+  // screen is offset by exactly as much as the glass's corner moves.
+  const shellLeft = useMotionValue(PAD);
+  const shellTop = useMotionValue(TITLE);
+  const screenLeft = useTransform(shellLeft, (l) => PAD - l);
+  const screenTop = useTransform(shellTop, (t) => TITLE - t);
   const shell = open
     ? { left: 0, top: 0, width: W, height: H }
-    : { left: PAD - BEZEL, top: REST_TOP - BEZEL, width: SW + 2 * BEZEL, height: SH + 2 * BEZEL };
+    : { left: PAD, top: TITLE, width: SW, height: SH };
   const radius = open
     ? { top: TOP_RADIUS, bottom: SR + PAD }
-    : { top: SR + BEZEL, bottom: SR + BEZEL };
+    : { top: SR, bottom: SR };
 
   return (
     <MacWindow
@@ -106,8 +139,19 @@ export function IPhoneMirroring({
       // the window's box is the open window; at rest only the phone takes the pointer
       style={{ pointerEvents: "none" }}
     >
+      {/* Hover is tracked over the phone plus the strip above it where the
+          title bar appears, so moving up toward the bar doesn't fall off the
+          phone before the glass has grown under the pointer. */}
+      <div
+        className="absolute inset-0"
+        onPointerMove={track}
+        onPointerDown={hold}
+        onPointerLeave={() => !holding.current && setOpen(false)}
+      >
+      <div className="absolute" style={{ left: PAD, top: 0, width: SW, height: TITLE, pointerEvents: "auto" }} />
       <motion.div
-        className="absolute [corner-shape:superellipse(1.6)]"
+        ref={shellRef}
+        className={`absolute ${CORNER}`}
         initial={false}
         animate={{
           ...shell,
@@ -117,39 +161,22 @@ export function IPhoneMirroring({
           borderBottomRightRadius: radius.bottom,
         }}
         transition={SPRING}
-        onPointerMove={track}
-        onPointerLeave={() => setOpen(false)}
         style={{
+          left: shellLeft,
+          top: shellTop,
           pointerEvents: "auto",
-          boxShadow: "0 0 0 0.5px rgb(0 0 0 / 0.7), 0 24px 60px rgb(0 0 0 / 0.45), 0 4px 14px rgb(0 0 0 / 0.25)",
+          boxShadow: "0 0 0 0.5px rgb(0 0 0 / 0.85), 0 24px 70px rgb(0 0 0 / 0.45), 0 8px 20px rgb(0 0 0 / 0.25)",
         }}
       >
-        {/* the phone's glass bezel, which fades into the window's material */}
+        {/* the window's glass only exists while it's open: it fades in as it grows */}
         <motion.div
           aria-hidden
-          className="absolute inset-0 [border-radius:inherit] [corner-shape:inherit]"
-          initial={false}
-          animate={{ opacity: open ? 0 : 1 }}
-          transition={FADE}
-          style={{
-            background: "linear-gradient(155deg, #9a9a9f 0%, #4a4a4e 22%, #2a2a2d 55%, #5c5c60 85%, #8d8d92 100%)",
-            boxShadow: "inset 0 0.75px 0 rgb(255 255 255 / 0.45), inset 0 0 0 0.75px rgb(255 255 255 / 0.12)",
-          }}
-        />
-        <motion.div
-          aria-hidden
-          className="absolute inset-0 [border-radius:inherit] [corner-shape:inherit]"
+          className={`absolute inset-0 [border-radius:inherit] ${CORNER}`}
           initial={false}
           animate={{ opacity: open ? 1 : 0 }}
-          transition={FADE}
-          style={{
-            background: "linear-gradient(to bottom, rgb(255 255 255 / 0.07), transparent 4px), rgb(44 44 47 / 0.92)",
-            backdropFilter: "blur(30px) saturate(1.6)",
-            WebkitBackdropFilter: "blur(30px) saturate(1.6)",
-            boxShadow: "inset 0 0.75px 0 rgb(255 255 255 / 0.22), inset 0 0 0 0.75px rgb(255 255 255 / 0.08)",
-          }}
+          transition={{ duration: open ? 0.16 : 0.22 }}
+          style={GLASS}
         />
-
         {/* title bar */}
         <motion.div
           {...DRAG_REGION}
@@ -175,13 +202,10 @@ export function IPhoneMirroring({
           </div>
         </motion.div>
 
-        {/* the screen: fixed in size, it rides down into the window */}
+        {/* the screen: it stays where it is on screen while the glass moves around it */}
         <motion.div
-          className="absolute overflow-hidden bg-black [corner-shape:superellipse(1.6)]"
-          initial={false}
-          animate={open ? { left: PAD, top: TITLE } : { left: BEZEL, top: BEZEL }}
-          transition={SPRING}
-          style={{ width: SW, height: SH, borderRadius: SR, boxShadow: "0 0 0 0.75px rgb(0 0 0 / 0.85)" }}
+          className={`absolute overflow-hidden bg-black ${CORNER}`}
+          style={{ left: screenLeft, top: screenTop, width: SW, height: SH, borderRadius: SR }}
         >
           <div
             className="absolute top-0 left-0 origin-top-left"
@@ -190,8 +214,15 @@ export function IPhoneMirroring({
             {children}
             <StatusBar />
           </div>
+          {/* the lit rim, over the content */}
+          <div
+            aria-hidden
+            className={`pointer-events-none absolute inset-0 ${CORNER}`}
+            style={{ borderRadius: SR, boxShadow: "inset 0 0 0 1px rgb(255 255 255 / 0.09), inset 0 0 0 1.5px rgb(255 255 255 / 0.02)" }}
+          />
         </motion.div>
       </motion.div>
+      </div>
     </MacWindow>
   );
 }
@@ -228,45 +259,74 @@ function useClock() {
     .replace(/\s?[AP]\.?M\.?$/i, "");
 }
 
-/** Time, Dynamic Island, signal, Wi-Fi and battery, white on the wallpaper. */
-export function StatusBar({ battery = 82 }: { battery?: number }) {
-  const time = useClock();
-  const low = battery <= 20;
+// Drawn like the Mac's own menu bar, since that's what sits right above it:
+// the clock in the menu bar clock's type (13pt regular with a 0.3pt stroke,
+// here in iOS points so it lands at the same size on screen), and the menu
+// bar's own Wi-Fi and battery glyphs. Both ears are centered on the Dynamic
+// Island, vertically and within their own side.
+
+/** the Dynamic Island, iOS points */
+const ISLAND = { w: 125, h: 37, top: 11 };
+const ISLAND_MID = ISLAND.top + ISLAND.h / 2;
+const EAR_W = (IPHONE_SCREEN.w - ISLAND.w) / 2;
+/** the menu bar's type and glyphs, converted to iOS points */
+const MAC = 1 / SCALE;
+/** Status icons are drawn at iOS's own size: the menu bar's glyphs, one iOS point per Mac point (so ¾ of their size in the menu bar). */
+const ICON = 1;
+const MENU_FONT = "-apple-system, BlinkMacSystemFont, 'SF Pro Text', Inter, sans-serif";
+
+/** A menu bar glyph strip (33pt tall, 2x), with its ink's vertical center in the strip. */
+function MenuGlyph({ id, width, inkMid }: { id: string; width: number; inkMid: number }) {
   return (
-    <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-[54px] text-white">
-      {/* the Dynamic Island */}
-      <div className="absolute top-[11px] left-1/2 h-[37px] w-[125px] -translate-x-1/2 rounded-full bg-black" />
-      <div
-        className="absolute top-[14px] left-[30px] w-[60px] text-center text-[17px] leading-[22px] font-semibold tracking-[-0.4px] tabular-nums"
-        style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', Inter, sans-serif" }}
-      >
-        {time}
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={`/os/macos/menubar/${id}.png`}
+      alt=""
+      width={width}
+      height={33}
+      className="block max-w-none"
+      style={{ width: width * ICON, height: 33 * ICON, marginTop: (33 / 2 - inkMid) * 2 * ICON }}
+    />
+  );
+}
+
+/** Signal bars, in the same ink weight as the menu bar's Wi-Fi glyph (iOS points). */
+function Signal() {
+  return (
+    <svg width={17 * ICON} height={12 * ICON} viewBox="0 0 17 12" fill="#fff">
+      <rect x="0" y="7.75" width="3" height="4.25" rx="0.9" />
+      <rect x="4.6" y="5.25" width="3" height="6.75" rx="0.9" />
+      <rect x="9.2" y="2.5" width="3" height="9.5" rx="0.9" />
+      <rect x="13.8" y="0" width="3" height="12" rx="0.9" opacity="0.35" />
+    </svg>
+  );
+}
+
+/** Time, Dynamic Island, signal, Wi-Fi and battery, white on the wallpaper. */
+export function StatusBar() {
+  const time = useClock();
+  const ear = "absolute flex items-center justify-center";
+  return (
+    <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 text-white" style={{ height: ISLAND.top * 2 + ISLAND.h }}>
+      <div className="absolute left-1/2 -translate-x-1/2 rounded-full bg-black" style={{ top: ISLAND.top, width: ISLAND.w, height: ISLAND.h }} />
+      {/* each ear is centered on the island's middle line, with the screen's corner curve allowed for */}
+      <div className={ear} style={{ left: 8, width: EAR_W - 8, top: ISLAND_MID - 15, height: 30 }}>
+        <span
+          className="tabular-nums antialiased"
+          style={{
+            fontFamily: MENU_FONT,
+            fontSize: 13 * MAC,
+            lineHeight: 1,
+            WebkitTextStroke: `${0.3 * MAC}px currentColor`,
+          }}
+        >
+          {time}
+        </span>
       </div>
-      <div className="absolute top-[19px] right-[28px] flex items-center gap-[6px]">
-        <svg width="18" height="12" viewBox="0 0 18 12" fill="currentColor">
-          <rect x="0" y="7.5" width="3.2" height="4.5" rx="0.9" />
-          <rect x="4.8" y="5" width="3.2" height="7" rx="0.9" />
-          <rect x="9.6" y="2.5" width="3.2" height="9.5" rx="0.9" />
-          <rect x="14.4" y="0" width="3.2" height="12" rx="0.9" opacity="0.35" />
-        </svg>
-        <svg width="17" height="12" viewBox="0 0 17 12" fill="currentColor">
-          <path d="M8.5 2.2c2.5 0 4.8 1 6.5 2.6l1.3-1.4A11 11 0 0 0 8.5.3 11 11 0 0 0 .7 3.4L2 4.8a9.2 9.2 0 0 1 6.5-2.6Z" />
-          <path d="M8.5 5.8c1.5 0 2.9.6 4 1.6l1.3-1.4A7.7 7.7 0 0 0 8.5 3.9 7.7 7.7 0 0 0 3.2 6l1.3 1.4c1-1 2.5-1.6 4-1.6Z" />
-          <path d="M8.5 9.4c.6 0 1.1.2 1.5.6L8.5 11.6 7 10c.4-.4.9-.6 1.5-.6Z" />
-        </svg>
-        <div className="relative flex items-center">
-          <div
-            className="grid h-[13px] w-[25px] place-items-center rounded-[4.3px] text-[10.5px] leading-none font-bold tabular-nums"
-            style={{
-              background: low ? "#ff3b30" : `linear-gradient(to right, #fff ${battery}%, rgb(255 255 255 / 0.35) ${battery}%)`,
-              color: low ? "#fff" : "#000",
-              fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', Inter, sans-serif",
-            }}
-          >
-            {battery}
-          </div>
-          <div className="ml-[1px] h-[4.5px] w-[1.5px] rounded-r-[1px] bg-white/40" />
-        </div>
+      <div className={`${ear} gap-[5px]`} style={{ right: 8, width: EAR_W - 8, top: ISLAND_MID - 15, height: 30 }}>
+        <Signal />
+        <MenuGlyph id="wifi" width={19} inkMid={(19 + 43) / 4} />
+        <MenuGlyph id="battery" width={28} inkMid={(19 + 47) / 4} />
       </div>
     </div>
   );
