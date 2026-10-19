@@ -85,11 +85,12 @@ export function TrafficLights({
           aria-label={l.label}
           tabIndex={-1}
           onPointerDown={(e) => e.stopPropagation()}
+          disabled={i === 2 && win?.fixedSize}
           onClick={(e) =>
             [win?.close, win?.minimize, e.altKey ? win?.toggleZoom : win?.toggleFullscreen][i]?.()
           }
-          className="relative block cursor-default rounded-full"
-          style={{
+          className="relative block cursor-default rounded-full disabled:[&>*]:hidden"
+          style={i === 2 && win?.fixedSize ? { width: SIZE, height: SIZE, background: "light-dark(#d4d4d6, #4b4b4f)", boxShadow: "inset 0 0 0 0.5px light-dark(rgb(0 0 0 / 0.12), rgb(255 255 255 / 0.1))" } : {
             width: SIZE,
             height: SIZE,
             background: [

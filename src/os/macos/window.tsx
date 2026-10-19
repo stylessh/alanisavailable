@@ -32,6 +32,8 @@ export type MacWindowContext = {
   size: { w: number; h: number };
   mode: WindowMode;
   status: WindowStatus;
+  /** a window that can't zoom or go full screen (its third light is gray) */
+  fixedSize: boolean;
   close: () => void;
   minimize: () => void;
   toggleZoom: () => void;
@@ -58,6 +60,8 @@ export function MacWindow({
   width,
   height,
   radius = 21,
+  at,
+  fixedSize = false,
   className = "",
   style,
   children,
@@ -68,6 +72,10 @@ export function MacWindow({
   height: number;
   /** corner radius; corners are continuous (a superellipse), like macOS */
   radius?: number;
+  /** where the window first opens, given the screen; centered when left out */
+  at?: (screen: { w: number; h: number }) => { x?: number; y?: number };
+  /** no zoom or full screen, like iPhone Mirroring */
+  fixedSize?: boolean;
   className?: string;
   /** the window's surface: background, material, shadow */
   style?: React.CSSProperties;
@@ -96,9 +104,10 @@ export function MacWindow({
     else if (win.mode === "zoomed") {
       frame = { left: 0, top: MENU_BAR_H, width: screen.w, height: screen.h - MENU_BAR_H - DOCK_H };
     } else {
+      const start = at?.(screen);
       frame = {
-        left: win.x ?? (screen.w - win.w) / 2,
-        top: win.y ?? MENU_BAR_H + (screen.h - MENU_BAR_H - DOCK_H - win.h) / 2,
+        left: win.x ?? start?.x ?? (screen.w - win.w) / 2,
+        top: win.y ?? start?.y ?? MENU_BAR_H + (screen.h - MENU_BAR_H - DOCK_H - win.h) / 2,
         width: win.w,
         height: win.h,
       };
@@ -138,10 +147,11 @@ export function MacWindow({
     size,
     mode: win.mode,
     status: win.status,
+    fixedSize,
     close: () => dispatch({ type: "close", id }),
     minimize,
-    toggleZoom: () => setMode(win.mode === "zoomed" ? "normal" : "zoomed"),
-    toggleFullscreen: () => setMode(win.mode === "fullscreen" ? "normal" : "fullscreen"),
+    toggleZoom: () => !fixedSize && setMode(win.mode === "zoomed" ? "normal" : "zoomed"),
+    toggleFullscreen: () => !fixedSize && setMode(win.mode === "fullscreen" ? "normal" : "fullscreen"),
   };
 
   // ⌃⌘F toggles full screen for the focused window, as in macOS.
@@ -263,7 +273,7 @@ export function MacWindow({
           // Full screen has no window edges: no rims, highlights or shadow.
           ...(win.mode === "fullscreen" && { boxShadow: "none" }),
           visibility: hidden && away ? "hidden" : undefined,
-          pointerEvents: away ? "none" : undefined,
+          pointerEvents: away ? "none" : style?.pointerEvents,
           ...(frame ?? {
             left: `calc(50% - ${win.w / 2}px)`,
             top: `calc(${MENU_BAR_H}px + (100% - ${MENU_BAR_H + DOCK_H + win.h}px) / 2)`,

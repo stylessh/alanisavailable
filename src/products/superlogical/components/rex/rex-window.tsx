@@ -9,10 +9,11 @@ export const REX_APP: AppInfo = {
 };
 
 /** The Rex window: a Liquid Glass surface holding the interactive workspace. */
-export function RexWindow() {
+export function RexWindow({ at }: { at?: (screen: { w: number; h: number }) => { x?: number; y?: number } }) {
   return (
     <MacWindow
       id="rex"
+      at={at}
       app={REX_APP}
       width={WINDOW.w}
       height={WINDOW.h}

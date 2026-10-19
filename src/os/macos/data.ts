@@ -28,6 +28,7 @@ const icon = (id: string) => `/os/macos/dock/${id}.png`;
 export const FINDER: DockApp = { id: "finder", name: "Finder", icon: icon("finder"), running: true };
 export const SYSTEM_SETTINGS: DockApp = { id: "system-settings", name: "System Settings", icon: icon("system-settings"), badge: "1" };
 export const GHOSTTY: DockApp = { id: "ghostty", name: "Ghostty", icon: icon("ghostty"), running: true };
+export const IPHONE_MIRRORING: DockApp = { id: "iphone-mirroring", name: "iPhone Mirroring", icon: icon("iphone-mirroring") };
 export const TRASH: DockApp = { id: "trash", name: "Trash", icon: icon("trash"), offsetY: 1 };
 
 /** The standard Dock with a product's own apps after the system ones. */
