@@ -15,7 +15,7 @@ import { Icon } from "./icon";
 // continuous track. ← → and the pager slide it on a spring; dragging moves it
 // under the pointer (with resistance past the ends) and on release it snaps
 // to the nearest picture, carried on by a flick; clicking a neighbour brings
-// it to the middle. A horizontal trackpad swipe scrolls it the same way.
+// it to the middle. A horizontal trackpad swipe steps one picture per swipe.
 //
 // Opening and closing are a shared-element move: the picture flies from
 // the thumbnail that was clicked to the center and back. A clipped frame
@@ -71,8 +71,12 @@ const NEIGHBOUR_OPACITY = 0.45;
 const SNAP = { type: "spring", stiffness: 320, damping: 34, mass: 0.9 } as const;
 /** past the first or last picture, the strip moves this fraction of the drag */
 const RUBBER = 0.28;
-/** a trackpad swipe (or shift + wheel) snaps to the nearest picture once it has been still this long (ms) */
-const WHEEL_SETTLE_MS = 140;
+/** a trackpad swipe steps one picture once it has travelled this far (pt) */
+const SWIPE_STEP = 36;
+/** before it steps, the strip leans this fraction of the way with the fingers */
+const SWIPE_LEAN = 0.35;
+/** a swipe (and its momentum) counts as over once the wheel has been quiet this long (ms) */
+const WHEEL_QUIET_MS = 180;
 /** a release projects the flick this far ahead (ms) to pick the picture to snap to */
 const FLICK_MS = 160;
 const THUMB_RADIUS = 6;
@@ -323,39 +327,44 @@ function Lightbox({ viewing, onClose }: { viewing: Viewing; onClose: () => void 
   // (a neighbour comes to the middle, the backdrop closes, the picture on show stays).
   const drag = useRef<{ x0: number; p0: number; t0: number; lastX: number; lastT: number; v: number; moved: boolean; slide: number } | null>(null);
 
-  // Trackpad: a horizontal swipe (or shift + wheel) moves the strip with the fingers, with the
-  // same resistance past the ends, and snaps to the nearest picture once the swipe (and the
-  // momentum after it) settles. A native listener, so it can keep the page from scrolling.
+  // Trackpad: a horizontal swipe (or shift + wheel) steps one picture at a time. The strip
+  // leans a little with the start of the swipe; once it passes SWIPE_STEP it snaps to the
+  // next or previous picture at once, and the rest of that swipe (its momentum included) is
+  // ignored until the fingers have been still for a moment, so one swipe is one step. A swipe
+  // that never gets that far springs back. A native listener, so it can keep the page still.
+  // the swipe in progress outlives the effect (stepping changes `index`, which re-runs it)
+  const swipe = useRef<{ acc: number; locked: boolean; quiet?: ReturnType<typeof setTimeout> }>({ acc: 0, locked: false });
+  useEffect(() => () => clearTimeout(swipe.current.quiet), []);
   useEffect(() => {
     const el = overlay.current;
     if (!el || !stage || !group) return;
-    let settle: ReturnType<typeof setTimeout> | undefined;
-    let raw = pos.get();
+    const sw = swipe.current;
+    const slot = stage.W * SLOT;
     const onWheel = (e: WheelEvent) => {
       const dx = e.deltaX || (e.shiftKey ? e.deltaY : 0);
-      if (!dx || Math.abs(dx) < Math.abs(e.deltaY) * (e.shiftKey ? 0 : 1)) return;
+      if (!dx || (!e.shiftKey && Math.abs(dx) < Math.abs(e.deltaY))) return;
       e.preventDefault();
       if (closing || flying || drag.current) return;
-      if (!settle) {
-        pos.stop();
-        raw = pos.get();
+      clearTimeout(sw.quiet);
+      sw.quiet = setTimeout(() => {
+        // the swipe is over: unlock, and spring back if it never stepped
+        if (!sw.locked && sw.acc) slideTo(index);
+        sw.acc = 0;
+        sw.locked = false;
+      }, WHEEL_QUIET_MS);
+      if (sw.locked) return;
+      sw.acc += dx;
+      if (Math.abs(sw.acc) >= SWIPE_STEP) {
+        sw.locked = true;
+        slideTo(index + Math.sign(sw.acc));
+        return;
       }
-      const max = images.length - 1;
-      raw = Math.max(-0.5, Math.min(max + 0.5, raw + dx / (stage.W * SLOT)));
-      pos.set(raw < 0 ? raw * RUBBER : raw > max ? max + (raw - max) * RUBBER : raw);
-      setIndex(Math.max(0, Math.min(max, Math.round(raw))));
-      clearTimeout(settle);
-      settle = setTimeout(() => {
-        settle = undefined;
-        slideTo(Math.round(Math.max(0, Math.min(max, raw))));
-      }, WHEEL_SETTLE_MS);
+      pos.stop();
+      pos.set(index + (sw.acc / slot) * SWIPE_LEAN);
     };
     el.addEventListener("wheel", onWheel, { passive: false });
-    return () => {
-      clearTimeout(settle);
-      el.removeEventListener("wheel", onWheel);
-    };
-  }, [stage, group, closing, flying, images.length, pos, slideTo]);
+    return () => el.removeEventListener("wheel", onWheel);
+  }, [stage, group, closing, flying, index, pos, slideTo]);
 
   const onPointerDown = (e: React.PointerEvent) => {
     if (e.button !== 0 || closing || flying || !stage) return;
