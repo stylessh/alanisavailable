@@ -170,6 +170,16 @@ function Lightbox({ viewing, onChange, onClose }: { viewing: Viewing; onChange: 
 
   useEffect(() => () => reveal(), []);
 
+  // The window dims by darkening its own content (see .cc-window[data-viewing] in styles.css)
+  // rather than under a black overlay: an overlay clipped to the window's rounded corners
+  // leaves the content's light edge showing through its anti-aliased rim. Closing undims.
+  useEffect(() => {
+    const win = overlay.current?.closest<HTMLElement>(".cc-window");
+    if (closing) win?.removeAttribute("data-viewing");
+    else win?.setAttribute("data-viewing", "");
+    return () => win?.removeAttribute("data-viewing");
+  }, [closing]);
+
   const go = useCallback(
     (d: number) => onChange({ ...viewing, index: (index + d + images.length) % images.length }),
     [viewing, index, images.length, onChange],
@@ -194,14 +204,7 @@ function Lightbox({ viewing, onChange, onClose }: { viewing: Viewing; onChange: 
       onClick={close}
       exit={{ opacity: 0, transition: { duration: 0.12 } }}
     >
-      <motion.div
-        aria-hidden
-        className="absolute inset-0"
-        style={{ background: "rgb(0 0 0 / 0.82)" }}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: closing ? 0 : 1 }}
-        transition={{ duration: 0.22 }}
-      />
+
       <motion.div
         className="absolute overflow-hidden"
         style={{

@@ -44,7 +44,7 @@ function HiddenSidebarControls() {
   const { shown } = useSidebar();
   if (shown) return null;
   return (
-    <div className="absolute top-0 left-0 z-40 h-12 w-[160px]">
+    <div className="cc-dimmable absolute top-0 left-0 z-40 h-12 w-[160px]">
       <WindowControls />
     </div>
   );
@@ -68,7 +68,7 @@ export function ClaudeWindow() {
       <ComposerSettingsProvider>
         <ViewerProvider>
           <SidebarProvider>
-            <div className="flex size-full">
+            <div className="cc-dimmable flex size-full">
               <Sidebar />
               <Main />
             </div>
