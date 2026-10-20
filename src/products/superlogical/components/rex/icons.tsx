@@ -34,12 +34,13 @@ export const HostIcon = (p: P) =>
 export const CommandIcon = (p: P) =>
   svg(11.5, 11.5, p,
     <g transform="translate(-1.917 -1.917) scale(0.639)">
-      <path d="M15 6v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3V6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3" strokeWidth={2.1} />
+      {/* 1.72 here is 1.1pt once scaled, the weight of Rex's other glyphs */}
+      <path d="M15 6v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3V6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3" strokeWidth={1.72} />
     </g>);
 
-/** + 10×10pt */
+/** + in the same 11.5pt box as ⌘, so the two title bar actions read as a pair */
 export const PlusIcon = (p: P) =>
-  svg(10, 10, p, <path d="M5 0.7v8.6M0.7 5h8.6" strokeWidth={1.4} />);
+  svg(11.5, 11.5, p, <path d="M5.75 0.75v10M0.75 5.75h10" strokeWidth={1.1} />);
 
 /** Split right: rectangle with a vertical divider. 12×9.5pt */
 export const SplitRightIcon = (p: P) =>
@@ -109,17 +110,25 @@ export const ClaudeIcon = ({ size = 12, ...p }: P & { size?: number }) => (
   </svg>
 );
 
-/** Sidebar toggle: a window with its left column marked. 15×12pt */
+/** Sidebar toggle: a squircle window split by its left column (the 24pt
+    "sidebar left" glyph, its 18pt ink box drawn at 13.5pt). */
 export const SidebarIcon = (p: P) =>
-  svg(15, 12, p, <>
-    <rect x={0.6} y={0.6} width={13.8} height={10.8} rx={2.4} strokeWidth={1.2} />
-    <path d="M5.4 0.8v10.4M2.3 3.4h1.4M2.3 5.4h1.4M2.3 7.4h1.4" strokeWidth={1.1} />
-  </>);
+  svg(13.5, 13.5, p, <g transform="scale(0.75) translate(-3 -3)" strokeWidth={1.5}>
+    <path d="M13 3H11C7.22876 3 5.34315 3 4.17157 4.17157C3 5.34315 3 7.22876 3 11V13C3 16.7712 3 18.6569 4.17157 19.8284C5.34315 21 7.22876 21 11 21H13C16.7712 21 18.6569 21 19.8284 19.8284C21 18.6569 21 16.7712 21 13V11C21 7.22876 21 5.34315 19.8284 4.17157C18.6569 3 16.7712 3 13 3Z" />
+    <path d="M9 3V21" />
+  </g>);
 
 /** Activity Mode: an eye. 15×10pt */
 export const EyeIcon = (p: P) =>
   svg(15, 10, p, <>
-    <path d="M0.8 5C2.4 2.2 4.8 0.7 7.5 0.7S12.6 2.2 14.2 5c-1.6 2.8-4 4.3-6.7 4.3S2.4 7.8 0.8 5z" strokeWidth={1.2} />
+    <path d="M0.8 5C2.4 2.2 4.8 0.7 7.5 0.7S12.6 2.2 14.2 5c-1.6 2.8-4 4.3-6.7 4.3S2.4 7.8 0.8 5z" strokeWidth={1.1} />
     <circle cx={7.5} cy={5} r={1.9} fill="currentColor" stroke="none" />
   </>);
 
+
+/** Appearance: a disc half lit. 11×11pt */
+export const AppearanceIcon = (p: P) =>
+  svg(11, 11, p, <>
+    <circle cx={5.5} cy={5.5} r={4.9} strokeWidth={1.1} />
+    <path d="M5.5 0.6a4.9 4.9 0 0 1 0 9.8z" fill="currentColor" stroke="none" />
+  </>);

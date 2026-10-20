@@ -6,14 +6,23 @@
    Colors are light-dark(light, dark): they follow the macOS screen's
    color-scheme (src/os/macos), which tracks the system appearance unless the
    desktop overrides it. Non-color tokens that differ by appearance key off
-   the screen's resolved [data-appearance]. */
+   the screen's resolved [data-appearance].
 
-.superlogical {
+   A custom property's light-dark() resolves where it's declared, so the
+   tokens are declared again on every element that sets an appearance (the
+   macOS screen, the phone): there they follow that element's color-scheme,
+   including when the desktop switches appearance on its own. */
+
+.superlogical,
+.superlogical [data-appearance] {
   /* Window: its corners (21pt continuous) come from the OS window, src/os/macos */
   /* Liquid Glass: the window has no fill of its own. It tints and blurs
      whatever is behind it (the desktop wallpaper); the pink-to-sand colors
      in the reference were its wallpaper showing through. */
   --rex-glass-tint: light-dark(rgb(250 250 252 / 0.72), rgb(30 30 32 / 0.72));
+  /* the window's fill in full screen, where the glass has nothing behind it:
+     the glass's look over the desktop, made opaque */
+  --rex-solid: light-dark(#d2d2d5, #262628);
   --rex-glass-filter: blur(36px) saturate(1.8) brightness(1.08);
   /* Light beams: a lit rim spills a little light into the glass under it.
      Solved from the light reference as white light over the surface below:
@@ -98,8 +107,8 @@
   --rex-popover-shadow:
     inset 0 0.5px 0 light-dark(rgb(255 255 255 / 0.9), rgb(255 255 255 / 0.1)),
     0 0 0 0.5px light-dark(rgb(0 0 0 / 0.12), rgb(0 0 0 / 0.5)),
-    0 12px 40px light-dark(rgb(0 0 0 / 0.18), rgb(0 0 0 / 0.5)),
-    0 2px 8px rgb(0 0 0 / 0.08);
+    0 6px 16px light-dark(rgb(0 0 0 / 0.09), rgb(0 0 0 / 0.3)),
+    0 1px 3px light-dark(rgb(0 0 0 / 0.05), rgb(0 0 0 / 0.15));
 
   /* Panes */
   --rex-pane-radius: 10px;

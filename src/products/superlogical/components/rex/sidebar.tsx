@@ -4,9 +4,9 @@ import { AnimatePresence, motion, useMotionTemplate, useTransform } from "motion
 import { useEffect, useState } from "react";
 import { DRAG_REGION, useMacWindow } from "@/os/macos";
 import { CommandIcon, EyeIcon, HostIcon, PlusIcon, SidebarIcon } from "./icons";
-import { activePaneOf, activityOf, type ProgramKind, SIDEBAR_W, type State, titles } from "./model";
-import { PROGRAMS } from "./programs";
+import { activePaneOf, activityOf, leaves, SIDEBAR_W, type State, titles } from "./model";
 import { useTile } from "./tween";
+import { ChipStack } from "./tab-chip";
 import { LIGHTS_SPACE } from "./title-bar";
 
 // Rex's sidebar, the alternate view of the tabs, after almonk's Activity Mode
@@ -38,22 +38,6 @@ function useNow(every = 15_000) {
     return () => clearInterval(t);
   }, [every]);
   return now;
-}
-
-/** A program's app icon: its chip's front card on its own, upright. */
-export function ProgramIcon({ kind }: { kind: ProgramKind }) {
-  return (
-    <span
-      aria-hidden
-      className="grid size-[18px] shrink-0 place-items-center overflow-hidden rounded-[5px]"
-      style={{
-        background: PROGRAMS[kind].front,
-        boxShadow: "var(--rex-icon-ring)",
-      }}
-    >
-      {PROGRAMS[kind].logo}
-    </span>
-  );
 }
 
 /** Rex's working indicator: three dots pulsing in turn. */
@@ -139,6 +123,10 @@ export function Sidebar({
   // tall). It slides from wherever it is to the selected row on the rows'
   // own spring, including to a row that's still opening.
   const rowH = state.activity ? ROW_H.activity : ROW_H.plain;
+  // Rows glide only when the list itself changes (rows added, removed or
+  // reordered, Activity Mode). Without this, moving the window counts as a
+  // layout change too, and the rows trail behind it.
+  const listKey = `${state.activity}|${groups.map((g) => `${g.session}:${g.rows.map((r) => r.tab.id).join(",")}`).join("|")}`;
   let selectedY: number | null = null;
   let y = HOST_H;
   for (const g of groups) {
@@ -170,7 +158,7 @@ export function Sidebar({
         <HeaderButton label={state.activity ? "Hide Activity (⌘.)" : "Show Activity (⌘.)"} onClick={onToggleActivity} active={state.activity}>
           <EyeIcon />
         </HeaderButton>
-        <HeaderButton label="Command palette (⇧⌘P)" onClick={onPalette}>
+        <HeaderButton label="Command palette (⌘K)" onClick={onPalette}>
           <CommandIcon />
         </HeaderButton>
         <HeaderButton label="New tab (⌥⌘T)" onClick={onNewTab}>
@@ -202,6 +190,7 @@ export function Sidebar({
               <motion.section
                 key={session}
                 layout="position"
+                layoutDependency={listKey}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0, transition: { duration: 0.12 } }}
@@ -215,12 +204,14 @@ export function Sidebar({
                     const [, name, path] = title.match(/^(.*?) (~\/.*)$/) ?? [, title, ""];
                     const selected = tab.id === state.active;
                     const detailed = state.activity && !!activity;
+                    const back = leaves(tab.root).filter((id) => id !== pane.id).map((id) => state.panes[id].program);
                     return (
                       <motion.button
                         key={tab.id}
                         type="button"
                         tabIndex={-1}
                         layout
+                        layoutDependency={listKey}
                         initial={{ opacity: 0, height: 0 }}
                         animate={{ opacity: 1, height: rowH }}
                         exit={{ opacity: 0, height: 0, transition: { duration: 0.14 } }}
@@ -233,8 +224,9 @@ export function Sidebar({
                         <span className="relative flex size-full items-center gap-[9px] overflow-hidden px-[8px]">
                         {/* a row that switches program (Activity Mode shows the
                             pane that's running something) crossfades */}
-                        <motion.span key={pane.program} className="shrink-0" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={FADE}>
-                          <ProgramIcon kind={pane.program} />
+                        {/* the row's pane in front, the tab's other tiles stacked behind it, as in the tab bar */}
+                        <motion.span key={`${pane.id}:${back.join()}`} className="shrink-0" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={FADE}>
+                          <ChipStack front={pane.program} back={back} />
                         </motion.span>
                         <span className="min-w-0 flex-1">
                           <motion.span

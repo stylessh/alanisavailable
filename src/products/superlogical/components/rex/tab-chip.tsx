@@ -11,6 +11,18 @@ const BACK = [
   { right: 34.2, y: 8.4, h: 12.8 },
 ];
 
+/**
+ * The card's face: Rex's cards are lit from above like small glossy tiles,
+ * brighter along the top and shading toward the bottom, with a light rim
+ * just inside the edge (measured on the reference: the dark shell card reads
+ * ~120 under its top edge against ~45 below).
+ */
+export const cardFace = (background: string): React.CSSProperties => ({
+  background: `linear-gradient(to bottom, rgb(255 255 255 / 0.34), rgb(255 255 255 / 0.08) 40%, rgb(255 255 255 / 0) 60%, rgb(0 0 0 / 0.1)), ${background}`,
+  boxShadow:
+    "var(--rex-chip-ring), inset 0 0.5px 0 rgb(255 255 255 / 0.6), inset 0 0 0 0.75px rgb(255 255 255 / 0.22), inset 0 0 0 1.5px rgb(0 0 0 / 0.05)",
+});
+
 function Card({
   style,
   children,
@@ -23,11 +35,25 @@ function Card({
       className="absolute grid place-items-center overflow-hidden"
       style={{
         borderRadius: FRONT.r,
-        boxShadow: "var(--rex-chip-ring)",
         ...style,
+        ...cardFace(String(style.background)),
       }}
     >
       {children}
+    </span>
+  );
+}
+
+/**
+ * The same stack in a row of text (the sidebar): it takes the space its
+ * cards cover, so the text after it starts where the stack ends.
+ */
+export function ChipStack({ front, back }: { front: ProgramKind; back: ProgramKind[] }) {
+  const n = Math.min(back.length, BACK.length);
+  const width = n ? BACK[n - 1].right - FRONT.x : FRONT.w;
+  return (
+    <span aria-hidden className="relative block shrink-0 transition-[width] duration-200" style={{ width, height: FRONT.h }}>
+      <TabChip left={-FRONT.x} top={-FRONT.y} front={front} back={back} />
     </span>
   );
 }

@@ -6,7 +6,10 @@ import { AGENT, GIT } from "./content";
 import { INITIAL_SNAKE, newSnake, type Point, type SnakeState, snakeRows, steer, tickSnake } from "./snake";
 import { cursor, type Row, s } from "./terminal";
 
-export type ProgramKind = "shell" | "codex" | "claude" | "lazygit" | "snake" | "bun";
+/** Coding agents Rex recognizes: each runs full screen with its own prompt and status. */
+export type AgentKind = "codex" | "claude" | "cursor" | "gemini" | "opencode";
+/** What a pane runs: a shell, an agent, a REPL, or one of the demo's programs. */
+export type ProgramKind = AgentKind | "shell" | "lazygit" | "snake" | "bun" | "node" | "python";
 export type Dir = "right" | "down";
 export type SplitDir = Dir | "left" | "up";
 export type Node =
@@ -257,6 +260,28 @@ function setRatio(n: Node, split: string, ratio: number): Node {
   return { ...n, a: setRatio(n.a, split, ratio), b: setRatio(n.b, split, ratio) };
 }
 
+/** The pane next to `from` in a direction: the nearest one wholly on that side, preferring ones in line with it. */
+export function neighborOf(rects: Record<string, Rect>, from: string, dir: SplitDir): string | null {
+  const f = rects[from];
+  const cx = f.x + f.w / 2;
+  const cy = f.y + f.h / 2;
+  let best: [string, number] | null = null;
+  for (const [id, r] of Object.entries(rects)) {
+    if (id === from) continue;
+    const ok =
+      dir === "left" ? r.x + r.w <= f.x + 1 :
+      dir === "right" ? r.x >= f.x + f.w - 1 :
+      dir === "up" ? r.y + r.h <= f.y + 1 :
+      r.y >= f.y + f.h - 1;
+    if (!ok) continue;
+    const dx = r.x + r.w / 2 - cx;
+    const dy = r.y + r.h / 2 - cy;
+    const score = dir === "left" || dir === "right" ? Math.abs(dx) + Math.abs(dy) * 2 : Math.abs(dy) + Math.abs(dx) * 2;
+    if (!best || score < best[1]) best = [id, score];
+  }
+  return best?.[0] ?? null;
+}
+
 export const activeTab = (st: State) => st.tabs.find((t) => t.id === st.active)!;
 const tabOf = (st: State, pane: string) => st.tabs.find((t) => leaves(t.root).includes(pane))!;
 
@@ -275,10 +300,17 @@ export function titles(p: Pane): { pane: string; tab: string } {
   const both = (t: string) => ({ pane: t, tab: t });
   switch (p.program) {
     case "codex":
-    case "claude": {
+    case "claude":
+    case "cursor":
+    case "gemini":
+    case "opencode": {
       if (p.task) return { pane: `${p.task} | ${basename(p.cwd)}`, tab: p.task };
-      return both(`${p.program === "codex" ? "Codex" : "Claude Code"} ${p.cwd}`);
+      return both(`${AGENTS[p.program].name} ${p.cwd}`);
     }
+    case "node":
+      return both(`Node ${p.cwd}`);
+    case "python":
+      return both(`Python ${p.cwd}`);
     case "lazygit":
       return both(`Git Changes ${p.cwd}`);
     case "snake":
@@ -358,36 +390,143 @@ const claudeWelcome = (cwd: string): Row[] => [
   [s(" 2. Use Claude to help with file analysis, editing, bash commands and git", "--t-dim")],
 ];
 
-const WORKING: Record<"codex" | "claude", Row> = {
-  codex: [s("• ", "--t-bullet"), s("Working", "--t-strong", b), s(" (esc to interrupt)", "--t-dim")],
-  claude: [s("✻ ", "--t-claude"), s("Thinking…", "--t-claude"), s(" (esc to interrupt)", "--t-dim")],
-};
-
 // No model sits behind these panes. The replies say so, and point at what
 // does work in the demo.
 const REPLY = [
   "This is a Rex demo, so there's no model behind this pane.",
   "Everything around it is wired up, though: split this pane with",
   "Cmd+D, zoom it with Cmd+E, or open the command palette with",
-  "Shift+Cmd+P and start lazygit or snake next to me.",
+  "Cmd+K and start lazygit or snake next to me.",
 ];
 
-function agentReply(kind: "codex" | "claude"): Row[] {
-  if (kind === "codex") {
-    return [
+const cursorWelcome = (cwd: string): Row[] => [
+  ...box(
+    [
+      [s("⬢ ", "--t-fg"), s("Cursor Agent", "--t-strong", b), s(" v2025.10.16", "--t-dim")],
+      [],
+      [s(cwd, "--t-dim")],
+    ],
+    44,
+  ),
+  [],
+  [s("  Plan, search, build anything. ", "--t-dim"), s("/model", "--t-fg"), s(" to switch models", "--t-dim")],
+];
+
+const geminiWelcome = (cwd: string): Row[] => [
+  [s(" ✦ ", "--t-blue"), s("Gemini CLI", "--t-strong", b), s(" v0.9.0", "--t-dim")],
+  [],
+  [s("Tips for getting started:", "--t-fg")],
+  [s("1. Ask questions, edit files, or run commands.", "--t-dim")],
+  [s("2. Be specific for the best results.", "--t-dim")],
+  [s("3. ", "--t-dim"), s("/help", "--t-blue"), s(" for more information.", "--t-dim")],
+  [],
+  [s(`Using: ${cwd}`, "--t-dim")],
+];
+
+const opencodeWelcome = (cwd: string): Row[] => [
+  [s("  █▀▀█ █▀▀█ █▀▀ █▀▀▄ ", "--t-dim"), s("█▀▀ █▀▀█ █▀▀▄ █▀▀", "--t-strong", b)],
+  [s("  █░░█ █░░█ █▀▀ █░░█ ", "--t-dim"), s("█░░ █░░█ █░░█ █▀▀", "--t-strong", b)],
+  [s("  ▀▀▀▀ █▀▀▀ ▀▀▀ ▀  ▀ ", "--t-dim"), s("▀▀▀ ▀▀▀▀ ▀▀▀  ▀▀▀", "--t-strong", b)],
+  [],
+  [s("  /new", "--t-fg"), s("      new session      ", "--t-dim"), s("ctrl+x n", "--t-dim")],
+  [s("  /models", "--t-fg"), s("   list models      ", "--t-dim"), s("ctrl+x m", "--t-dim")],
+  [],
+  [s(`  ${cwd}`, "--t-dim")],
+];
+
+type Agent = {
+  /** its name in titles */
+  name: string;
+  /** commands that start it */
+  commands: string[];
+  welcome: (cwd: string) => Row[];
+  /** the status line while it works */
+  working: Row;
+  /** how a prompt shows once sent */
+  said: (text: string) => Row;
+  /** its prompt, at the bottom of the screen */
+  input: (p: Pane, cols: number) => Row[];
+  reply: () => Row[];
+};
+
+/** A boxed prompt field, as Claude Code, Gemini and opencode draw theirs. */
+const field = (p: Pane, cols: number, lead: Row, hint: string, c = "--t-dim") => {
+  const w = Math.max(20, Math.min(cols, 80));
+  const typed = p.input ? [s(p.input, "--t-fg"), cursor()] : [cursor(), s(hint, "--t-dim")];
+  return box([[...lead, ...typed]], w, c);
+};
+
+const bulletReply = (bullet: Row[number], tool: Row): Row[] => [
+  tool,
+  [],
+  ...REPLY.map((line, i): Row => [i === 0 ? bullet : s("  ", "--t-fg"), s(line, "--t-fg")]),
+];
+
+export const AGENTS: Record<AgentKind, Agent> = {
+  codex: {
+    name: "Codex",
+    commands: ["codex"],
+    welcome: (cwd) => codexWelcome(cwd),
+    working: [s("• ", "--t-bullet"), s("Working", "--t-strong", b), s(" (esc to interrupt)", "--t-dim")],
+    said: (text) => [s("› ", "--t-dim"), s(text, "--t-fg")],
+    input: (p) => [[s("› ", "--t-strong", b), s(p.input, "--t-fg"), cursor(), ...(p.input ? [] : [s("Ask Codex to do anything", "--t-dim")])]],
+    reply: () => [
       [s("• ", "--t-bullet-dim"), s("Explored", "--t-strong", b)],
       [s("  └ List ", "--t-dim"), s("ls", "--t-blue")],
       [],
       ...REPLY.map((line, i): Row => [s(i === 0 ? "• " : "  ", "--t-bullet"), s(line, "--t-fg")]),
-    ];
-  }
-  return [
-    [s("● ", "--t-green"), s("Bash", "--t-strong", b), s("(ls)", "--t-fg")],
-    [s("  └  ", "--t-dim"), s("README.md  Package.swift  Sources  Tests", "--t-dim")],
-    [],
-    ...REPLY.map((line, i): Row => [s(i === 0 ? "● " : "  ", "--t-fg"), s(line, "--t-fg")]),
-  ];
-}
+    ],
+  },
+  claude: {
+    name: "Claude Code",
+    commands: ["claude"],
+    welcome: (cwd) => claudeWelcome(cwd),
+    working: [s("✻ ", "--t-claude"), s("Thinking…", "--t-claude"), s(" (esc to interrupt)", "--t-dim")],
+    said: (text) => [s("> ", "--t-dim"), s(text, "--t-dim")],
+    input: (p, cols) => {
+      const w = Math.max(20, Math.min(cols, 80));
+      return [...box([[s("> ", "--t-fg"), s(p.input, "--t-fg"), cursor()]], w, "--t-dim"), [s("  ? for shortcuts", "--t-dim")]];
+    },
+    reply: () => [
+      [s("● ", "--t-green"), s("Bash", "--t-strong", b), s("(ls)", "--t-fg")],
+      [s("  └  ", "--t-dim"), s("README.md  Package.swift  Sources  Tests", "--t-dim")],
+      [],
+      ...REPLY.map((line, i): Row => [s(i === 0 ? "● " : "  ", "--t-fg"), s(line, "--t-fg")]),
+    ],
+  },
+  cursor: {
+    name: "Cursor",
+    commands: ["cursor-agent", "cursor"],
+    welcome: cursorWelcome,
+    working: [s("⬢ ", "--t-fg"), s("Generating…", "--t-strong"), s("  ctrl+c to stop", "--t-dim")],
+    said: (text) => [s("→ ", "--t-dim"), s(text, "--t-fg")],
+    input: (p, cols) => [...field(p, cols, [s("→ ", "--t-fg")], "Plan, search, build anything"), [s("  Auto · /model to change", "--t-dim")]],
+    reply: () => bulletReply(s("⬢ ", "--t-fg"), [s("⬢ ", "--t-dim"), s("Listed ", "--t-strong", b), s("~/", "--t-dim")]),
+  },
+  gemini: {
+    name: "Gemini",
+    commands: ["gemini"],
+    welcome: geminiWelcome,
+    working: [s("⠋ ", "--t-blue"), s("Thinking…", "--t-blue"), s(" (esc to cancel)", "--t-dim")],
+    said: (text) => [s("> ", "--t-blue"), s(text, "--t-fg")],
+    input: (p, cols) => [...field(p, cols, [s(">   ", "--t-blue")], "Type your message or @path/to/file", "--t-blue"), [s(" gemini-2.5-pro (100% context left)", "--t-dim")]],
+    reply: () => bulletReply(s("✦ ", "--t-blue"), [s(" ✔ ", "--t-green"), s("ReadFolder", "--t-strong", b), s(" .", "--t-dim")]),
+  },
+  opencode: {
+    name: "opencode",
+    commands: ["opencode"],
+    welcome: opencodeWelcome,
+    working: [s("⣾ ", "--t-fg"), s("Working…", "--t-strong"), s("  esc interrupt", "--t-dim")],
+    said: (text) => [s("┃ ", "--t-dim"), s(text, "--t-fg")],
+    input: (p, cols) => [...field(p, cols, [s("> ", "--t-fg")], "Ask anything…"), [s("  build · claude-sonnet-4.5", "--t-dim")]],
+    reply: () => bulletReply(s("┃ ", "--t-fg"), [s("┃ ", "--t-dim"), s("List", "--t-strong", b), s(" .", "--t-dim")]),
+  },
+};
+
+export const isAgent = (k: ProgramKind): k is AgentKind => k in AGENTS;
+const AGENT_COMMANDS = Object.fromEntries(
+  (Object.entries(AGENTS) as [AgentKind, Agent][]).flatMap(([k, a]) => a.commands.map((c) => [c, k])),
+) as Record<string, AgentKind>;
 
 export type Activity = { label: string; working: boolean; at: number };
 
@@ -397,8 +536,14 @@ export function activityOf(p: Pane): Activity | null {
   switch (p.program) {
     case "codex":
     case "claude":
+    case "cursor":
+    case "gemini":
+    case "opencode":
       if (p.busy) return { label: "Working", working: true, at };
       return { label: p.task ? "Done" : "Waiting for a prompt", working: false, at };
+    case "node":
+    case "python":
+      return { label: p.program === "node" ? "Node REPL" : "Python REPL", working: false, at };
     case "bun":
       return p.busy
         ? { label: "Starting…", working: true, at }
@@ -429,21 +574,76 @@ export function paneRows(p: Pane, cols: number): Row[] {
       return [...p.shell, [...prompt(p.cwd), s(p.input, "--t-fg"), cursor()]];
     case "bun":
       return [...p.shell, [cursor()]];
-    case "codex": {
-      const hint = p.input ? [] : [s("Ask Codex to do anything", "--t-dim")];
-      return [...p.screen, [], [s("› ", "--t-strong", b), s(p.input, "--t-fg"), cursor(), ...hint]];
-    }
-    case "claude": {
-      const w = Math.max(20, Math.min(cols, 80));
-      const field = box([[s("> ", "--t-fg"), s(p.input, "--t-fg"), cursor()]], w, "--t-dim");
-      return [...p.screen, [], ...field, [s("  ? for shortcuts", "--t-dim")]];
-    }
+    case "codex":
+    case "claude":
+    case "cursor":
+    case "gemini":
+    case "opencode":
+      return [...p.screen, [], ...AGENTS[p.program].input(p, cols)];
+    case "node":
+    case "python":
+      return [...p.shell, [s(REPL[p.program].prompt, "--t-fg"), s(p.input, "--t-fg"), cursor()]];
     case "lazygit":
       return GIT;
     case "snake":
       return snakeRows(p.snake!);
   }
 }
+
+// ─── REPLs ──────────────────────────────────────────────────────────────────
+
+/** A string literal or simple arithmetic the demo REPLs can answer; null for anything else. */
+function literal(expr: string): { value: number | string } | null {
+  const str = expr.match(/^(["'])(.*)\1$/);
+  if (str) return { value: str[2] };
+  if (!/^[\d\s+\-*/%().]+$/.test(expr) || !/\d/.test(expr)) return null;
+  try {
+    // digits and operators only, so this can't reach anything else
+    const v = Function(`"use strict"; return (${expr});`)() as unknown;
+    return typeof v === "number" && Number.isFinite(v) ? { value: v } : null;
+  } catch {
+    return null;
+  }
+}
+
+const REPL: Record<"node" | "python", { prompt: string; banner: Row[]; exits: string[]; evaluate: (line: string) => Row[] }> = {
+  node: {
+    prompt: "> ",
+    banner: [[s("Welcome to Node.js v24.11.0.", "--t-fg")], [s('Type ".help" for more information.', "--t-fg")]],
+    exits: [".exit"],
+    evaluate: (line) => {
+      if (!line) return [];
+      const log = line.match(/^console\.log\((.*)\)$/);
+      const out = literal(log ? log[1].trim() : line);
+      if (out) {
+        if (log) return [[s(String(out.value), "--t-fg")], [s("undefined", "--t-dim")]];
+        return [[typeof out.value === "number" ? s(String(out.value), "--t-gold") : s(`'${out.value}'`, "--t-green")]];
+      }
+      const name = line.match(/^[A-Za-z_$][\w$]*/)?.[0] ?? line;
+      return [[s(`Uncaught ReferenceError: ${name} is not defined`, "--t-red")]];
+    },
+  },
+  python: {
+    prompt: ">>> ",
+    banner: [
+      [s("Python 3.14.0 (main, Oct  7 2025, 09:34:52) [Clang 17.0.0 (clang-1700.3.19.1)] on darwin", "--t-fg")],
+      [s('Type "help", "copyright", "credits" or "license" for more information.', "--t-fg")],
+    ],
+    exits: ["exit()", "quit()", "exit", "quit"],
+    evaluate: (line) => {
+      if (!line) return [];
+      const call = line.match(/^print\((.*)\)$/);
+      const out = literal(call ? call[1].trim() : line);
+      if (out) return [[s(call || typeof out.value === "number" ? String(out.value) : `'${out.value}'`, "--t-fg")]];
+      const name = line.match(/^[A-Za-z_]\w*/)?.[0] ?? line;
+      return [
+        [s("Traceback (most recent call last):", "--t-fg")],
+        [s('  File "<python-input-0>", line 1, in <module>', "--t-fg")],
+        [s(`NameError: name '${name}' is not defined`, "--t-red")],
+      ];
+    },
+  },
+};
 
 // ─── A small fake filesystem for the shell ──────────────────────────────────
 
@@ -488,7 +688,8 @@ const tokenize = (line: string) =>
 
 const HELP: Row[] = [
   [s("This is a pretend fish shell inside Rex. Things to try:", "--t-fg")],
-  [s("  codex, claude", "--t-green"), s("        start a coding agent", "--t-dim")],
+  [s("  codex, claude, cursor-agent, gemini, opencode", "--t-green"), s("  start an agent", "--t-dim")],
+  [s("  node, python", "--t-green"), s("         start a REPL", "--t-dim")],
   [s("  lazygit", "--t-green"), s("              browse the changes (in rex-snake)", "--t-dim")],
   [s("  node demo/snake.mjs", "--t-green"), s("  play snake (in ~/Sites/rex-snake)", "--t-dim")],
   [s("  bun dev", "--t-green"), s("              start a dev server (in announcements)", "--t-dim")],
@@ -496,7 +697,7 @@ const HELP: Row[] = [
   [s("  rex run", "--t-green"), s(" [-- cmd]  open a tab    ", "--t-dim"), s("rex ls", "--t-green"), s("  list tabs", "--t-dim")],
   [s("  ls, cd, pwd, git status, clear, exit", "--t-green")],
   [s("Cmd+D split · Shift+Cmd+D split down · Cmd+E zoom · Ctrl+C stop", "--t-dim")],
-  [s("Shift+Cmd+P opens the command palette", "--t-dim")],
+  [s("Cmd+K opens the command palette", "--t-dim")],
 ];
 
 // ─── Reducer helpers ────────────────────────────────────────────────────────
@@ -610,10 +811,9 @@ const taskTitle = (text: string) => {
 
 function submitToAgent(st: State, id: string, text: string): State {
   const p = st.panes[id];
-  const kind = p.program as "codex" | "claude";
-  const said: Row = kind === "codex" ? [s("› ", "--t-dim"), s(text, "--t-fg")] : [s("> ", "--t-dim"), s(text, "--t-dim")];
+  const agent = AGENTS[p.program as AgentKind];
   return put(st, id, () => ({
-    screen: [...p.screen, [], said, [], WORKING[kind]],
+    screen: [...p.screen, [], agent.said(text), [], agent.working],
     input: "",
     task: p.task ?? taskTitle(text),
     busy: p.busy + 1,
@@ -683,9 +883,13 @@ function runCommand(st: State, id: string, line: string): State {
       }
       return startProgram(st, id, "lazygit");
     }
+    case "python":
+    case "python3":
+      if (args.length) return out(plain(`${cmd}: only the REPL runs in this demo (type ${cmd})`, "--t-dim"));
+      return startProgram(print(st, id, REPL.python.banner), id, "python");
     case "node": {
       const file = args[0];
-      if (!file) return out(plain("The Node REPL isn't part of this demo. Try: node demo/snake.mjs", "--t-dim"));
+      if (!file) return startProgram(print(st, id, REPL.node.banner), id, "node");
       const path = resolve(cwd, file);
       if (!fileIn(path)) return out(plain(`Error: Cannot find module '${path.replace("~", "/Users/alan")}'`, "--t-red"));
       if (!path.endsWith("snake.mjs")) return out(plain(`node: only demo/snake.mjs runs in this demo`, "--t-dim"));
@@ -708,8 +912,13 @@ function runCommand(st: State, id: string, line: string): State {
       return startProgram(st, id, "bun", { busy: p.busy + 1 });
     }
     case "codex":
-    case "claude": {
-      st = startProgram(st, id, cmd, { screen: cmd === "codex" ? codexWelcome(cwd) : claudeWelcome(cwd) });
+    case "claude":
+    case "cursor":
+    case "cursor-agent":
+    case "gemini":
+    case "opencode": {
+      const kind = AGENT_COMMANDS[cmd];
+      st = startProgram(st, id, kind, { screen: AGENTS[kind].welcome(cwd) });
       const promptText = args.join(" ");
       return promptText ? submitToAgent(st, id, promptText) : st;
     }
@@ -809,8 +1018,22 @@ function onKey(st: State, k: Key): State {
     case "bun":
       if (ctrlC(k)) return exitProgram(st, id, [[s("^C", "--t-dim")]]);
       return st;
+    case "node":
+    case "python": {
+      const repl = REPL[p.program];
+      const quit = ctrlC(k) || (k.ctrl && k.code === "KeyD");
+      if (quit) return exitProgram(st, id, [[s(repl.prompt, "--t-fg"), s(p.input, "--t-fg")]]);
+      if (k.key !== "Enter") return editInput(st, id, k) ?? st;
+      const line = p.input;
+      st = put(print(st, id, [[s(repl.prompt, "--t-fg"), s(line, "--t-fg")]]), id, () => ({ input: "", activeAt: Date.now() }));
+      if (repl.exits.includes(line.trim())) return exitProgram(st, id);
+      return print(st, id, repl.evaluate(line.trim()));
+    }
     case "codex":
-    case "claude": {
+    case "claude":
+    case "cursor":
+    case "gemini":
+    case "opencode": {
       if (ctrlC(k)) return exitProgram(st, id);
       if (k.key === "Escape" && p.busy) {
         return put(st, id, (q) => ({
@@ -872,25 +1095,8 @@ export function reducer(st: State, a: Action): State {
     case "move-focus": {
       const tab = activeTab(st);
       if (tab.zoom) return st;
-      const rects = layout(tab.root, areaOf(st)).panes;
-      const from = rects[tab.focus];
-      const cx = from.x + from.w / 2;
-      const cy = from.y + from.h / 2;
-      let best: [string, number] | null = null;
-      for (const [id, r] of Object.entries(rects)) {
-        if (id === tab.focus) continue;
-        const ok =
-          a.dir === "left" ? r.x + r.w <= from.x + 1 :
-          a.dir === "right" ? r.x >= from.x + from.w - 1 :
-          a.dir === "up" ? r.y + r.h <= from.y + 1 :
-          r.y >= from.y + from.h - 1;
-        if (!ok) continue;
-        const dx = r.x + r.w / 2 - cx;
-        const dy = r.y + r.h / 2 - cy;
-        const score = a.dir === "left" || a.dir === "right" ? Math.abs(dx) + Math.abs(dy) * 2 : Math.abs(dy) + Math.abs(dx) * 2;
-        if (!best || score < best[1]) best = [id, score];
-      }
-      return best ? putTab(st, tab.id, () => ({ focus: best[0] })) : st;
+      const next = neighborOf(layout(tab.root, areaOf(st)).panes, tab.focus, a.dir);
+      return next ? putTab(st, tab.id, () => ({ focus: next })) : st;
     }
     case "resize": {
       const tab = activeTab(st);
@@ -901,12 +1107,12 @@ export function reducer(st: State, a: Action): State {
     case "paste": {
       const id = activeTab(st).focus;
       const p = st.panes[id];
-      if (!["shell", "codex", "claude"].includes(p.program)) return st;
+      if (!(p.program === "shell" || p.program === "node" || p.program === "python" || isAgent(p.program))) return st;
       return put(st, id, () => ({ input: p.input + a.text.split("\n")[0], follow: true }));
     }
     case "clear": {
       const id = activeTab(st).focus;
-      return put(st, id, (p) => (p.program === "shell" || p.program === "bun" ? { shell: [] } : p.program === "codex" || p.program === "claude" ? { screen: [] } : {}));
+      return put(st, id, (p) => (p.program === "shell" || p.program === "bun" || p.program === "node" || p.program === "python" ? { shell: [] } : isAgent(p.program) ? { screen: [] } : {}));
     }
     case "launch": {
       // Run in the focused pane if it's an idle shell, else beside it (or in
@@ -930,11 +1136,12 @@ export function reducer(st: State, a: Action): State {
       if (p.program === "bun") {
         return put(print(st, a.pane, [[s(" ✓ ", "--t-green"), s("Ready in 812ms", "--t-fg")]]), a.pane, () => ({ busy: 0, activeAt: now }));
       }
-      if (p.program === "codex" || p.program === "claude") {
+      if (isAgent(p.program)) {
+        const reply = AGENTS[p.program].reply();
         return put(st, a.pane, (q) => ({
           busy: 0,
           activeAt: now,
-          screen: [...q.screen.slice(0, -1), ...agentReply(p.program as "codex")],
+          screen: [...q.screen.slice(0, -1), ...reply],
         }));
       }
       return put(st, a.pane, () => ({ busy: 0, activeAt: now }));

@@ -61,9 +61,11 @@ export function MacWindow({
   height,
   radius = 21,
   at,
+  closed = false,
   fixedSize = false,
   className = "",
   style,
+  fullscreenStyle,
   children,
 }: {
   id: string;
@@ -74,18 +76,22 @@ export function MacWindow({
   radius?: number;
   /** where the window first opens, given the screen; centered when left out */
   at?: (screen: { w: number; h: number }) => { x?: number; y?: number };
+  /** start closed: the window opens from its Dock icon */
+  closed?: boolean;
   /** no zoom or full screen, like iPhone Mirroring */
   fixedSize?: boolean;
   className?: string;
   /** the window's surface: background, material, shadow */
   style?: React.CSSProperties;
+  /** the surface in full screen, where there's no desktop behind it: a solid fill, no glass */
+  fullscreenStyle?: React.CSSProperties;
   children: React.ReactNode;
 }) {
   const os = useOS();
   const { state, dispatch, screen } = os;
   const ref = useRef<HTMLDivElement>(null);
 
-  const fallback: WindowState = { id, app, w: width, h: height, x: null, y: null, status: "open", mode: "normal" };
+  const fallback: WindowState = { id, app, w: width, h: height, x: null, y: null, status: closed ? "closed" : "open", mode: "normal" };
   useLayoutEffect(() => {
     dispatch({ type: "register", window: fallback });
     // registering once is enough; the manager owns the window from here
@@ -235,7 +241,7 @@ export function MacWindow({
 
   // Closed and minimized windows stay mounted (the app keeps its state) but
   // are hidden once their exit animation ends.
-  const [hidden, setHidden] = useState(false);
+  const [hidden, setHidden] = useState(closed);
   const away = win.status !== "open";
   const animate =
     win.status === "minimized"
@@ -270,8 +276,9 @@ export function MacWindow({
           ...style,
           zIndex: z,
           borderRadius: win.mode === "fullscreen" ? 0 : radius,
-          // Full screen has no window edges: no rims, highlights or shadow.
-          ...(win.mode === "fullscreen" && { boxShadow: "none" }),
+          // Full screen has no window edges: no rims, highlights or shadow,
+          // and nothing behind it to see through.
+          ...(win.mode === "fullscreen" && { boxShadow: "none", backdropFilter: "none", WebkitBackdropFilter: "none", ...fullscreenStyle }),
           visibility: hidden && away ? "hidden" : undefined,
           pointerEvents: away ? "none" : style?.pointerEvents,
           ...(frame ?? {

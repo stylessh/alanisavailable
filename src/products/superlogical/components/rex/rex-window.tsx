@@ -26,6 +26,8 @@ export function RexWindow({ at }: { at?: (screen: { w: number; h: number }) => {
         WebkitBackdropFilter: "var(--rex-glass-filter)",
         boxShadow: "var(--rex-window-shadow)",
       }}
+      // full screen: the glass becomes a solid fill, without the beam under its top rim
+      fullscreenStyle={{ background: "var(--rex-solid)" }}
     >
       <Workspace />
     </MacWindow>

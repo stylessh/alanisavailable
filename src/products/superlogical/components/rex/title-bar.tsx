@@ -1,6 +1,6 @@
 "use client";
 
-import { AnimatePresence, animate, type AnimationPlaybackControls, motion, useMotionTemplate, useMotionValue } from "motion/react";
+import { AnimatePresence, animate, type AnimationPlaybackControls, motion, useMotionTemplate, useMotionValue, useTransform } from "motion/react";
 import { useEffect, useRef } from "react";
 import { DRAG_REGION, TrafficLights, useMacWindow } from "@/os/macos";
 import { CloseIcon, CommandIcon, HostIcon, PlusIcon } from "./icons";
@@ -16,16 +16,23 @@ export type TabView = { id: string; title: string; front: ProgramKind; back: Pro
 // scrolls from there.
 const TRACK_LEFT = 190;
 const SLOT = 210;
+/** The ⌘ and + buttons: 21.5pt boxes, glyph centers 26pt apart, + centered 22pt from the right edge */
+const ACTION = { box: 21.5, plus: 22, pitch: 26 };
+const COMMAND_LEFT = ACTION.plus + ACTION.pitch + ACTION.box / 2;
 /** The track stops this far short of the window's right edge (8pt before the ⌘ button). */
-const ACTIONS_INSET = 72.5;
-/** Edge fade when the strip scrolls */
-const EDGE = 18;
+const ACTIONS_INSET = COMMAND_LEFT + 8;
+/** Where the strip scrolls, its edges fade out over this much, on an ease so the last tab dissolves rather than being cut */
+const FADE = 52;
+/** A tab scrolled into view stops this far from the edge, clear of most of the fade */
+const EDGE = 34;
 /** The traffic lights' share of the bar: in full screen they leave it and
     everything after them moves in by this much (the session chip goes from
     86pt to the lights' 14.5pt). */
 export const LIGHTS_SPACE = 71.5;
 const GLIDE = "320ms cubic-bezier(0.2, 0.85, 0.25, 1)";
 const SPRING = { type: "spring", stiffness: 520, damping: 42 } as const;
+/** A tab's badge and title changing over: quick, no overshoot to speak of */
+const SWAP = { type: "spring", stiffness: 560, damping: 38, mass: 0.7 } as const;
 
 /** Traffic lights, session, tab strip and window actions (window-relative px). */
 export function TitleBar({
@@ -82,11 +89,19 @@ export function TitleBar({
   // how much is hidden past them (so they never pop).
   const fadeStart = useMotionValue(0);
   const fadeEnd = useMotionValue(0);
-  const fadeMask = useMotionTemplate`linear-gradient(to right, rgb(0 0 0 / ${fadeStart}), #000 ${EDGE}px, #000 calc(100% - ${EDGE}px), rgb(0 0 0 / ${fadeEnd}))`;
+  // stops along an ease-in curve from the edge's alpha up to opaque
+  const up = (k: number) => (a: number) => a + (1 - a) * k;
+  const s1 = useTransform(fadeStart, up(0.06));
+  const s2 = useTransform(fadeStart, up(0.3));
+  const s3 = useTransform(fadeStart, up(0.72));
+  const e1 = useTransform(fadeEnd, up(0.06));
+  const e2 = useTransform(fadeEnd, up(0.3));
+  const e3 = useTransform(fadeEnd, up(0.72));
+  const fadeMask = useMotionTemplate`linear-gradient(to right, rgb(0 0 0 / ${fadeStart}) 0, rgb(0 0 0 / ${s1}) ${FADE * 0.25}px, rgb(0 0 0 / ${s2}) ${FADE * 0.5}px, rgb(0 0 0 / ${s3}) ${FADE * 0.75}px, #000 ${FADE}px, #000 calc(100% - ${FADE}px), rgb(0 0 0 / ${e3}) calc(100% - ${FADE * 0.75}px), rgb(0 0 0 / ${e2}) calc(100% - ${FADE * 0.5}px), rgb(0 0 0 / ${e1}) calc(100% - ${FADE * 0.25}px), rgb(0 0 0 / ${fadeEnd}) 100%)`;
   const measure = () => {
     const el = scroller.current;
     if (!el) return;
-    const hidden = (px: number) => 1 - Math.min(1, Math.max(0, px / EDGE));
+    const hidden = (px: number) => 1 - Math.min(1, Math.max(0, px / FADE));
     fadeStart.set(hidden(el.scrollLeft));
     fadeEnd.set(hidden(content - trackW.get() - el.scrollLeft));
   };
@@ -206,8 +221,22 @@ export function TitleBar({
                     style={{ opacity: divider ? 1 : 0 }}
                   />
                 )}
-                <TabChip left={6.5} top={-0.75} front={tab.front} back={tab.back} />
-                <div
+                {/* When the tab's program changes, its badge dips out and the new
+                    one springs in, and the title crossfades in place; both subtle. */}
+                <AnimatePresence initial={false} mode="wait">
+                  <motion.span
+                    key={`${tab.front}|${tab.back.join()}`}
+                    className="absolute"
+                    style={{ left: 6.5, top: -0.75, width: 37, height: 28, transformOrigin: "14px 15px" }}
+                    initial={{ scale: 0.86, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0.86, opacity: 0, transition: { duration: 0.09, ease: "easeIn" } }}
+                    transition={SWAP}
+                  >
+                    <TabChip left={0} top={0} front={tab.front} back={tab.back} />
+                  </motion.span>
+                </AnimatePresence>
+                <motion.div
                   className={`absolute top-[4.75px] overflow-hidden text-[12px] leading-[17px] font-medium whitespace-nowrap [-webkit-text-stroke:0.1px_currentColor] ${
                     // Titles fade out at their tail (the reference fades the
                     // active title's last letter into the divider). On hover the
@@ -216,16 +245,30 @@ export function TitleBar({
                       ? "[mask-image:linear-gradient(to_right,#000_calc(100%-16px),transparent)] group-hover:[mask-image:linear-gradient(to_right,#000_calc(100%-24px),transparent_calc(100%-7px))]"
                       : "[mask-image:linear-gradient(to_right,#000_calc(100%-22px),transparent)] group-hover:[mask-image:linear-gradient(to_right,#000_calc(100%-28px),transparent_calc(100%-9px))]"
                   }`}
+                  initial={false}
+                  // up to the divider (active) or 12pt short of the tab's end;
+                  // it moves over as the badge stack grows or shrinks
+                  animate={{ left: textLeft, width: right - textLeft - (isActive ? 14 : 12) }}
+                  transition={SWAP}
                   style={{
                     transition: "color 150ms",
-                    left: textLeft,
-                    // up to the divider (active) or 12pt short of the tab's end
-                    width: right - textLeft - (isActive ? 14 : 12),
                     color: isActive ? "var(--rex-tab-text)" : "var(--rex-tab-text-muted)",
                   }}
                 >
-                  {tab.title}
-                </div>
+                  <AnimatePresence initial={false} mode="popLayout">
+                    <motion.span
+                      key={tab.title}
+                      className="block"
+                      // crossfades in place
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.16, ease: "easeOut" }}
+                    >
+                      {tab.title}
+                    </motion.span>
+                  </AnimatePresence>
+                </motion.div>
                 {/* The active tab's divider and the close button share one spot:
                     the divider at rest, the close button on hover. */}
                 <div
@@ -258,11 +301,11 @@ export function TitleBar({
         <button
           type="button"
           aria-label="Command palette"
-          title="Command palette (⇧⌘P)"
+          title="Command palette (⌘K)"
           tabIndex={-1}
           onClick={onPalette}
           className="absolute grid cursor-default place-items-center rounded-[6px] p-[5px] transition-colors hover:bg-[var(--rex-hover)]"
-          style={{ left: width - 64.5, top: 11 }}
+          style={{ left: width - COMMAND_LEFT, top: 11 }}
         >
           <CommandIcon style={{ color: "var(--rex-command-ink)" }} />
         </button>
@@ -273,9 +316,9 @@ export function TitleBar({
           tabIndex={-1}
           onClick={onNew}
           className="absolute grid cursor-default place-items-center rounded-[6px] p-[5px] transition-colors hover:bg-[var(--rex-hover)]"
-          style={{ left: width - 32, top: 11.5 }}
+          style={{ left: width - ACTION.plus - ACTION.box / 2, top: 11 }}
         >
-          <PlusIcon style={{ color: "var(--rex-chrome-ink)" }} />
+          <PlusIcon style={{ color: "var(--rex-command-ink)" }} />
         </button>
       </motion.div>
     </div>

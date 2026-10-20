@@ -10,6 +10,19 @@ import { useOS } from "./window-manager";
 // itself always uses real points.
 const U = "var(--u)";
 
+/**
+ * Where the Dock's rim shows: it starts fading as soon as it rounds a corner
+ * and eases out gradually, gone under a third of the way along each side, so
+ * the middle of the sides stays clear. The bottom rim is the dimmer one (85
+ * against the top's 117 in the captures).
+ */
+const RIM_FADE = `linear-gradient(to bottom, ${[
+  [1, 0], [0.68, 4], [0.4, 10], [0.18, 17], [0.06, 24], [0, 30],
+  [0, 70], [0.04, 76], [0.12, 83], [0.26, 90], [0.44, 96], [0.65, 100],
+]
+  .map(([a, at]) => `rgb(0 0 0 / ${a}) ${at}%`)
+  .join(", ")})`;
+
 const TILE = 68; // resting tile size, pt
 const MAGNIFIED = 96; // tile size right under the cursor, pt
 const REACH = 3; // tiles on each side of the cursor that grow
@@ -41,22 +54,35 @@ export function Dock({ items, hidden = false }: { items: DockItem[]; hidden?: bo
     >
       <ul
         ref={listRef}
-        className="relative flex items-end rounded-[calc(36*var(--u))] [corner-shape:superellipse(1.4)] backdrop-blur-[20px] backdrop-brightness-[0.7] backdrop-saturate-[1.6]"
+        className="relative flex items-end rounded-[calc(36*var(--u))] [corner-shape:superellipse(1.4)]"
         style={{
-          // Dark appearance (measured on a dark-mode capture): near-black
-          // glass with a faint rim all around.
-          background: "light-dark(rgb(92 93 97 / 0.6), rgb(31 32 33 / 0.6))",
-          boxShadow: [
-            "inset 0 0 0 1px light-dark(rgb(255 255 255 / 0.05), rgb(255 255 255 / 0.14))",
-            "inset 0 1px 0.5px light-dark(rgb(255 255 255 / 0.36), rgb(255 255 255 / 0.16))",
-            "inset 0 -1px 0.5px light-dark(rgb(255 255 255 / 0.36), rgb(255 255 255 / 0.16))",
-            "0 8px 24px rgb(0 0 0 / 0.2)",
+          // Liquid Glass, measured on two dark-mode captures: heavily frosted
+          // (a busy chat behind it reads as one flat tone), lit along its top
+          // and bottom edges, with light spilling a few points in from each.
+          background: [
+            "linear-gradient(to bottom, light-dark(rgb(255 255 255 / 0.22), rgb(255 255 255 / 0.16)), light-dark(rgb(255 255 255 / 0.1), rgb(255 255 255 / 0.08)) calc(3 * var(--u)), transparent calc(10 * var(--u)))",
+            "linear-gradient(to top, light-dark(rgb(255 255 255 / 0.14), rgb(255 255 255 / 0.1)), transparent calc(3.5 * var(--u)))",
+            "light-dark(rgb(150 151 156 / 0.42), rgb(38 38 40 / 0.5))",
           ].join(", "),
+          backdropFilter: "blur(32px) saturate(1.8) brightness(0.92)",
+          WebkitBackdropFilter: "blur(32px) saturate(1.8) brightness(0.92)",
+          boxShadow: "0 8px 24px rgb(0 0 0 / 0.2)",
           height: `calc(88 * ${U})`,
           paddingInline: `calc(7.75 * ${U})`,
           paddingBottom: `calc(10 * ${U})`,
         }}
       >
+        {/* The rim: bright along the top and bottom, fading out as it rounds
+            the corners into the sides. */}
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-0 rounded-[inherit] [corner-shape:superellipse(1.4)]"
+          style={{
+            boxShadow: "inset 0 0 0 calc(0.75 * var(--u)) light-dark(rgb(255 255 255 / 0.5), rgb(255 255 255 / 0.36))",
+            maskImage: RIM_FADE,
+            WebkitMaskImage: RIM_FADE,
+          }}
+        />
         {items.map((item, i) =>
           item === "separator" ? (
             <li

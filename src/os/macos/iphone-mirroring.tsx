@@ -73,6 +73,7 @@ const WALLPAPER = [
 export function IPhoneMirroring({
   id = "iphone-mirroring",
   at,
+  closed = false,
   wallpaper = WALLPAPER,
   onHome,
   onAppSwitcher,
@@ -80,6 +81,8 @@ export function IPhoneMirroring({
 }: {
   id?: string;
   at?: (screen: { w: number; h: number }) => { x?: number; y?: number };
+  /** start closed, until its Dock icon is clicked */
+  closed?: boolean;
   /** a CSS background for the screen */
   wallpaper?: string;
   onHome?: () => void;
@@ -134,6 +137,7 @@ export function IPhoneMirroring({
       height={H}
       radius={0}
       at={at}
+      closed={closed}
       fixedSize
       className="overflow-visible! select-none"
       // the window's box is the open window; at rest only the phone takes the pointer

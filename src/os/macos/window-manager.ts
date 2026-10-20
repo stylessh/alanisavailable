@@ -124,6 +124,20 @@ export function useMacAppearance() {
   };
 }
 
+/**
+ * Styles that put an element in an appearance, for its whole subtree.
+ * Besides color-scheme, it sets the switches Tailwind's CSS build (Lightning
+ * CSS) compiles every light-dark() into: left alone, those only follow the
+ * system setting at the page root, so a screen set to dark would keep light
+ * colors.
+ */
+export const appearanceStyle = (appearance: Appearance, colorScheme: string = appearance): React.CSSProperties =>
+  ({
+    colorScheme,
+    "--lightningcss-light": appearance === "light" ? "initial" : " ",
+    "--lightningcss-dark": appearance === "dark" ? "initial" : " ",
+  }) as React.CSSProperties;
+
 /** Client coordinates to screen points (the screen may be drawn scaled). */
 export function toScreen(os: OSContextValue, clientX: number, clientY: number) {
   const box = os.screenRef.current?.getBoundingClientRect();

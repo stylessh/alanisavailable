@@ -1,9 +1,11 @@
 "use client";
 
-import { AnimatePresence, MotionConfig, motion, useMotionTemplate, useTransform } from "motion/react";
+import { MotionConfig, motion, useMotionTemplate, useTransform } from "motion/react";
 import { useMacAppearance, useMacWindow } from "@/os/macos";
-import { useEffect, useReducer, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { type Command, CommandPalette } from "./command-palette";
+import { AppearanceIcon, EyeIcon, MaximizeIcon, PlusIcon, SidebarIcon, SplitDownIcon, SplitRightIcon } from "./icons";
+import { ChipStack } from "./tab-chip";
 import {
   type Action,
   activeTab,
@@ -15,7 +17,6 @@ import {
   type Divider,
   gridSize,
   type Key,
-  initialState,
   layout,
   leaves,
   type Pane as PaneState,
@@ -24,13 +25,13 @@ import {
   type Rect,
   SIDEBAR_W,
   splitOf,
-  reducer,
   TERM,
   titles,
   zoomLayout,
 } from "./model";
 import { Pane } from "./pane";
 import { Sidebar } from "./sidebar";
+import { useRex } from "./store";
 import { PROGRAMS } from "./programs";
 import { Terminal } from "./terminal";
 import { TweenProvider, useTile, useTween } from "./tween";
@@ -40,6 +41,7 @@ import { type TabView, TitleBar } from "./title-bar";
 // for itself (⌘T, ⌘W, ⌘1…) move to ⌥⌘T, ⌥⌘W and ⌃1… here.
 type Shortcut = { code: string; meta?: boolean; shift?: boolean; alt?: boolean; ctrl?: boolean; action: Action; label: string };
 const SHORTCUTS: Shortcut[] = [
+  { code: "KeyK", meta: true, action: { type: "palette", open: true }, label: "⌘K" },
   { code: "KeyP", meta: true, shift: true, action: { type: "palette", open: true }, label: "⇧⌘P" },
   { code: "KeyD", meta: true, action: { type: "split", dir: "right" }, label: "⌘D" },
   { code: "KeyD", meta: true, shift: true, action: { type: "split", dir: "down" }, label: "⇧⌘D" },
@@ -47,7 +49,7 @@ const SHORTCUTS: Shortcut[] = [
   { code: "KeyF", meta: true, alt: true, action: { type: "zoom" }, label: "⌥⌘F" },
   { code: "KeyW", meta: true, alt: true, action: { type: "close-pane" }, label: "⌥⌘W" },
   { code: "KeyT", meta: true, alt: true, action: { type: "new-tab" }, label: "⌥⌘T" },
-  { code: "KeyK", meta: true, action: { type: "clear" }, label: "⌘K" },
+  { code: "KeyK", meta: true, alt: true, action: { type: "clear" }, label: "⌥⌘K" },
   { code: "KeyS", meta: true, ctrl: true, action: { type: "toggle-sidebar" }, label: "⌃⌘S" },
   { code: "Period", meta: true, action: { type: "toggle-activity" }, label: "⌘." },
   { code: "ArrowLeft", meta: true, alt: true, action: { type: "move-focus", dir: "left" }, label: "⌥⌘←" },
@@ -160,7 +162,7 @@ function PaneClock({ pane, visible, dispatch }: { pane: PaneState; visible: bool
 
 /** The interactive inside of the Rex window: tabs, tiled panes, palette. */
 export function Workspace() {
-  const [state, dispatch] = useReducer(reducer, undefined, initialState);
+  const { state, dispatch } = useRex();
   const [dragging, setDragging] = useState(false);
   const root = useRef<HTMLDivElement>(null);
   // Text goes through a hidden, always-focused field so typing works with
@@ -213,7 +215,7 @@ export function Workspace() {
       window.removeEventListener("keydown", onKey);
       window.removeEventListener("paste", onPaste);
     };
-  }, []);
+  }, [dispatch]);
 
   // Back to the terminal once the palette closes.
   useEffect(() => {
@@ -294,19 +296,20 @@ export function Workspace() {
     dispatch(action);
   };
   const commands: Command[] = [
-    { id: "split-right", group: "Pane", title: "Split Right", shortcut: label("split", (a) => a.type === "split" && a.dir === "right"), run: run({ type: "split", dir: "right" }) },
-    { id: "split-down", group: "Pane", title: "Split Down", shortcut: label("split", (a) => a.type === "split" && a.dir === "down"), run: run({ type: "split", dir: "down" }) },
-    { id: "zoom", group: "Pane", title: tab.zoom ? "Unzoom Pane" : "Zoom Pane", shortcut: label("zoom"), run: run({ type: "zoom" }) },
+    { id: "split-right", group: "Pane", title: "Split Right", icon: <SplitRightIcon />, shortcut: label("split", (a) => a.type === "split" && a.dir === "right"), run: run({ type: "split", dir: "right" }) },
+    { id: "split-down", group: "Pane", title: "Split Down", icon: <SplitDownIcon />, shortcut: label("split", (a) => a.type === "split" && a.dir === "down"), run: run({ type: "split", dir: "down" }) },
+    { id: "zoom", group: "Pane", title: tab.zoom ? "Unzoom Pane" : "Zoom Pane", icon: <MaximizeIcon />, shortcut: label("zoom"), run: run({ type: "zoom" }) },
     { id: "close-pane", group: "Pane", title: "Close Pane", shortcut: label("close-pane"), run: run({ type: "close-pane" }) },
     { id: "clear", group: "Pane", title: "Clear Screen", shortcut: label("clear"), run: run({ type: "clear" }) },
-    { id: "sidebar", group: "View", title: state.view === "sidebar" ? "Show Tab Bar" : "Show Sidebar", shortcut: label("toggle-sidebar"), run: run({ type: "toggle-sidebar" }) },
-    { id: "activity", group: "View", title: state.activity ? "Hide Activity" : "Show Activity", shortcut: label("toggle-activity"), run: run({ type: "toggle-activity" }) },
+    { id: "sidebar", group: "View", title: state.view === "sidebar" ? "Show Tab Bar" : "Show Sidebar", icon: <SidebarIcon />, shortcut: label("toggle-sidebar"), run: run({ type: "toggle-sidebar" }) },
+    { id: "activity", group: "View", title: state.activity ? "Hide Activity" : "Show Activity", icon: <EyeIcon />, shortcut: label("toggle-activity"), run: run({ type: "toggle-activity" }) },
     ...(look
       ? [
           {
             id: "appearance",
             group: "View",
             title: look.appearance === "dark" ? "Switch to Light Appearance" : "Switch to Dark Appearance",
+            icon: <AppearanceIcon />,
             run: () => {
               dispatch({ type: "palette", open: false });
               look.toggle();
@@ -314,20 +317,27 @@ export function Workspace() {
           },
         ]
       : []),
-    { id: "new-tab", group: "Tab", title: "New Tab", shortcut: label("new-tab"), run: run({ type: "new-tab" }) },
+    { id: "new-tab", group: "Tab", title: "New Tab", icon: <PlusIcon />, shortcut: label("new-tab"), run: run({ type: "new-tab" }) },
     { id: "close-tab", group: "Tab", title: "Close Tab", run: run({ type: "close-tab", tab: tab.id }) },
     ...tabs.map((t, i): Command => ({
       id: `goto-${t.id}`,
       group: "Tab",
-      title: `Go to Tab ${i + 1}: ${t.title}`,
+      // the tab as the tab bar shows it: its badge stack and title (⌃N on the right)
+      title: t.title,
+      icon: <ChipStack front={t.front} back={t.back} />,
       shortcut: i < 9 ? `⌃${i + 1}` : undefined,
       run: run({ type: "select-tab", tab: t.id }),
     })),
-    { id: "run-codex", group: "Run", title: "Codex", run: run({ type: "launch", command: "codex" }) },
-    { id: "run-claude", group: "Run", title: "Claude Code", run: run({ type: "launch", command: "claude" }) },
-    { id: "run-lazygit", group: "Run", title: "lazygit", run: run({ type: "launch", command: "lazygit", cwd: "~/Sites/rex-snake" }) },
-    { id: "run-snake", group: "Run", title: "Snake (node demo/snake.mjs)", run: run({ type: "launch", command: "node demo/snake.mjs", cwd: "~/Sites/rex-snake" }) },
-    { id: "run-bun", group: "Run", title: "Dev server (bun dev)", run: run({ type: "launch", command: "bun dev", cwd: "~/sites/announcements" }) },
+    { id: "run-codex", group: "Run", icon: <ChipStack front="codex" back={[]} />, title: "Codex", run: run({ type: "launch", command: "codex" }) },
+    { id: "run-claude", group: "Run", icon: <ChipStack front="claude" back={[]} />, title: "Claude Code", run: run({ type: "launch", command: "claude" }) },
+    { id: "run-cursor", group: "Run", icon: <ChipStack front="cursor" back={[]} />, title: "Cursor Agent", run: run({ type: "launch", command: "cursor-agent" }) },
+    { id: "run-gemini", group: "Run", icon: <ChipStack front="gemini" back={[]} />, title: "Gemini CLI", run: run({ type: "launch", command: "gemini" }) },
+    { id: "run-opencode", group: "Run", icon: <ChipStack front="opencode" back={[]} />, title: "opencode", run: run({ type: "launch", command: "opencode" }) },
+    { id: "run-node", group: "Run", icon: <ChipStack front="node" back={[]} />, title: "Node.js REPL", run: run({ type: "launch", command: "node" }) },
+    { id: "run-python", group: "Run", icon: <ChipStack front="python" back={[]} />, title: "Python REPL", run: run({ type: "launch", command: "python3" }) },
+    { id: "run-lazygit", group: "Run", icon: <ChipStack front="lazygit" back={[]} />, title: "lazygit", run: run({ type: "launch", command: "lazygit", cwd: "~/Sites/rex-snake" }) },
+    { id: "run-snake", group: "Run", icon: <ChipStack front="snake" back={[]} />, title: "Snake (node demo/snake.mjs)", run: run({ type: "launch", command: "node demo/snake.mjs", cwd: "~/Sites/rex-snake" }) },
+    { id: "run-bun", group: "Run", icon: <ChipStack front="bun" back={[]} />, title: "Dev server (bun dev)", run: run({ type: "launch", command: "bun dev", cwd: "~/sites/announcements" }) },
   ];
 
   return (
@@ -437,9 +447,7 @@ export function Workspace() {
           <PaneClock key={p.id} pane={p} visible={visible.includes(p.id)} dispatch={dispatch} />
         ))}
 
-        <AnimatePresence>
-          {state.palette && <CommandPalette commands={commands} onClose={() => dispatch({ type: "palette", open: false })} />}
-        </AnimatePresence>
+        {state.palette && <CommandPalette commands={commands} onClose={() => dispatch({ type: "palette", open: false })} />}
       </div>
     </MotionConfig>
   );

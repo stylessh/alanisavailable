@@ -4,7 +4,7 @@ import { useLayoutEffect, useReducer, useRef, useState, useSyncExternalStore } f
 import type { DockItem } from "./data";
 import { Dock } from "./dock";
 import { MenuBar } from "./menu-bar";
-import { type AppearancePref, initialOS, OSContext, osReducer, type Screen } from "./window-manager";
+import { appearanceStyle, type AppearancePref, initialOS, OSContext, osReducer, type Screen } from "./window-manager";
 
 const DARK_QUERY = "(prefers-color-scheme: dark)";
 const subscribeScheme = (onChange: () => void) => {
@@ -79,7 +79,11 @@ export function MacOS({
           className="mac-screen absolute top-0 left-0 origin-top-left"
           data-appearance={appearance}
           style={{
-            colorScheme: appearancePref === "auto" ? "light dark" : appearancePref,
+            // Following the system, the page root's own switches already track
+            // it, from the first paint (the server can't know the system
+            // setting, so setting them here would flash light on a dark Mac).
+            // A chosen appearance sets them here.
+            ...(appearancePref === "auto" ? { colorScheme: "light dark" } : appearanceStyle(appearancePref)),
             width: screen ? screen.w : "100vw",
             height: screen ? screen.h : "100dvh",
             transform: screen && screen.scale < 1 ? `scale(${screen.scale})` : undefined,
