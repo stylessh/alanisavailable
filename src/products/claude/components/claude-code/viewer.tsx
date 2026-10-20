@@ -78,7 +78,7 @@ function centered(overlay: HTMLElement, aspect: number): Box {
     h = H * MAX_H;
     w = h * aspect;
   }
-  return { x: (W - w) / 2, y: (H - h) / 2, w, h, r: 6 };
+  return { x: (W - w) / 2, y: (H - h) / 2, w, h, r: 8 };
 }
 
 function loadAspect(src: string) {
@@ -98,7 +98,7 @@ function Lightbox({ viewing, onChange, onClose }: { viewing: Viewing; onChange: 
   const y = useMotionValue(0);
   const w = useMotionValue(0);
   const h = useMotionValue(0);
-  const radius = useMotionValue(6);
+  const radius = useMotionValue(8);
   const [ready, setReady] = useState(false);
   const hidden = useRef<HTMLElement | null>(null);
 
@@ -211,8 +211,8 @@ function Lightbox({ viewing, onChange, onClose }: { viewing: Viewing; onChange: 
           height: h,
           borderRadius: radius,
           visibility: ready ? "visible" : "hidden",
-          // the backdrop is black in both appearances, so the rim is a faint light line in both
-          boxShadow: "0 0 0 1px rgb(255 255 255 / 0.08), 0 20px 50px rgb(0 0 0 / 0.5)",
+          // as in the app: no rim, just the picture on the dimmed window (a soft shadow keeps it lifted)
+          boxShadow: "0 20px 50px rgb(0 0 0 / 0.35)",
         }}
         onClick={(e) => e.stopPropagation()}
       >

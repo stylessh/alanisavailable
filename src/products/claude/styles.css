@@ -264,12 +264,13 @@
   --cc-sidebar-floating-shadow: 4px 0 18px rgb(0 0 0 / 0.08);
   --cc-surface-shadow: 0 8px 24px rgb(0 0 0 / 0.1), 0 2px 6px rgb(0 0 0 / 0.06);
 
-  /* a light window: a soft dark outline instead of a white inner rim, and a lighter shadow */
+  /* a light window: a soft dark outline and a lighter shadow; its inner rim is a faint dark line
+     (a white one turns into a bright ring once the image viewer dims the window) */
   --cc-window-shadow:
     0 0 0 0.5px rgb(0 0 0 / 0.22),
     0 19.5px 44.5px -7px rgb(0 0 0 / 0.3),
     0 15.5px 36.5px 1px rgb(0 0 0 / 0.16);
-  --cc-window-rim: inset 0 0 0 1px rgb(255 255 255 / 0.6);
+  --cc-window-rim: inset 0 0 0 1px rgb(0 0 0 / 0.06);
 }
 
 .claude .cc-window {
