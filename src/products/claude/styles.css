@@ -25,6 +25,9 @@
   /* the Chat / Code switch's selected tile */
   --cc-tile: #343434;
   --cc-tile-border: #484848;
+  --cc-tile-border-w: 1px;
+  /* the Chat / Code switch's track (the search field's fill, in dark) */
+  --cc-switch-track: #1d1d1d;
   /* the open session's row, "Relaunch to update" */
   --cc-row-active: #232323;
   /* rows and icon buttons under the pointer: no reference yet, a step
@@ -165,6 +168,8 @@
   --cc-field-border: #e1e1de;
   --cc-tile: #ffffff;
   --cc-tile-border: #e3e3e3;
+  --cc-tile-border-w: 0.5px;
+  --cc-switch-track: #ececea;
   --cc-row-active: #eeebe8;
   --cc-row-hover: #f2f0ed;
   --cc-raised: #eeebe8;

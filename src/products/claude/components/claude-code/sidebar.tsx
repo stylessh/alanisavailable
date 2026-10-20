@@ -38,7 +38,7 @@ function ModeSwitch({ right }: { right: number }) {
         top: 10,
         width: 69.5,
         height: 28,
-        background: "var(--cc-field)",
+        background: "var(--cc-switch-track)",
       }}
     >
       <button
@@ -59,7 +59,7 @@ function ModeSwitch({ right }: { right: number }) {
         className="flex items-center justify-center rounded-[9px]"
         style={{
           background: "var(--cc-tile)",
-          boxShadow: "inset 0 0 0 1px var(--cc-tile-border)",
+          boxShadow: "inset 0 0 0 var(--cc-tile-border-w) var(--cc-tile-border)",
           color: "var(--cc-text-strong)",
         }}
       >
