@@ -1,7 +1,7 @@
 "use client";
 
 import { animate, AnimatePresence, motion, type MotionValue, useMotionValue, useTransform } from "motion/react";
-import { createContext, type ReactNode, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createContext, type ReactNode, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "./icon";
 
 // The image viewer (from the recording): the whole window dims to black at
@@ -63,9 +63,9 @@ const MAX_W = 0.72;
 const MAX_H = 0.78;
 const GROUP_MAX_W = 0.56;
 const GROUP_MAX_H = 0.7;
-/** Carousel geometry: centre-to-centre distance (share of the window's width), and how much a neighbour shrinks and fades */
-const SLOT = 0.56;
-const NEIGHBOUR_SCALE = 0.84;
+/** Carousel geometry: the gap between neighbouring pictures (pt, edge to edge as they sit beside the one on show), and how much a neighbour shrinks and fades */
+const GAP = 48;
+const NEIGHBOUR_SCALE = 0.78;
 const NEIGHBOUR_OPACITY = 0.45;
 /** sliding to a picture (keys, pager, release) */
 const SNAP = { type: "spring", stiffness: 320, damping: 34, mass: 0.9 } as const;
@@ -139,6 +139,37 @@ function loadAspect(src: string) {
 
 type Stage = { W: number; H: number; aspects: number[] };
 
+const scaleAt = (distance: number) => 1 - (1 - NEIGHBOUR_SCALE) * Math.min(1, distance);
+
+/**
+ * Each picture's offset from the middle (pt) with the strip at fractional
+ * position p. Pictures differ in width, so they're laid out edge to edge at
+ * their current size, one GAP apart, and the strip's view point slides
+ * between their centres: at rest every gap is exactly GAP, and moving the
+ * strip changes the layout continuously.
+ */
+function offsetsAt(widths: number[], p: number) {
+  const c = [0];
+  for (let i = 1; i < widths.length; i++)
+    c.push(c[i - 1] + (scaleAt(Math.abs(i - 1 - p)) * widths[i - 1]) / 2 + GAP + (scaleAt(Math.abs(i - p)) * widths[i]) / 2);
+  const view =
+    c.length < 2
+      ? 0
+      : (() => {
+          const k = Math.max(0, Math.min(c.length - 2, Math.floor(p)));
+          return c[k] + (p - k) * (c[k + 1] - c[k]);
+        })();
+  return c.map((x) => x - view);
+}
+
+/** The strip's spacing at position p: how far it travels from one picture to the next there. */
+function spacingAt(widths: number[], p: number) {
+  if (widths.length < 2) return 1;
+  const k = Math.max(0, Math.min(widths.length - 2, Math.floor(p)));
+  const o = offsetsAt(widths, k);
+  return o[k + 1] - o[k];
+}
+
 /** One picture in the strip: placed by its distance from the strip's position (`pos`, in pictures). */
 function Slide({
   src,
@@ -148,7 +179,9 @@ function Slide({
   group,
   appear,
   hiddenNow,
+  widths,
 }: {
+  widths: number[];
   src: string;
   i: number;
   pos: MotionValue<number>;
@@ -159,10 +192,9 @@ function Slide({
   hiddenNow: boolean;
 }) {
   const box = centered(stage.W, stage.H, stage.aspects[i], group);
-  const slot = stage.W * SLOT;
-  const x = useTransform(pos, (p) => (i - p) * slot);
+  const x = useTransform(pos, (p) => offsetsAt(widths, p)[i]);
   const near = useTransform(pos, (p) => Math.min(1, Math.abs(i - p)));
-  const scale = useTransform(near, (n) => 1 - (1 - NEIGHBOUR_SCALE) * n);
+  const scale = useTransform(near, scaleAt);
   const fade = useTransform([near, appear], ([n, a]: number[]) => (1 - (1 - NEIGHBOUR_OPACITY) * n) * (i === Math.round(pos.get()) ? 1 : a));
   return (
     <motion.div
@@ -206,6 +238,7 @@ function Lightbox({ viewing, onClose }: { viewing: Viewing; onClose: () => void 
   const h = useMotionValue(0);
   const radius = useMotionValue(8);
   const hidden = useRef<HTMLElement | null>(null);
+  const widths = useMemo(() => (stage ? stage.aspects.map((a) => centered(stage.W, stage.H, a, group).w) : [0]), [stage, group]);
 
   const reveal = () => {
     if (hidden.current) hidden.current.style.visibility = "";
@@ -339,7 +372,7 @@ function Lightbox({ viewing, onClose }: { viewing: Viewing; onClose: () => void 
     const el = overlay.current;
     if (!el || !stage || !group) return;
     const sw = swipe.current;
-    const slot = stage.W * SLOT;
+    const slot = spacingAt(widths, index);
     const onWheel = (e: WheelEvent) => {
       const dx = e.deltaX || (e.shiftKey ? e.deltaY : 0);
       if (!dx || (!e.shiftKey && Math.abs(dx) < Math.abs(e.deltaY))) return;
@@ -364,7 +397,7 @@ function Lightbox({ viewing, onClose }: { viewing: Viewing; onClose: () => void 
     };
     el.addEventListener("wheel", onWheel, { passive: false });
     return () => el.removeEventListener("wheel", onWheel);
-  }, [stage, group, closing, flying, index, pos, slideTo]);
+  }, [stage, group, closing, flying, index, pos, slideTo, widths]);
 
   const onPointerDown = (e: React.PointerEvent) => {
     if (e.button !== 0 || closing || flying || !stage) return;
@@ -392,7 +425,7 @@ function Lightbox({ viewing, onClose }: { viewing: Viewing; onClose: () => void 
     d.v = (0.7 * ((e.clientX - d.lastX) / scale)) / dt + 0.3 * d.v;
     d.lastX = e.clientX;
     d.lastT = e.timeStamp;
-    let p = d.p0 - dx / (stage.W * SLOT);
+    let p = d.p0 - dx / spacingAt(widths, d.p0);
     const max = images.length - 1;
     if (p < 0) p *= RUBBER;
     else if (p > max) p = max + (p - max) * RUBBER;
@@ -410,7 +443,7 @@ function Lightbox({ viewing, onClose }: { viewing: Viewing; onClose: () => void 
       return;
     }
     if (!group) return;
-    const slot = stage.W * SLOT;
+    const slot = spacingAt(widths, pos.get());
     const projected = pos.get() - (d.v * FLICK_MS) / slot;
     slideTo(Math.round(projected), (-d.v * 1000) / slot);
   };
@@ -440,7 +473,9 @@ function Lightbox({ viewing, onClose }: { viewing: Viewing; onClose: () => void 
       </motion.div>
 
       {stage &&
-        images.map((src, i) => <Slide key={src + i} src={src} i={i} pos={pos} stage={stage} group={group} appear={appear} hiddenNow={flying && i === index} />)}
+        images.map((src, i) => (
+          <Slide key={src + i} src={src} i={i} pos={pos} stage={stage} group={group} appear={appear} hiddenNow={flying && i === index} widths={widths} />
+        ))}
 
       {/* the flying frame: from the thumbnail to the middle and back */}
       <motion.div
