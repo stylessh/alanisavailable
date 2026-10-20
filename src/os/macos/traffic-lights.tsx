@@ -1,7 +1,8 @@
 "use client";
 
 import { animate, motion, useMotionTemplate, useMotionValue, useTransform } from "motion/react";
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useMacWindow } from "./window";
 
 // macOS traffic lights as real elements. Size and spacing come from the Rex
@@ -17,6 +18,10 @@ import { useMacWindow } from "./window";
 // (Option-click zooms instead). In an unfocused window they turn gray until
 // hovered, as on macOS. In full screen they leave the app's title bar; the
 // window shows them in a floating row when the pointer reaches the top edge.
+// They always sit on top of the window's content: an OS rule. The app places
+// them as usual (`left`/`top` in their parent); an invisible anchor stays
+// there, and the lights themselves render into the window's top layer at the
+// anchor's position, so nothing the app draws can cover or dim them.
 
 const SIZE = 13;
 /** center to center */
@@ -145,21 +150,51 @@ export function TrafficLights({
   left,
   top,
   floating = false,
+  hidden = false,
   size = SIZE,
   pitch = PITCH,
 }: {
   left: number;
   top: number;
-  /** the full-screen floating row's copy, which stays visible */
+  /** the full-screen floating row's copy, which stays visible (it is drawn in place, already on top) */
   floating?: boolean;
+  /** faded out and not clickable (a title bar that hides, as in iPhone Mirroring) */
+  hidden?: boolean;
   /** light diameter; Electron windows (Claude) draw 14pt lights 23pt apart */
   size?: number;
   pitch?: number;
 }) {
   const win = useMacWindow();
+  const anchor = useRef<HTMLSpanElement>(null);
+  const [at, setAt] = useState<{ x: number; y: number } | null>(null);
+  const lifted = !!win?.chrome && !floating;
+
+  // where the anchor sits in the window, in the window's own (unscaled) points
+  useLayoutEffect(() => {
+    const chrome = win?.chrome;
+    const el = anchor.current;
+    if (!lifted || !chrome || !el) return;
+    const measure = () => {
+      const c = chrome.getBoundingClientRect();
+      const s = c.width / chrome.offsetWidth || 1;
+      const a = el.getBoundingClientRect();
+      const next = { x: (a.left - c.left) / s, y: (a.top - c.top) / s };
+      setAt((p) => (p && Math.abs(p.x - next.x) < 0.01 && Math.abs(p.y - next.y) < 0.01 ? p : next));
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(chrome);
+    if (el.parentElement) ro.observe(el.parentElement);
+    return () => ro.disconnect();
+  }, [lifted, win?.chrome]);
+
   if (win?.mode === "fullscreen" && !floating) return null;
-  return (
-    <div className="group absolute z-10 flex" style={{ left, top, gap: pitch - size }}>
+  const pos = lifted ? at : { x: left, y: top };
+  const lights = (
+    <div
+      className="group pointer-events-auto absolute z-10 flex transition-opacity duration-200"
+      style={{ left: pos?.x ?? 0, top: pos?.y ?? 0, gap: pitch - size, opacity: hidden || !pos ? 0 : 1, pointerEvents: hidden ? "none" : undefined }}
+    >
       {LIGHTS.map((l, i) => (
         <Elastic key={l.label} enabled={!(i === 2 && win?.fixedSize)}>
         <motion.button
@@ -226,5 +261,13 @@ export function TrafficLights({
         </Elastic>
       ))}
     </div>
+  );
+  // inside a window, the lights live in its top layer; the floating row (already on top) and anything outside a window keep them in place
+  if (!lifted || !win?.chrome) return lights;
+  return (
+    <>
+      <span ref={anchor} aria-hidden className="pointer-events-none absolute size-0" style={{ left, top }} />
+      {createPortal(lights, win.chrome)}
+    </>
   );
 }

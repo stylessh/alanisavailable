@@ -43,6 +43,12 @@ export type MacWindowContext = {
   toggleFullscreen: () => void;
   /** bring the window to the front with focus, back from the Dock if minimized */
   bringToFront: () => void;
+  /**
+   * The window's top layer, above everything the app draws. The traffic
+   * lights render here, so nothing inside the window (overlays, viewers,
+   * floating panels, filters) can cover or dim them.
+   */
+  chrome: HTMLElement | null;
 };
 
 const WindowContext = createContext<MacWindowContext | null>(null);
@@ -189,7 +195,9 @@ export function MacWindow({
     if (seenStatus === "minimized" && win.status === "open" && shelved) setGenie({ dir: "in", ...shelved });
   }
 
+  const [chrome, setChrome] = useState<HTMLDivElement | null>(null);
   const controls: MacWindowContext = {
+    chrome,
     id,
     focused,
     size,
@@ -343,6 +351,9 @@ export function MacWindow({
         }}
       >
         {children}
+
+        {/* the top layer: above anything the app draws (see MacWindowContext.chrome) */}
+        <div ref={setChrome} className="pointer-events-none absolute inset-0 z-[3000]" />
 
         {fullscreen && (
           // keeps the top edge reachable over whatever the app draws there

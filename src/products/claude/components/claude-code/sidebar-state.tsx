@@ -1,6 +1,6 @@
 "use client";
 
-import { TrafficLights, useMacWindow } from "@/os/macos";
+import { useMacWindow } from "@/os/macos";
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { Icon, type IconName } from "./icon";
 
@@ -151,13 +151,16 @@ function ControlButton({
   );
 }
 
-/** The traffic lights (outside full screen) and the sidebar toggle, back and forward, at the window's top-left. */
-export function WindowControls({ lights = true }: { lights?: boolean }) {
+/**
+ * The sidebar toggle, back and forward, at the window's top-left. The
+ * traffic lights beside them are drawn once by the window (ClaudeWindow),
+ * on the OS's top layer, whichever sidebar state is showing.
+ */
+export function WindowControls() {
   const { shown, toggle, hover } = useSidebar();
-  const { fullscreen, x } = useControlsInset();
+  const { x } = useControlsInset();
   return (
     <>
-      {lights && !fullscreen && <TrafficLights left={17} top={17} size={14} pitch={23} />}
       <div className="absolute flex" style={{ left: x, top: 12 }}>
         <ControlButton label={shown ? "Hide sidebar" : "Show sidebar"} shortcut="⌘B" icon="sidebar" onClick={toggle} onHover={hover} />
         <ControlButton label="Back" icon="arrowLeft" />

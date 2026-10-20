@@ -1,6 +1,6 @@
 "use client";
 
-import { MacWindow, useMacWindow } from "@/os/macos";
+import { MacWindow, TrafficLights, useMacWindow } from "@/os/macos";
 import { CLAUDE_APP } from "./app";
 import { Main } from "./main";
 import { ComposerSettingsProvider } from "./menus";
@@ -77,6 +77,8 @@ export function ClaudeWindow() {
         </ViewerProvider>
       </ComposerSettingsProvider>
       <WindowRim />
+      {/* Electron's 14pt lights, 23pt apart, 17pt in; the OS draws them above everything in the window */}
+      <TrafficLights left={17} top={17} size={14} pitch={23} />
     </MacWindow>
   );
 }

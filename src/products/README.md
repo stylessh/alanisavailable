@@ -44,6 +44,10 @@ gets the same windowing:
   inside it keep their clicks); double-clicking it zooms.
 - The traffic lights close, minimize into the app's Dock icon and go full screen
   (Option-click zooms). ⌃⌘F toggles full screen.
+- The traffic lights are always on top of the window's content: place them
+  where your title bar wants them, and the window draws them on its top layer
+  at that spot, so overlays, viewers, floating panels and filters inside the
+  window never cover or dim them. Render one set per window.
 - Clicking the desktop gives focus to Finder; the Dock brings windows back.
   Closed and minimized windows stay mounted, so apps keep their state.
 - Inside a window, `useMacWindow()` gives the app its size (reflow to it), its

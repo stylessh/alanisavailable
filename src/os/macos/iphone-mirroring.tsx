@@ -190,7 +190,7 @@ export function IPhoneMirroring({
           animate={{ opacity: open ? 1 : 0 }}
           transition={{ duration: open ? 0.2 : 0.12, delay: open ? 0.06 : 0 }}
         >
-          <TrafficLights left={14} top={(TITLE - 13) / 2 + 1} />
+          <TrafficLights left={14} top={(TITLE - 13) / 2 + 1} hidden={!open} />
           <div className="absolute right-[10px] flex gap-[6px]" style={{ top: (TITLE - 26) / 2 + 1 }}>
             <TitleButton label="Home Screen" onClick={onHome}>
               <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor">
