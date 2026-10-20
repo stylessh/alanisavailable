@@ -15,7 +15,7 @@ import { Icon } from "./icon";
 // continuous track. ← → and the pager slide it on a spring; dragging moves it
 // under the pointer (with resistance past the ends) and on release it snaps
 // to the nearest picture, carried on by a flick; clicking a neighbour brings
-// it to the middle.
+// it to the middle. A horizontal trackpad swipe scrolls it the same way.
 //
 // Opening and closing are a shared-element move: the picture flies from
 // the thumbnail that was clicked to the center and back. A clipped frame
@@ -71,6 +71,8 @@ const NEIGHBOUR_OPACITY = 0.45;
 const SNAP = { type: "spring", stiffness: 320, damping: 34, mass: 0.9 } as const;
 /** past the first or last picture, the strip moves this fraction of the drag */
 const RUBBER = 0.28;
+/** a trackpad swipe (or shift + wheel) snaps to the nearest picture once it has been still this long (ms) */
+const WHEEL_SETTLE_MS = 140;
 /** a release projects the flick this far ahead (ms) to pick the picture to snap to */
 const FLICK_MS = 160;
 const THUMB_RADIUS = 6;
@@ -320,6 +322,41 @@ function Lightbox({ viewing, onClose }: { viewing: Viewing; onClose: () => void 
   // Drag: the strip follows the pointer; a short press without movement is a click
   // (a neighbour comes to the middle, the backdrop closes, the picture on show stays).
   const drag = useRef<{ x0: number; p0: number; t0: number; lastX: number; lastT: number; v: number; moved: boolean; slide: number } | null>(null);
+
+  // Trackpad: a horizontal swipe (or shift + wheel) moves the strip with the fingers, with the
+  // same resistance past the ends, and snaps to the nearest picture once the swipe (and the
+  // momentum after it) settles. A native listener, so it can keep the page from scrolling.
+  useEffect(() => {
+    const el = overlay.current;
+    if (!el || !stage || !group) return;
+    let settle: ReturnType<typeof setTimeout> | undefined;
+    let raw = pos.get();
+    const onWheel = (e: WheelEvent) => {
+      const dx = e.deltaX || (e.shiftKey ? e.deltaY : 0);
+      if (!dx || Math.abs(dx) < Math.abs(e.deltaY) * (e.shiftKey ? 0 : 1)) return;
+      e.preventDefault();
+      if (closing || flying || drag.current) return;
+      if (!settle) {
+        pos.stop();
+        raw = pos.get();
+      }
+      const max = images.length - 1;
+      raw = Math.max(-0.5, Math.min(max + 0.5, raw + dx / (stage.W * SLOT)));
+      pos.set(raw < 0 ? raw * RUBBER : raw > max ? max + (raw - max) * RUBBER : raw);
+      setIndex(Math.max(0, Math.min(max, Math.round(raw))));
+      clearTimeout(settle);
+      settle = setTimeout(() => {
+        settle = undefined;
+        slideTo(Math.round(Math.max(0, Math.min(max, raw))));
+      }, WHEEL_SETTLE_MS);
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => {
+      clearTimeout(settle);
+      el.removeEventListener("wheel", onWheel);
+    };
+  }, [stage, group, closing, flying, images.length, pos, slideTo]);
+
   const onPointerDown = (e: React.PointerEvent) => {
     if (e.button !== 0 || closing || flying || !stage) return;
     pos.stop();
