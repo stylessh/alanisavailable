@@ -20,6 +20,11 @@ export type WindowState = {
   y: number | null;
   status: WindowStatus;
   mode: WindowMode;
+  /** minimized: a picture of the window for its Dock tile, and when it went there (tiles sit in that order) */
+  thumb?: string;
+  minimizedAt?: number;
+  /** the minimize animation has landed in the Dock, so its tile shows the picture */
+  docked?: boolean;
 };
 
 export type OSState = {
@@ -36,7 +41,8 @@ export type OSAction =
   | { type: "move"; id: string; x: number; y: number }
   | { type: "set-mode"; id: string; mode: WindowMode }
   | { type: "close"; id: string }
-  | { type: "minimize"; id: string }
+  | { type: "minimize"; id: string; thumb?: string }
+  | { type: "docked"; id: string }
   | { type: "restore"; id: string }
   | { type: "activate-app"; app: string };
 
@@ -72,11 +78,16 @@ export function osReducer(st: OSState, a: OSAction): OSState {
       return patch(st, a.id, { mode: a.mode });
     case "close":
     case "minimize": {
-      const next = patch(st, a.id, { status: a.type === "close" ? "closed" : "minimized" });
+      const next =
+        a.type === "close"
+          ? patch(st, a.id, { status: "closed" })
+          : patch(st, a.id, { status: "minimized", thumb: a.thumb, minimizedAt: Date.now(), docked: !a.thumb });
       return { ...next, focused: st.focused === a.id ? nextFocus(st, a.id) : st.focused };
     }
+    case "docked":
+      return patch(st, a.id, { docked: true });
     case "restore":
-      return { ...patch(st, a.id, { status: "open" }), order: toFront(st.order, a.id), focused: a.id };
+      return { ...patch(st, a.id, { status: "open", docked: false }), order: toFront(st.order, a.id), focused: a.id };
     case "activate-app": {
       const id = [...st.order].reverse().find((w) => st.windows[w].app.id === a.app);
       return id ? osReducer(st, { type: "restore", id }) : st;

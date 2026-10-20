@@ -164,6 +164,8 @@ export function TrafficLights({
           aria-label={l.label}
           tabIndex={-1}
           onPointerDown={(e) => e.stopPropagation()}
+          // the genie needs a picture of the window: take it while the pointer is on its way
+          onPointerEnter={i === 1 ? () => win?.prepareMinimize() : undefined}
           disabled={i === 2 && win?.fixedSize}
           onClick={(e) =>
             [win?.close, win?.minimize, e.altKey ? win?.toggleZoom : win?.toggleFullscreen][i]?.()

@@ -20,6 +20,9 @@ importers:
       '@types/mdx':
         specifier: ^2.0.14
         version: 2.0.14
+      modern-screenshot:
+        specifier: 4.6.6
+        version: 4.6.6
       motion:
         specifier: ^14.3.0
         version: 14.3.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
@@ -1883,6 +1886,9 @@ packages:
 
   minimist@1.2.8:
     resolution: {integrity: sha512-2yyAR8qBkN3YuheJanUpWC5U3bb5osDywNB8RzDVlDwDHbocAJveqqj1u8+SVD7jkWT4yvsHCpWqqWqAxb0zCA==}
+
+  modern-screenshot@4.6.6:
+    resolution: {integrity: sha512-8tF0xEpe7yx37mK95UcIghSCWYeu628K2hLJl+ZNY2ANmRzYLlRLpquPHAQcL8keF6BoeEzTEw4GrgmUpGuZ8w==}
 
   motion-dom@14.3.0:
     resolution: {integrity: sha512-rcKO4aEJzAqDEsrH6qFzhLZxs7bNqZpiUEuEATz9LaRwt6dG7hZEbcFUSHNR8NECaKYM0Iuw6Iv6NpWEGXDI+w==}
@@ -4577,6 +4583,8 @@ snapshots:
       brace-expansion: 1.1.21
 
   minimist@1.2.8: {}
+
+  modern-screenshot@4.6.6: {}
 
   motion-dom@14.3.0:
     dependencies:

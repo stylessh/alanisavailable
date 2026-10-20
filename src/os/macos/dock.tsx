@@ -1,9 +1,9 @@
 "use client";
 
 /* eslint-disable @next/next/no-img-element */
-import { motion } from "motion/react";
-import { useEffect, useRef } from "react";
-import { DOCK_H, type DockItem } from "./data";
+import { AnimatePresence, motion } from "motion/react";
+import { Fragment, useEffect, useRef } from "react";
+import { DOCK_H, type DockApp, type DockItem } from "./data";
 import { useOS } from "./window-manager";
 
 // One point. The screen scales as a whole on small viewports, so the dock
@@ -39,9 +39,15 @@ const size = (pt: number) => `calc(var(--size) * ${pt / TILE} * ${U})`;
  */
 export function Dock({ items, hidden = false }: { items: DockItem[]; hidden?: boolean }) {
   const listRef = useRef<HTMLUListElement>(null);
-  useMagnification(listRef);
   const { state, dispatch } = useOS();
   const hasWindows = (app: string) => Object.values(state.windows).some((w) => w.app.id === app);
+  // Minimized windows get their own tiles, after the separator and before
+  // the Trash, in the order they were minimized.
+  const minimized = Object.values(state.windows)
+    .filter((w) => w.status === "minimized")
+    .sort((a, b) => (a.minimizedAt ?? 0) - (b.minimizedAt ?? 0));
+  useMagnification(listRef, minimized.map((w) => w.id).join());
+  const iconOf = (app: string) => items.find((it): it is DockApp => it !== "separator" && it.id === app)?.icon;
 
   return (
     <motion.div
@@ -83,10 +89,25 @@ export function Dock({ items, hidden = false }: { items: DockItem[]; hidden?: bo
             WebkitMaskImage: RIM_FADE,
           }}
         />
-        {items.map((item, i) =>
-          item === "separator" ? (
+        {items.map((item, i) => (
+          <Fragment key={item === "separator" ? `sep-${i}` : item.id}>
+          {item !== "separator" && item.id === "trash" && (
+            <AnimatePresence initial={false}>
+              {minimized.map((w) => (
+                <MinimizedTile
+                  key={w.id}
+                  thumb={w.thumb}
+                  docked={!!w.docked}
+                  icon={iconOf(w.app.id)}
+                  name={w.app.name}
+                  id={w.id}
+                  onRestore={() => dispatch({ type: "restore", id: w.id })}
+                />
+              ))}
+            </AnimatePresence>
+          )}
+          {item === "separator" ? (
             <li
-              key={`sep-${i}`}
               aria-hidden
               className="self-center bg-black"
               style={{
@@ -98,7 +119,6 @@ export function Dock({ items, hidden = false }: { items: DockItem[]; hidden?: bo
             />
           ) : (
             <li
-              key={item.id}
               data-tile
               data-dock-app={item.id}
               className="relative [--size:68]"
@@ -159,10 +179,87 @@ export function Dock({ items, hidden = false }: { items: DockItem[]; hidden?: bo
                 />
               )}
             </li>
-          ),
-        )}
+          )}
+          </Fragment>
+        ))}
       </ul>
     </motion.div>
+  );
+}
+
+/**
+ * A minimized window in the Dock: a picture of it, its app's icon badged
+ * at the corner. The tile opens up as the window pours in (the genie aims
+ * at it as it grows) and shows the picture once it has landed; clicking it
+ * brings the window back.
+ */
+function MinimizedTile({
+  id,
+  thumb,
+  docked,
+  icon,
+  name,
+  onRestore,
+}: {
+  id: string;
+  thumb?: string;
+  docked: boolean;
+  icon?: string;
+  name: string;
+  onRestore: () => void;
+}) {
+  return (
+    <motion.li
+      data-tile
+      data-dock-window={id}
+      className="relative [--size:68]"
+      initial={{ "--grow": 0 } as never}
+      animate={{ "--grow": 1 } as never}
+      exit={{ "--grow": 0 } as never}
+      transition={{ type: "spring", stiffness: 300, damping: 32 }}
+      style={{
+        width: `calc(${size(TILE)} * var(--grow))`,
+        height: size(TILE),
+        marginInline: `calc(2 * ${U} * var(--grow))`,
+      }}
+    >
+      {/* The contents keep their full size while the tile opens or closes
+          around them (it's the slot that grows, not the picture); leaving,
+          they ease down a touch and fade. */}
+      <motion.button
+        type="button"
+        aria-label={name}
+        title={name}
+        tabIndex={-1}
+        onClick={onRestore}
+        className="absolute top-0 left-1/2 block -translate-x-1/2 cursor-default"
+        style={{ width: size(TILE), height: size(TILE) }}
+        exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.18, ease: "easeOut" } }}
+      >
+        {thumb && (
+          <motion.img
+            src={thumb}
+            alt=""
+            draggable={false}
+            className="absolute inset-[7%] size-[86%] max-w-none object-contain"
+            initial={false}
+            animate={{ opacity: docked ? 1 : 0 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0 }}
+            style={{ filter: "drop-shadow(0 1px 2px rgb(0 0 0 / 0.35))" }}
+          />
+        )}
+        {icon && (
+          <img
+            src={icon}
+            alt=""
+            draggable={false}
+            className="absolute max-w-none"
+            style={{ width: size(30), height: size(30), right: size(2), bottom: size(2), opacity: docked ? 1 : 0 }}
+          />
+        )}
+      </motion.button>
+    </motion.li>
   );
 }
 
@@ -170,7 +267,7 @@ export function Dock({ items, hidden = false }: { items: DockItem[]; hidden?: bo
  * Grows tiles near the pointer along a cosine falloff. Distances use each
  * tile's resting center, so the wave doesn't chase its own layout changes.
  */
-function useMagnification(listRef: React.RefObject<HTMLUListElement | null>) {
+function useMagnification(listRef: React.RefObject<HTMLUListElement | null>, tilesKey: string) {
   useEffect(() => {
     const list = listRef.current;
     if (!list) return;
@@ -254,5 +351,6 @@ function useMagnification(listRef: React.RefObject<HTMLUListElement | null>) {
       list.removeEventListener("pointerleave", onLeave);
       window.removeEventListener("resize", measure);
     };
-  }, [listRef]);
+    // the tiles are collected again whenever minimized windows come and go
+  }, [listRef, tilesKey]);
 }

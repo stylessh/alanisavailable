@@ -3,6 +3,7 @@
 import { AnimatePresence, motion } from "motion/react";
 import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { type AppInfo, DOCK_H, MENU_BAR_H } from "./data";
+import { type Box, Genie, snapshot, thumbnail } from "./genie";
 import { TrafficLights } from "./traffic-lights";
 import { toScreen, useOS, type WindowMode, type WindowState, type WindowStatus } from "./window-manager";
 
@@ -32,6 +33,8 @@ export type MacWindowContext = {
   size: { w: number; h: number };
   mode: WindowMode;
   status: WindowStatus;
+  /** start capturing the window for the genie (the minimize light calls it on hover, so the effect starts without a wait) */
+  prepareMinimize: () => void;
   /** a window that can't zoom or go full screen (its third light is gray) */
   fixedSize: boolean;
   close: () => void;
@@ -132,20 +135,57 @@ export function MacWindow({
     dispatch({ type: "set-mode", id, mode });
   };
 
-  // Minimizing flies the window into its Dock icon.
-  const [dockOffset, setDockOffset] = useState({ x: 0, y: 0 });
-  const minimize = () => {
-    const icon = document.querySelector(`[data-dock-app="${app.id}"]`)?.getBoundingClientRect();
-    const box = ref.current?.getBoundingClientRect();
-    if (icon && box) {
-      const scale = screen?.scale ?? 1;
-      setDockOffset({
-        x: (icon.left + icon.width / 2 - (box.left + box.width / 2)) / scale,
-        y: (icon.top + icon.height / 2 - (box.top + box.height / 2)) / scale,
-      });
-    }
-    dispatch({ type: "minimize", id });
+  // Minimizing pours the window into its Dock icon (the genie), from a
+  // snapshot of it; restoring plays that backwards. The snapshot is taken
+  // as the pointer reaches the minimize light, so the effect starts at once.
+  const pixelRatio = () => (typeof window === "undefined" ? 1 : window.devicePixelRatio) * (screen?.scale ?? 1);
+  const prepared = useRef<{ at: number; shot: Promise<HTMLCanvasElement> } | null>(null);
+  const prepareMinimize = () => {
+    const el = ref.current;
+    if (!el || win.mode === "fullscreen") return;
+    if (prepared.current && performance.now() - prepared.current.at < 1500) return;
+    prepared.current = { at: performance.now(), shot: snapshot(el, pixelRatio()) };
   };
+  /** a box on the page, in screen points */
+  const toPoints = (r: DOMRect): Box | null => {
+    const origin = os.screenRef.current?.getBoundingClientRect();
+    if (!origin) return null;
+    const s = screen?.scale ?? 1;
+    return { x: (r.left - origin.left) / s, y: (r.top - origin.top) / s, w: r.width / s, h: r.height / s };
+  };
+  /** where the picture sits in the window's Dock tile: fitted inside it, as the tile shows it */
+  const tileTarget = (aspect: number) => (): Box | null => {
+    const tile = document.querySelector(`[data-dock-window="${id}"]`)?.getBoundingClientRect();
+    const box = tile && toPoints(tile);
+    if (!box) return null;
+    const room = { w: box.w * 0.86, h: box.h * 0.86 };
+    const w = Math.min(room.w, room.h * aspect);
+    const h = w / aspect;
+    return { x: box.x + (box.w - w) / 2, y: box.y + (box.h - h) / 2, w, h };
+  };
+  const [genie, setGenie] = useState<{ dir: "out" | "in"; source: HTMLCanvasElement; from: Box } | null>(null);
+  // kept for the restore: the last snapshot and where the window was
+  const [shelved, setShelved] = useState<{ source: HTMLCanvasElement; from: Box } | null>(null);
+  const minimize = async () => {
+    const box = ref.current && toPoints(ref.current.getBoundingClientRect());
+    const el = ref.current;
+    if (!box || !el || win.mode === "fullscreen") return dispatch({ type: "minimize", id });
+    const fresh = prepared.current && performance.now() - prepared.current.at < 1500 ? prepared.current.shot : null;
+    prepared.current = null;
+    const source = await (fresh ?? snapshot(el, pixelRatio())).catch(() => null);
+    if (!source) return dispatch({ type: "minimize", id });
+    setGenie({ dir: "out", source, from: box });
+    setShelved({ source, from: box });
+    dispatch({ type: "minimize", id, thumb: thumbnail(source) });
+  };
+  // Back from the Dock: the genie runs in reverse, then the window appears.
+  const [seenStatus, setSeenStatus] = useState(win.status);
+  // the genie ends exactly where the window is, so it appears at once
+  const [reveal, setReveal] = useState(false);
+  if (seenStatus !== win.status) {
+    setSeenStatus(win.status);
+    if (seenStatus === "minimized" && win.status === "open" && shelved) setGenie({ dir: "in", ...shelved });
+  }
 
   const controls: MacWindowContext = {
     id,
@@ -155,7 +195,8 @@ export function MacWindow({
     status: win.status,
     fixedSize,
     close: () => dispatch({ type: "close", id }),
-    minimize,
+    minimize: () => void minimize(),
+    prepareMinimize,
     toggleZoom: () => !fixedSize && setMode(win.mode === "zoomed" ? "normal" : "zoomed"),
     toggleFullscreen: () => !fixedSize && setMode(win.mode === "fullscreen" ? "normal" : "fullscreen"),
   };
@@ -243,15 +284,17 @@ export function MacWindow({
   // are hidden once their exit animation ends.
   const [hidden, setHidden] = useState(closed);
   const away = win.status !== "open";
+  // While the genie plays (and once minimized) the real window is hidden;
+  // the genie draws it. Without a snapshot, it shrinks into the Dock.
   const animate =
-    win.status === "minimized"
-      ? { x: dockOffset.x, y: dockOffset.y, scale: 0.06, opacity: 0 }
+    genie || win.status === "minimized"
+      ? { x: 0, y: genie || shelved ? 0 : 300, scale: genie || shelved ? 1 : 0.06, opacity: 0 }
       : win.status === "closed"
         ? { x: 0, y: 0, scale: 0.96, opacity: 0 }
         : { x: 0, y: 0, scale: 1, opacity: 1 };
   const transition =
-    win.status === "minimized"
-      ? { duration: 0.42, ease: [0.55, 0, 0.75, 0.1] as const }
+    genie || reveal || win.status === "minimized"
+      ? { duration: genie || reveal || shelved ? 0 : 0.42, ease: [0.55, 0, 0.75, 0.1] as const }
       : win.status === "closed"
         ? { duration: 0.16, ease: "easeOut" as const }
         : { type: "spring" as const, stiffness: 420, damping: 34 };
@@ -268,7 +311,10 @@ export function MacWindow({
         animate={animate}
         transition={transition}
         onAnimationStart={() => !away && setHidden(false)}
-        onAnimationComplete={() => setHidden(away)}
+        onAnimationComplete={() => {
+          setHidden(away);
+          setReveal(false);
+        }}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onDoubleClick={onDoubleClick}
@@ -321,6 +367,21 @@ export function MacWindow({
           )}
         </AnimatePresence>
       </motion.div>
+      {genie && screen && (
+        <Genie
+          source={genie.source}
+          from={genie.from}
+          dir={genie.dir}
+          target={tileTarget(genie.from.w / genie.from.h)}
+          screen={screen}
+          pixelRatio={pixelRatio()}
+          onDone={() => {
+            if (genie.dir === "in") setReveal(true);
+            else dispatch({ type: "docked", id });
+            setGenie(null);
+          }}
+        />
+      )}
     </WindowContext.Provider>
   );
 }
