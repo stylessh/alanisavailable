@@ -118,7 +118,7 @@ function ControlButton({
           clearTimeout(timer.current);
           setTip(false);
         }}
-        className="flex size-6 items-center justify-center rounded-md hover:bg-white/5"
+        className="flex size-6 items-center justify-center rounded-md hover:bg-(--cc-button-hover)"
         style={{ color: dim ? "var(--cc-text-muted)" : "var(--cc-text)" }}
       >
         <Icon name={icon} size={16} />

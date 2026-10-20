@@ -49,7 +49,7 @@ function TreeRows({
           aria-selected={path === selected}
           onClick={() => (isDir ? toggle(path) : onOpen(path, false))}
           onDoubleClick={() => !isDir && onOpen(path, true)}
-          className="mx-[5px] flex h-[24px] cursor-default items-center gap-[6px] rounded-[6px] hover:bg-white/[0.04]"
+          className="mx-[5px] flex h-[24px] cursor-default items-center gap-[6px] rounded-[6px] hover:bg-(--cc-button-hover)"
           style={{ paddingLeft: 12 + depth * INDENT, background: path === selected ? "var(--cc-tree-selected)" : undefined, color: "var(--cc-text)" }}
         >
           {isDir ? (

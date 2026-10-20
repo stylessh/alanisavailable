@@ -4,8 +4,16 @@ import type { ReactNode } from "react";
 // colors command names and pipes violet and quoted strings green over gray
 // arguments (sampled from the recording); diffs get a TSX palette.
 
-const BASH = { command: "#9360ff", string: "#59c369", text: "#a4a4a4" };
-const TSX = { keyword: "#c792ea", string: "#98c379", tag: "#f07178", fn: "#82aaff", comment: "#7f848e", number: "#f78c6c", text: "#c9c9c4" };
+const BASH = { command: "var(--cc-sh-command)", string: "var(--cc-sh-string)", text: "var(--cc-sh-text)" };
+const TSX = {
+  keyword: "var(--cc-syn-keyword)",
+  string: "var(--cc-syn-string)",
+  tag: "var(--cc-syn-tag)",
+  fn: "var(--cc-syn-fn)",
+  comment: "var(--cc-syn-comment)",
+  number: "var(--cc-syn-number)",
+  text: "var(--cc-syn-plain)",
+};
 
 function tokens(src: string, rules: [RegExp, string | ((m: string) => string)][], fallback: string): ReactNode[] {
   const out: ReactNode[] = [];

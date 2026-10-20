@@ -6,15 +6,15 @@ import type { CSSProperties, ReactNode } from "react";
 export const CODE_LINE = 17;
 
 const COLORS = {
-  tag: "#f07854",
-  attr: "#54c060",
-  string: "#54c090",
-  keyword: "#cc6be4",
-  number: "#f05478",
-  property: "#fc9048",
-  comment: "#6b6b6b",
-  punct: "#8a8a8a",
-  plain: "#e5e5e5",
+  tag: "var(--cc-syn-tag)",
+  attr: "var(--cc-syn-attr)",
+  string: "var(--cc-syn-string)",
+  keyword: "var(--cc-syn-keyword)",
+  number: "var(--cc-syn-number)",
+  property: "var(--cc-syn-property)",
+  comment: "var(--cc-syn-comment)",
+  punct: "var(--cc-syn-punct)",
+  plain: "var(--cc-syn-plain)",
 } as const;
 
 type Kind = keyof typeof COLORS;
@@ -90,13 +90,13 @@ export function CodeLine({
   const indent = text.match(/^ */)?.[0].length ?? 0;
   return (
     <div className="relative flex whitespace-pre" style={{ minHeight: CODE_LINE, lineHeight: `${CODE_LINE}px`, ...style }}>
-      <span className="flex-none pr-[12px] text-right select-none" style={{ width: gutter, color: "#6e6e6e" }}>
+      <span className="flex-none pr-[12px] text-right select-none" style={{ width: gutter, color: "var(--cc-gutter)" }}>
         {n}
       </span>
       {marker}
       <span className={`relative min-w-0 flex-1 ${wrap ? "whitespace-pre-wrap" : "whitespace-pre"}`} style={{ color: COLORS.plain }}>
         {Array.from({ length: Math.floor(indent / 2) }, (_, i) => (
-          <span key={i} aria-hidden className="absolute inset-y-0 w-px" style={{ left: `${i * 2}ch`, background: "#262626" }} />
+          <span key={i} aria-hidden className="absolute inset-y-0 w-px" style={{ left: `${i * 2}ch`, background: "var(--cc-indent-guide)" }} />
         ))}
         {highlight(text)}
       </span>

@@ -40,7 +40,7 @@ export function BarButton({
       aria-label={label}
       aria-pressed={active}
       onClick={onClick}
-      className="flex size-[24px] flex-none items-center justify-center rounded-[6px] hover:bg-white/5"
+      className="flex size-[24px] flex-none items-center justify-center rounded-[6px] hover:bg-(--cc-button-hover)"
       style={{
         background: active ? (tone === "blue" ? "var(--cc-active-bg)" : "var(--cc-chip-hover)") : undefined,
         color: active && tone === "blue" ? "var(--cc-active)" : "var(--cc-icon)",
@@ -107,7 +107,7 @@ export function PanelTab({
       role="tab"
       aria-selected={active}
       onClick={onSelect}
-      className="group flex h-[24px] flex-none cursor-default items-center gap-[6px] rounded-[6px] pr-[5px] pl-[9px] hover:bg-white/5"
+      className="group flex h-[24px] flex-none cursor-default items-center gap-[6px] rounded-[6px] pr-[5px] pl-[9px] hover:bg-(--cc-button-hover)"
       style={{ background: active ? "var(--cc-tab)" : undefined, color: active ? "var(--cc-text-strong)" : "var(--cc-text-muted)" }}
     >
       {icon}
@@ -120,7 +120,7 @@ export function PanelTab({
             e.stopPropagation();
             onClose();
           }}
-          className={`flex size-[16px] items-center justify-center rounded-[4px] hover:bg-white/10 ${active ? "" : "opacity-60"}`}
+          className={`flex size-[16px] items-center justify-center rounded-[4px] hover:bg-(--cc-button-hover) ${active ? "" : "opacity-60"}`}
         >
           <Icon name="close" size={10} />
         </button>

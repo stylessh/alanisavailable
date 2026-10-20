@@ -65,7 +65,7 @@ export function BrowserPanel({ expanded, onExpand, onClose }: { expanded: boolea
           </div>
           <BarButton icon="pointer" label="Pick an element" />
         </div>
-        <div className="relative min-h-0 flex-1 overflow-hidden" style={{ background: "#0a0a0a", borderTop: "1px solid var(--cc-rule)" }}>
+        <div className="relative min-h-0 flex-1 overflow-hidden" style={{ background: "var(--cc-code-pane)", borderTop: "1px solid var(--cc-rule)" }}>
           <iframe key={reloads} title={BROWSER.title} src={BROWSER.src} className="absolute inset-0 size-full border-0" />
           {toolbar && (
             <div
@@ -81,7 +81,7 @@ export function BrowserPanel({ expanded, onExpand, onClose }: { expanded: boolea
                 type="button"
                 aria-label="Hide toolbar"
                 onClick={() => setToolbar(false)}
-                className="flex size-[24px] items-center justify-center rounded-[6px] hover:bg-white/5"
+                className="flex size-[24px] items-center justify-center rounded-[6px] hover:bg-(--cc-button-hover)"
               >
                 <Icon name="close" size={13} />
               </button>

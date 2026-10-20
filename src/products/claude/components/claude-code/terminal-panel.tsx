@@ -115,10 +115,10 @@ export function TerminalPanel({ expanded, onExpand, onClose }: { expanded: boole
 
   const cursorStyle =
     cursor === "Block"
-      ? { width: "0.6em", height: 15, background: "#d4d4d4" }
+      ? { width: "0.6em", height: 15, background: "var(--cc-terminal-text)" }
       : cursor === "Underline"
-        ? { width: "0.6em", height: 2, marginTop: 13, background: "#d4d4d4" }
-        : { width: 1.5, height: 15, background: "#d4d4d4" };
+        ? { width: "0.6em", height: 2, marginTop: 13, background: "var(--cc-terminal-text)" }
+        : { width: 1.5, height: 15, background: "var(--cc-terminal-text)" };
 
   return (
     <PanelFrame
@@ -153,7 +153,7 @@ export function TerminalPanel({ expanded, onExpand, onClose }: { expanded: boole
       <div
         ref={screen}
         className="absolute inset-0 overflow-y-auto px-[9px] pt-[6.5px] pb-[9px] text-[12px] leading-[17px]"
-        style={{ fontFamily: "var(--cc-mono)", color: "#d4d4d4", scrollbarWidth: "none" }}
+        style={{ fontFamily: "var(--cc-mono)", color: "var(--cc-terminal-text)", scrollbarWidth: "none" }}
         onClick={() => field.current?.focus()}
       >
         {term.lines.map((l, i) => (

@@ -38,7 +38,7 @@ function HeaderButton({
       aria-label={label}
       aria-pressed={active}
       onClick={onClick}
-      className="flex size-[30px] items-center justify-center rounded-md hover:bg-white/5"
+      className="flex size-[30px] items-center justify-center rounded-md hover:bg-(--cc-button-hover)"
       style={{ background: active ? (blue ? "var(--cc-active-bg)" : "var(--cc-chip-hover)") : undefined }}
     >
       <Icon name={icon} size={size} style={{ color: blue ? "var(--cc-active)" : active ? "var(--cc-text-strong)" : "var(--cc-icon)" }} />
@@ -97,7 +97,7 @@ export function Header({
               aria-label="Session options"
               aria-expanded={open}
               onClick={toggle}
-              className="flex size-[20px] items-center justify-center rounded-[5px] hover:bg-white/5"
+              className="flex size-[20px] items-center justify-center rounded-[5px] hover:bg-(--cc-button-hover)"
               style={{ background: open ? "var(--cc-chip-hover)" : undefined }}
             >
               <Icon name="chevronDown" size={14} style={{ color: "var(--cc-text)" }} />

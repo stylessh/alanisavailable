@@ -180,7 +180,7 @@ function TaskStatus({ status }: { status: Task["status"] }) {
     <span
       aria-hidden
       className="mt-[4px] size-[12px] flex-none rounded-full"
-      style={status === "pending" ? { border: "1px dashed var(--cc-text-muted)" } : { border: "1.5px solid #3a3a39" }}
+      style={status === "pending" ? { border: "1px dashed var(--cc-text-muted)" } : { border: "1.5px solid var(--cc-task-ring)" }}
     />
   );
 }

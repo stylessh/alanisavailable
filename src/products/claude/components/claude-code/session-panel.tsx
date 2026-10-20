@@ -121,7 +121,7 @@ export function SessionPanel() {
           detail={
             <span className="flex items-center gap-[8px]" style={{ color: "var(--cc-text-muted)" }}>
               {Math.round(d.context * 100)}%
-              <span className="relative h-[8px] w-[22px] overflow-hidden rounded-full" style={{ background: "#2e2e2e" }}>
+              <span className="relative h-[8px] w-[22px] overflow-hidden rounded-full" style={{ background: "var(--cc-meter-track)" }}>
                 <span
                   className="absolute inset-y-0 left-0 rounded-full"
                   style={{

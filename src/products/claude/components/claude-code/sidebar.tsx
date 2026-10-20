@@ -248,7 +248,7 @@ function SidebarBody({ width, floating }: { width: number; floating?: boolean })
       className="relative flex h-full flex-none flex-col tracking-[-0.01em]"
       style={
         floating
-          ? { width, background: "var(--cc-sidebar-floating)", boxShadow: "1px 0 0 var(--cc-sidebar-floating-edge), 4px 0 18px rgb(0 0 0 / 0.45)" }
+          ? { width, background: "var(--cc-sidebar-floating)", boxShadow: "1px 0 0 var(--cc-sidebar-floating-edge), var(--cc-sidebar-floating-shadow)" }
           : { width, background: "var(--cc-sidebar)", borderRight: "0.5px solid var(--cc-divider)" }
       }
     >

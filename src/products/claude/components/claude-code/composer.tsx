@@ -14,13 +14,13 @@ function ContextMeter({ used }: { used: number }) {
   const c = 2 * Math.PI * r;
   return (
     <svg aria-hidden viewBox="0 0 14 14" className="size-[14px]">
-      <circle cx={7} cy={7} r={r} fill="none" stroke="#444444" strokeWidth={2} />
+      <circle cx={7} cy={7} r={r} fill="none" stroke="var(--cc-ring-track)" strokeWidth={2} />
       <circle
         cx={7}
         cy={7}
         r={r}
         fill="none"
-        stroke="#4177cf"
+        stroke="var(--cc-ring)"
         strokeWidth={2}
         strokeLinecap="round"
         strokeDasharray={`${used * c} ${c}`}
@@ -144,9 +144,9 @@ export function Composer() {
               aria-label="Attach"
               aria-expanded={open}
               onClick={toggle}
-              className="flex size-6 items-center justify-center rounded-md hover:bg-white/5"
+              className="flex size-6 items-center justify-center rounded-md hover:bg-(--cc-button-hover)"
               style={{
-                background: open ? "rgb(255 255 255 / 0.05)" : undefined,
+                background: open ? "var(--cc-button-hover)" : undefined,
               }}
             >
               <Icon name="plus" size={18} style={{ color: "var(--cc-icon)" }} />
@@ -181,16 +181,21 @@ export function Composer() {
           }}
         />
         {suggest && <Suggestions kind={suggest.kind} items={suggest.items} active={active} onPick={pick} />}
-        <button type="button" aria-label="Stop" className="absolute flex size-6 items-center justify-center rounded-md hover:bg-white/5" style={{ right: 46 }}>
-          <Icon name="stop" size={18.5} style={{ color: "#dfdeda" }} />
+        <button
+          type="button"
+          aria-label="Stop"
+          className="absolute flex size-6 items-center justify-center rounded-md hover:bg-(--cc-button-hover)"
+          style={{ right: 46 }}
+        >
+          <Icon name="stop" size={18.5} style={{ color: "var(--cc-composer-icon)" }} />
         </button>
         <button
           type="button"
           aria-label="Dictate"
-          className="absolute flex size-6 items-center justify-center rounded-md hover:bg-white/5"
+          className="absolute flex size-6 items-center justify-center rounded-md hover:bg-(--cc-button-hover)"
           style={{ right: 10 }}
         >
-          <Icon name="microphone" size={17} style={{ color: "#dfdeda" }} />
+          <Icon name="microphone" size={17} style={{ color: "var(--cc-composer-icon)" }} />
         </button>
       </div>
       <div className="relative mt-[12.5px] flex h-[20px] items-center text-[13px]" style={{ color: "var(--cc-text)" }}>

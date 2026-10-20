@@ -363,7 +363,10 @@ function Meter({ label, detail, value, accent, barGap = 2.5 }: { label: ReactNod
           {detail}
         </span>
       </div>
-      <div className="h-[4px] overflow-hidden rounded-full" style={{ marginTop: barGap, background: accent ? "#152a4d" : "#2e2e2e" }}>
+      <div
+        className="h-[4px] overflow-hidden rounded-full"
+        style={{ marginTop: barGap, background: accent ? "var(--cc-meter-track-accent)" : "var(--cc-meter-track)" }}
+      >
         <div className="h-full rounded-full" style={{ width: `${value * 100}%`, background: "var(--cc-toggle-on)" }} />
       </div>
     </div>

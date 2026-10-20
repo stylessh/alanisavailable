@@ -99,7 +99,11 @@ export function DiffPanel({ expanded, onExpand, onClose }: { expanded: boolean; 
       onClose={onClose}
       background="var(--cc-code-pane)"
       title={
-        <button type="button" className="flex items-center gap-[6px] rounded-[6px] px-[12px] hover:bg-white/5" style={{ height: 24, color: "var(--cc-text)" }}>
+        <button
+          type="button"
+          className="flex items-center gap-[6px] rounded-[6px] px-[12px] hover:bg-(--cc-button-hover)"
+          style={{ height: 24, color: "var(--cc-text)" }}
+        >
           {BRANCH.base}
           <Icon name="arrowRight" size={11} style={{ color: "var(--cc-text-muted)" }} />
           {BRANCH.head}
@@ -127,7 +131,7 @@ export function DiffPanel({ expanded, onExpand, onClose }: { expanded: boolean; 
             style={{ width: `${LIST_SHARE * 100}%`, borderLeft: "1px solid var(--cc-rule)", scrollbarWidth: "none" }}
           >
             {DIFF.map((f) => (
-              <li key={f.dir + f.name} className="flex h-[24px] cursor-default items-center gap-[6px] pr-[13px] pl-[17px] hover:bg-white/[0.04]">
+              <li key={f.dir + f.name} className="flex h-[24px] cursor-default items-center gap-[6px] pr-[13px] pl-[17px] hover:bg-(--cc-button-hover)">
                 <FileMark name={f.name} />
                 <span className="flex-none" style={{ color: "var(--cc-text-strong)" }}>
                   {f.name}

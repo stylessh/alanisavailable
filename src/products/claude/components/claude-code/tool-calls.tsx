@@ -39,7 +39,7 @@ function CopyButton({ text }: { text: string }) {
     <button
       type="button"
       aria-label="Copy"
-      className="flex size-[22px] flex-none items-center justify-center rounded-[5px] hover:bg-white/5"
+      className="flex size-[22px] flex-none items-center justify-center rounded-[5px] hover:bg-(--cc-button-hover)"
       style={{ color: "var(--cc-text-muted)" }}
       onClick={(e) => {
         e.stopPropagation();
@@ -69,7 +69,10 @@ export function BashCard({ command, output }: { command: string; output: string 
         <CopyButton text={command} />
       </div>
       {output && (
-        <pre className="max-h-[260px] overflow-auto px-[12px] py-[10px] whitespace-pre-wrap" style={{ ...MONO, color: "#bbbab4", scrollbarWidth: "thin" }}>
+        <pre
+          className="max-h-[260px] overflow-auto px-[12px] py-[10px] whitespace-pre-wrap"
+          style={{ ...MONO, color: "var(--cc-bash-output)", scrollbarWidth: "thin" }}
+        >
           {output}
         </pre>
       )}
