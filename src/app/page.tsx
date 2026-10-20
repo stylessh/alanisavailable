@@ -13,9 +13,8 @@ export default async function Home() {
       <header className="mb-12 space-y-8">
         <AvailableFor />
         <p className="text-normal max-w-md text-pretty">
-          I&apos;m looking for my next role, so I&apos;m rebuilding my favorite
-          products to show how I work, then trying to make them a little
-          better.
+          This is how I market myself, and a look at my process: replicating
+          some of my favorite products and brands, then improving on them.
         </p>
       </header>
 
