@@ -211,7 +211,8 @@ function Lightbox({ viewing, onChange, onClose }: { viewing: Viewing; onChange: 
           height: h,
           borderRadius: radius,
           visibility: ready ? "visible" : "hidden",
-          boxShadow: "0 0 0 1px var(--cc-card-rim), 0 20px 50px rgb(0 0 0 / 0.5)",
+          // the backdrop is black in both appearances, so the rim is a faint light line in both
+          boxShadow: "0 0 0 1px rgb(255 255 255 / 0.08), 0 20px 50px rgb(0 0 0 / 0.5)",
         }}
         onClick={(e) => e.stopPropagation()}
       >

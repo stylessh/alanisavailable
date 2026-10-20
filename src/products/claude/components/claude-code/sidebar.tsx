@@ -336,7 +336,7 @@ function SidebarBody({ width, floating, fill }: { width: number; floating?: bool
       <div className="flex-none" style={{ borderTop: "0.5px solid var(--cc-divider)" }}>
         <button
           type="button"
-          className="relative mx-[8px] mt-[9.5px] flex h-[28px] w-[268.5px] items-center rounded-[8px] text-[13px] font-medium tracking-normal"
+          className="relative mx-[8px] mt-[9.5px] flex h-[28px] w-[calc(100%-16.5px)] items-center rounded-[8px] text-[13px] font-medium tracking-normal"
           style={{
             background: "var(--cc-raised)",
             color: "var(--cc-text-strong)",
