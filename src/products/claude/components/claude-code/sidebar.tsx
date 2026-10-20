@@ -1,6 +1,7 @@
 "use client";
 
-import { AnimatePresence, motion } from "motion/react";
+import { animate, AnimatePresence, motion, useMotionValue, useMotionValueEvent } from "motion/react";
+import { useEffect, useRef } from "react";
 import { DRAG_REGION } from "@/os/macos";
 import { ACCOUNT, ACTIVE_SESSION, GROUPS, PINNED, type Session } from "./content";
 import { Icon, type IconName } from "./icon";
@@ -213,27 +214,40 @@ function SessionRow({ session, depth = 0, first, last }: { session: Session; dep
 
 /** The Code tab's sidebar: window controls, search, navigation, pinned and grouped sessions, and the account. */
 export function Sidebar() {
-  const { shown, peeking, hover } = useSidebar();
+  const { shown, peeking, hover, docking, docked } = useSidebar();
+  // The docked width, live: it animates open and closed, and the window
+  // publishes it as --cc-dock-w so the session's title can ride along with it.
+  const dock = useRef<HTMLDivElement>(null);
+  const width = useMotionValue(shown ? SIDEBAR_W : 0);
+  useMotionValueEvent(width, "change", (w) => dock.current?.closest<HTMLElement>(".cc-window")?.style.setProperty("--cc-dock-w", `${w}px`));
+  useEffect(() => {
+    const a = animate(width, shown ? SIDEBAR_W : 0, SLIDE);
+    a.then(() => shown && docked());
+    return () => a.stop();
+  }, [shown, width, docked]);
   return (
     <>
       {/* docked: shown, it takes its width from the session; hidden, that width animates away */}
-      <motion.div className="h-full flex-none overflow-hidden" inert={!shown} initial={false} animate={{ width: shown ? SIDEBAR_W : 0 }} transition={SLIDE}>
+      <motion.div ref={dock} className="h-full flex-none overflow-hidden" inert={!shown} style={{ width }}>
         <SidebarBody width={SIDEBAR_W} />
       </motion.div>
-      {/* floating: it appears in place over the session (a quick fade, no slide); nothing moves */}
+      {/* floating: it appears in place over the session (a quick fade, no slide); nothing moves.
+          Docked from here, it stays put and settles into the docked width and colors, in step
+          with the session sliding over, then leaves at once: the docked sidebar under it matches. */}
       <AnimatePresence>
-        {peeking && (
+        {(peeking || docking) && (
           <motion.div
             key="floating"
-            className="absolute inset-y-0 left-0 z-30"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.12, ease: "easeOut" }}
+            className="absolute inset-y-0 left-0 z-30 overflow-hidden transition-shadow duration-300 ease-out"
+            style={{ boxShadow: docking ? "none" : "var(--cc-sidebar-floating-shadow)" }}
+            initial={{ opacity: 0, width: FLOATING_W }}
+            animate={{ opacity: 1, width: docking ? SIDEBAR_W : FLOATING_W }}
+            exit={docking ? { opacity: 1, transition: { duration: 0 } } : { opacity: 0 }}
+            transition={{ opacity: { duration: 0.12, ease: "easeOut" }, width: SLIDE }}
             onPointerEnter={() => hover(true)}
             onPointerLeave={() => hover(false)}
           >
-            <SidebarBody width={FLOATING_W} floating />
+            <SidebarBody width={SIDEBAR_W} floating={!docking} fill />
           </motion.div>
         )}
       </AnimatePresence>
@@ -242,15 +256,17 @@ export function Sidebar() {
 }
 
 /** Everything in the sidebar, at a fixed width (the docked one clips it while it animates closed). */
-function SidebarBody({ width, floating }: { width: number; floating?: boolean }) {
+function SidebarBody({ width, floating, fill }: { width: number; floating?: boolean; fill?: boolean }) {
   return (
     <aside
-      className="relative flex h-full flex-none flex-col tracking-[-0.01em]"
-      style={
-        floating
-          ? { width, background: "var(--cc-sidebar-floating)", boxShadow: "1px 0 0 var(--cc-sidebar-floating-edge), var(--cc-sidebar-floating-shadow)" }
-          : { width, background: "var(--cc-sidebar)", borderRight: "0.5px solid var(--cc-divider)" }
-      }
+      // `fill`: it takes its container's width (the floating one, whose width animates), down to the narrower floating width
+      className="relative flex h-full flex-none flex-col tracking-[-0.01em] transition-[background-color,box-shadow] duration-300 ease-out"
+      style={{
+        width: fill ? "100%" : width,
+        // the edge is an inset line, so it stays visible inside a clipping container
+        background: floating ? "var(--cc-sidebar-floating)" : "var(--cc-sidebar)",
+        boxShadow: floating ? "inset -1px 0 0 var(--cc-sidebar-floating-edge)" : "inset -0.5px 0 0 var(--cc-divider)",
+      }}
     >
       <div {...DRAG_REGION} className="relative h-12 flex-none">
         {/* floating, the window's own controls stay on top of it (one set, they don't move); docked, the sidebar carries them */}

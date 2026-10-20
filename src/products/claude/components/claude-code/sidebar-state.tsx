@@ -28,6 +28,15 @@ type SidebarState = {
   peeking: boolean;
   /** the pointer entered or left the toggle or the floating sidebar */
   hover: (inside: boolean) => void;
+  /**
+   * The floating sidebar is becoming the docked one (the toggle was pressed
+   * while it was open): it stays on screen and settles into the docked
+   * sidebar's width and colors while the session slides over, then gives
+   * way to the docked sidebar, which by then looks the same.
+   */
+  docking: boolean;
+  /** the docked sidebar has finished opening */
+  docked: () => void;
 };
 
 const Ctx = createContext<SidebarState | null>(null);
@@ -41,13 +50,17 @@ export function useSidebar() {
 export function SidebarProvider({ children }: { children: ReactNode }) {
   const [shown, setShown] = useState(true);
   const [peeking, setPeeking] = useState(false);
+  const [docking, setDocking] = useState(false);
   const leave = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const toggle = useCallback(() => {
     clearTimeout(leave.current);
+    // opening while it floats: the floating sidebar anchors in place
+    setDocking(!shown && peeking);
     setPeeking(false);
     setShown((s) => !s);
-  }, []);
+  }, [shown, peeking]);
+  const docked = useCallback(() => setDocking(false), []);
 
   const hover = useCallback(
     (inside: boolean) => {
@@ -71,7 +84,7 @@ export function SidebarProvider({ children }: { children: ReactNode }) {
   }, [toggle]);
   useEffect(() => () => clearTimeout(leave.current), []);
 
-  const value = useMemo(() => ({ shown, toggle, peeking: peeking && !shown, hover }), [shown, toggle, peeking, hover]);
+  const value = useMemo(() => ({ shown, toggle, peeking: peeking && !shown, hover, docking, docked }), [shown, toggle, peeking, hover, docking, docked]);
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 

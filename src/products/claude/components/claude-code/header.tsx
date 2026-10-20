@@ -65,7 +65,9 @@ export function Header({
   // with the sidebar hidden, the title clears the window controls (full screen: 100pt, else 174)
   const { shown } = useSidebar();
   const { end } = useControlsInset();
-  const titleLeft = shown ? 16.5 : end + 18;
+  // it stays clear of the window controls while the sidebar opens or closes: in the
+  // window it sits at max(sidebar + 16.5, controls + 18), so it rides along with the sidebar's width
+  const titleLeft = `max(16.5px, ${end + 18}px - var(--cc-dock-w, ${shown ? 285 : 0}px))`;
   return (
     <div {...DRAG_REGION} className="absolute inset-x-0 top-0 z-10" style={{ height: HEADER_H + FADE_H }}>
       <div
@@ -77,7 +79,7 @@ export function Header({
       />
       {/* the title gives way (truncates) before it reaches the icons */}
       <div
-        className="absolute flex items-center gap-[5px] text-[13px] transition-[left] duration-300 ease-[cubic-bezier(0.2,0.8,0.2,1)]"
+        className="absolute flex items-center gap-[5px] text-[13px]"
         style={{
           left: titleLeft,
           right: `calc(${iconsRight} + ${ICONS_W + 8}px)`,
