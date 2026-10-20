@@ -1,0 +1,249 @@
+/* Claude style guide. Every value is measured from a 2x capture of the
+   Claude desktop app's Code tab (window 1332 × 814pt, macOS 27, dark
+   appearance); see components/claude-code for where each is used. Only the
+   dark appearance has a reference so far, so the window stays dark whatever
+   the desktop's appearance. Claude's neutrals are warm: text and the
+   composer lean yellow, the window's own fills are pure grays. */
+
+.claude {
+  --cc-sans: var(--font-claude-sans), ui-sans-serif, system-ui, sans-serif;
+  --cc-mono: var(--font-claude-mono), ui-monospace, monospace;
+
+  /* Surfaces */
+  --cc-sidebar: #111111;
+  /* the sidebar floating over the session while hidden: lighter, with a
+     1px edge and a short shadow to its right (full-screen capture) */
+  --cc-sidebar-floating: #1f1f1f;
+  --cc-sidebar-floating-edge: #323232;
+  --cc-main: #151515;
+  /* the sidebar's right edge and the line above its footer: 1 device px */
+  --cc-divider: #292929;
+  /* Search field and the Chat / Code switch's track */
+  --cc-field: #1d1d1d;
+  --cc-field-border: #343434;
+  /* the Chat / Code switch's selected tile */
+  --cc-tile: #343434;
+  --cc-tile-border: #484848;
+  /* the open session's row, "Relaunch to update" */
+  --cc-row-active: #232323;
+  /* rows and icon buttons under the pointer: no reference yet, a step
+     between the sidebar and the open session's row */
+  --cc-row-hover: #1b1b1b;
+  --cc-raised: #232323;
+  --cc-bubble: #212121;
+  --cc-composer: #20201f;
+  --cc-composer-border: #363635;
+  --cc-card-border: #2c2c2b;
+
+  /* Text. Calibrated against the reference's glyph cores; one gray serves
+     everything secondary (search, placeholder, section labels, effort). */
+  --cc-text: #bebdb2;
+  --cc-text-strong: #ebeae6;
+  --cc-text-muted: #868580;
+  /* panel and composer icons render a touch brighter than labels */
+  --cc-icon: #cbcac0;
+  --cc-code: #e57373;
+  --cc-code-bg: #1f1f1e;
+  --cc-code-border: #2e2e2d;
+  /* Claude's clay: the working spinner */
+  --cc-clay: #e87e5c;
+
+  /* Session status dots and the worktree branch mark */
+  --cc-dot-working: #6a6965;
+  --cc-dot-waiting: #f4ae1a;
+  --cc-dot-done: #2976d1;
+  --cc-branch: #a084de;
+  /* the line joining a session to the sessions it started */
+  --cc-tree: #404040;
+
+  /* Menus and popovers (from the screen recording) */
+  --cc-menu: #1d1d1d;
+  --cc-menu-rim: #2f2f2f;
+  --cc-menu-row: #2b2b2b;
+  --cc-menu-rule: #303030;
+  --cc-menu-text: #ebebeb;
+  --cc-check: #3b82f6;
+  --cc-toggle-on: #246dd1;
+  --cc-toggle-off: #3a3a3a;
+  --cc-tag: #2c2c2c;
+  --cc-warning: #f0a33a;
+  --cc-warning-bg: #3a2a12;
+  --cc-accent: #4c8ff0;
+  --cc-accent-bg: #16294a;
+  --cc-ultracode: #a78bfa;
+  --cc-danger: #f0605a;
+  --cc-chip-hover: #2a2a2a;
+  /* the session panel's cards */
+  --cc-card: #151515;
+  --cc-card-rim: #282828;
+  --cc-added: #4ade80;
+  --cc-removed: #f05a5a;
+
+  /* The transcript's tool calls and links (from the second recording) */
+  --cc-code-band: #0a0a0a;
+  --cc-diff-add: #1a2918;
+  --cc-diff-del: #311719;
+  --cc-added-bg: #1b331e;
+  --cc-removed-bg: #3c1a1f;
+  --cc-text-faint: #6b6b66;
+  --cc-link: #5e9ff0;
+  --cc-session-link: #5682bf;
+  --cc-session-link-bg: #161a20;
+
+  /* The header's side panels (Terminal, Diff, Browser, Files) */
+  --cc-panel: #171717;
+  --cc-panel-rim: #262626;
+  --cc-terminal: #171717;
+  --cc-code-pane: #0b0b0b;
+  --cc-tab: #323232;
+  --cc-rule: #1f1f1f;
+  --cc-active: #4c8ff0;
+  --cc-active-bg: #0b2340;
+  --cc-diff-head: #0b0b0b;
+  --cc-diff-add: #1a2918;
+  --cc-diff-add-rule: #2cd143;
+  --cc-diff-del: #2e1717;
+  --cc-tree-selected: #1f1f1f;
+
+  /* The window's edge and shadow, fitted to the alpha of a macOS capture of
+     the real window with its shadow (window-shadow.png): a 0.5pt black
+     outline at 93%, then a shadow cast downward that reaches about 16pt
+     above the window, 28pt beside it and 34pt below. Two Gaussian layers
+     reproduce its falloff on every side to within 0.02 alpha. */
+  --cc-window-shadow:
+    0 0 0 0.5px rgb(0 0 0 / 0.93),
+    0 19.5px 44.5px -7px rgb(0 0 0 / 0.59),
+    0 15.5px 36.5px 1px rgb(0 0 0 / 0.33);
+  /* inside the outline, a 1pt light rim all the way round: white at 10%
+     (41 over the sidebar's #111, 44 over the main pane's #151515) */
+  --cc-window-rim: inset 0 0 0 1px rgb(255 255 255 / 0.1);
+}
+
+.claude .cc-window {
+  /* Electron's window corners are plain circular arcs, not the continuous
+     curve native windows use: the reference's corner profile fits r 16.5pt */
+  corner-shape: round;
+  font-family: var(--cc-sans);
+  color: var(--cc-text);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* A menu or popover's surface: its rim and a soft drop shadow */
+.claude .cc-surface {
+  background: var(--cc-menu);
+  box-shadow:
+    inset 0 0 0 1px var(--cc-menu-rim),
+    0 8px 24px rgb(0 0 0 / 0.35),
+    0 2px 6px rgb(0 0 0 / 0.25);
+}
+.claude .cc-menu-row:hover,
+.claude .cc-menu-row[data-open] {
+  background: var(--cc-menu-row);
+}
+
+/* Anthropicons: every glyph sits in a 1em square (ascent 1em, no descent) */
+.claude .cc-icon {
+  display: inline-block;
+  flex: none;
+  width: 1em;
+  height: 1em;
+  font-family: var(--font-claude-icons);
+  font-style: normal;
+  font-weight: 400;
+  line-height: 1;
+  font-optical-sizing: auto;
+  speak: never;
+}
+
+/* The working label: a bright band sweeps across muted text */
+@keyframes cc-shimmer {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: 0 0;
+  }
+}
+.claude .cc-shimmer {
+  background: linear-gradient(
+      90deg,
+      var(--cc-text-muted) 40%,
+      var(--cc-text-strong) 50%,
+      var(--cc-text-muted) 60%
+    )
+    0 0 / 300% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: cc-shimmer 2.4s linear infinite;
+}
+
+/* The terminal's block cursor */
+@keyframes cc-cursor-blink {
+  0%,
+  49% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+.claude .cc-cursor-blink {
+  animation: cc-cursor-blink 1.06s step-end infinite;
+}
+
+/* A block streaming in ends in a soft caret: a short bar that pulses */
+@keyframes cc-caret {
+  0%,
+  100% {
+    opacity: 0.2;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
+.claude .cc-caret {
+  display: inline-block;
+  width: 7px;
+  height: 14px;
+  margin-left: 2px;
+  vertical-align: -2px;
+  border-radius: 2px;
+  background: var(--cc-text-muted);
+  animation: cc-caret 0.9s ease-in-out infinite;
+}
+
+/* A block that just arrived (a tool call that finished, an image) fades up */
+@keyframes cc-settle {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+}
+.claude .cc-settle {
+  animation: cc-settle 0.28s cubic-bezier(0.2, 0, 0, 1);
+}
+
+/* The working spinner: Claude's dots pulsing in turn */
+@keyframes cc-blink {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.claude .cc-blink {
+  animation: cc-blink 1.2s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .claude .cc-blink,
+  .claude .cc-shimmer,
+  .claude .cc-cursor-blink,
+  .claude .cc-caret,
+  .claude .cc-settle {
+    animation: none;
+  }
+}

@@ -19,6 +19,8 @@ import { useMacWindow } from "./window";
 // window shows them in a floating row when the pointer reaches the top edge.
 
 const SIZE = 13;
+/** center to center */
+const PITCH = 22;
 /** letting go of a stretched light: it snaps back and wobbles */
 const SNAP = { type: "spring", stiffness: 380, damping: 10, mass: 0.6 } as const;
 /**
@@ -143,16 +145,21 @@ export function TrafficLights({
   left,
   top,
   floating = false,
+  size = SIZE,
+  pitch = PITCH,
 }: {
   left: number;
   top: number;
   /** the full-screen floating row's copy, which stays visible */
   floating?: boolean;
+  /** light diameter; Electron windows (Claude) draw 14pt lights 23pt apart */
+  size?: number;
+  pitch?: number;
 }) {
   const win = useMacWindow();
   if (win?.mode === "fullscreen" && !floating) return null;
   return (
-    <div className="group absolute z-10 flex gap-[9px]" style={{ left, top }}>
+    <div className="group absolute z-10 flex" style={{ left, top, gap: pitch - size }}>
       {LIGHTS.map((l, i) => (
         <Elastic key={l.label} enabled={!(i === 2 && win?.fixedSize)}>
         <motion.button
@@ -172,10 +179,10 @@ export function TrafficLights({
           }
           // its own layer, so scaling it doesn't re-rasterize it soft
           className="relative block cursor-default rounded-full will-change-transform disabled:[&>*]:hidden"
-          style={i === 2 && win?.fixedSize ? { width: SIZE, height: SIZE, background: "light-dark(#d4d4d6, #4b4b4f)", boxShadow: "inset 0 0 0 0.5px light-dark(rgb(0 0 0 / 0.12), rgb(255 255 255 / 0.1))" } : {
+          style={i === 2 && win?.fixedSize ? { width: size, height: size, background: "light-dark(#d4d4d6, #4b4b4f)", boxShadow: "inset 0 0 0 0.5px light-dark(rgb(0 0 0 / 0.12), rgb(255 255 255 / 0.1))" } : {
             filter: "brightness(1) saturate(1)",
-            width: SIZE,
-            height: SIZE,
+            width: size,
+            height: size,
             background: [
               `radial-gradient(60% 46% at 50% 86%, ${l.glow} 0%, ${l.glow} 30%, transparent 100%)`,
               `linear-gradient(to bottom, ${l.upper} 0%, ${l.mid} 55%, ${l.lower} 100%)`,
@@ -206,8 +213,8 @@ export function TrafficLights({
           )}
           <svg
             aria-hidden
-            width={SIZE}
-            height={SIZE}
+            width={size}
+            height={size}
             viewBox={`0 0 ${SIZE} ${SIZE}`}
             fill="none"
             className="absolute inset-0 opacity-0 transition-opacity duration-100 group-hover:opacity-100 [[data-held]_&]:opacity-100"
