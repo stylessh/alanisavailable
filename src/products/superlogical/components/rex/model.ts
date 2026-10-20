@@ -283,7 +283,7 @@ export function neighborOf(rects: Record<string, Rect>, from: string, dir: Split
 }
 
 export const activeTab = (st: State) => st.tabs.find((t) => t.id === st.active)!;
-const tabOf = (st: State, pane: string) => st.tabs.find((t) => leaves(t.root).includes(pane))!;
+export const tabOf = (st: State, pane: string) => st.tabs.find((t) => leaves(t.root).includes(pane))!;
 
 export function paneRect(st: State, pane: string): Rect {
   const tab = tabOf(st, pane);

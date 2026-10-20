@@ -1,12 +1,16 @@
 "use client";
 
 import { MotionConfig, motion, useMotionTemplate, useTransform } from "motion/react";
-import { useMacAppearance, useMacWindow } from "@/os/macos";
+import { type MenuItem, useAppMenus, useMacAppearance, useMacWindow, useNotify, windowMenuItems } from "@/os/macos";
 import { useEffect, useRef, useState } from "react";
+import { REX_APP } from "./app";
 import { type Command, CommandPalette } from "./command-palette";
 import { AppearanceIcon, EyeIcon, MaximizeIcon, PlusIcon, SidebarIcon, SplitDownIcon, SplitRightIcon } from "./icons";
 import { ChipStack } from "./tab-chip";
 import {
+  AGENTS,
+  isAgent,
+  tabOf,
   type Action,
   activeTab,
   AREA,
@@ -339,6 +343,107 @@ export function Workspace() {
     { id: "run-snake", group: "Run", icon: <ChipStack front="snake" back={[]} />, title: "Snake (node demo/snake.mjs)", run: run({ type: "launch", command: "node demo/snake.mjs", cwd: "~/Sites/rex-snake" }) },
     { id: "run-bun", group: "Run", icon: <ChipStack front="bun" back={[]} />, title: "Dev server (bun dev)", run: run({ type: "launch", command: "bun dev", cwd: "~/sites/announcements" }) },
   ];
+
+
+  // Rex lets you know when an agent or a dev server finishes: a banner if
+  // you aren't looking at that pane (another tab, another app, minimized),
+  // and always a line in Notification Center. Clicking it takes you there.
+  const notify = useNotify();
+  const lastBusy = useRef<Record<string, number>>({});
+  useEffect(() => {
+    const before = lastBusy.current;
+    lastBusy.current = Object.fromEntries(Object.values(state.panes).map((p) => [p.id, p.busy]));
+    if (!notify) return;
+    for (const p of Object.values(state.panes)) {
+      if (!before[p.id] || p.busy) continue;
+      const agent = isAgent(p.program) ? AGENTS[p.program] : null;
+      if (!agent && p.program !== "bun") continue;
+      const t = tabOf(state, p.id);
+      const seen = win?.focused && win.status === "open" && t.id === state.active;
+      notify(
+        {
+          app: REX_APP.name,
+          icon: "/products/superlogical/rex/dock-icon.png",
+          subtitle: `${agent ? agent.name : "bun dev"} · ${t.session}`,
+          body: agent ? `Finished: ${p.task ?? "your request"}` : "Dev server ready on localhost:3000",
+          open: () => {
+            win?.bringToFront();
+            dispatch({ type: "select-tab", tab: t.id });
+            dispatch({ type: "focus", pane: p.id });
+          },
+        },
+        { banner: !seen },
+      );
+    }
+  }, [state, notify, win, dispatch]);
+
+  // The menu bar's menus while Rex has focus: the palette's commands, by menu.
+  const cmd = (id: string): MenuItem => {
+    const c = commands.find((x) => x.id === id);
+    return c ? { label: c.title, shortcut: c.shortcut?.split(" ")[0], run: c.run } : { label: id, disabled: true };
+  };
+  const tabItems = (): MenuItem[] =>
+    tabs.map((t, i) => ({ label: t.title, shortcut: i < 9 ? `⌃${i + 1}` : undefined, checked: t.id === state.active, run: () => dispatch({ type: "select-tab", tab: t.id }) }));
+  useAppMenus(REX_APP.id, () => [
+    {
+      title: "Rex",
+      items: [
+        { label: "About Rex" },
+        { type: "separator" },
+        { label: "Settings…", shortcut: "⌘ ," },
+        { type: "separator" },
+        { label: "Hide Rex", shortcut: "⌘H", run: () => win?.minimize() },
+        { label: "Quit Rex", shortcut: "⌘Q", run: () => win?.close() },
+      ],
+    },
+    { title: "File", items: [cmd("new-tab"), cmd("close-tab"), { type: "separator" }, cmd("close-pane")] },
+    {
+      title: "Edit",
+      items: [
+        { label: "Copy", shortcut: "⌘C", disabled: true },
+        { label: "Paste", shortcut: "⌘V", run: () => navigator.clipboard?.readText().then((text) => text && dispatch({ type: "paste", text })) },
+        { type: "separator" },
+        cmd("clear"),
+      ],
+    },
+    {
+      title: "View",
+      items: [
+        cmd("sidebar"),
+        cmd("activity"),
+        { type: "separator" },
+        { label: "Command Palette…", shortcut: "⌘K", run: () => dispatch({ type: "palette", open: true }) },
+        { type: "separator" },
+        cmd("appearance"),
+      ],
+    },
+    {
+      title: "Shell",
+      items: [
+        cmd("split-right"),
+        cmd("split-down"),
+        cmd("zoom"),
+        { type: "separator" },
+        {
+          label: "Run",
+          submenu: commands
+            .filter((c) => c.group === "Run")
+            .map((c) => ({ label: c.title, icon: c.icon, run: c.run })),
+        },
+      ],
+    },
+    {
+      title: "Window",
+      items: [
+        ...(win
+          ? windowMenuItems({ minimize: win.minimize, zoom: win.toggleZoom, fullscreen: win.toggleFullscreen })
+          : []),
+        { type: "separator" },
+        ...tabItems(),
+      ],
+    },
+    { title: "Help", items: [{ label: "Rex Docs" }, { label: "Keyboard Shortcuts" }] },
+  ]);
 
   return (
     <MotionConfig reducedMotion="user">

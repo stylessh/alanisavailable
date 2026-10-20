@@ -1,12 +1,9 @@
-import { type AppInfo, MacWindow } from "@/os/macos";
+import { MacWindow } from "@/os/macos";
+import { REX_APP } from "./app";
 import { WINDOW } from "./model";
 import { Workspace } from "./workspace";
 
-export const REX_APP: AppInfo = {
-  id: "rex",
-  name: "Rex",
-  menus: ["File", "Edit", "View", "Shell", "Window", "Help"],
-};
+export { REX_APP };
 
 /** The Rex window: a Liquid Glass surface holding the interactive workspace. */
 export function RexWindow({ at }: { at?: (screen: { w: number; h: number }) => { x?: number; y?: number } }) {

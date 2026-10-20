@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext } from "react";
+import { createContext, useContext, useEffect, useRef } from "react";
 import type { AppInfo } from "./data";
 
 // The OS keeps every window's frame and status. Apps never move their own
@@ -101,6 +101,37 @@ export type Screen = { w: number; h: number; scale: number };
 export type AppearancePref = "auto" | "light" | "dark";
 export type Appearance = "light" | "dark";
 
+/** A row in a menu. Rows without `run` just close the menu, as most of a demo's do. */
+export type MenuItem =
+  | { type: "separator" }
+  | { type: "header"; label: string }
+  | {
+      type?: "item";
+      label: string;
+      shortcut?: string;
+      icon?: React.ReactNode;
+      /** a pill at the end of the row ("1 update") */
+      badge?: string;
+      disabled?: boolean;
+      checked?: boolean;
+      run?: () => void;
+      submenu?: MenuItem[];
+    };
+export type Menu = { title: string; items: MenuItem[] };
+
+/** A notification: shown as a banner, then kept in Notification Center. */
+export type Notice = {
+  id: string;
+  app: string;
+  icon: string;
+  /** a bold line under the app's name */
+  subtitle?: string;
+  body: string;
+  at: number;
+  /** clicking it, in the banner or Notification Center */
+  open?: () => void;
+};
+
 export type OSContextValue = {
   state: OSState;
   dispatch: (a: OSAction) => void;
@@ -112,6 +143,17 @@ export type OSContextValue = {
   appearance: Appearance;
   appearancePref: AppearancePref;
   setAppearance: (pref: AppearancePref) => void;
+  /** an app's live menus, read when a menu opens (apps register them with useAppMenus) */
+  registerMenus: (app: string, menus: () => Menu[]) => () => void;
+  menusFor: (app: string) => Menu[] | null;
+  /** posts a notification; `banner: false` only files it in Notification Center */
+  notify: (n: Omit<Notice, "id" | "at">, options?: { banner?: boolean }) => void;
+  notices: Notice[];
+  dismissNotice: (id: string) => void;
+  clearNotices: () => void;
+  /** the screen's brightness, 0.3 to 1 (Control Center's Display slider) */
+  brightness: number;
+  setBrightness: (b: number) => void;
 };
 
 export const OSContext = createContext<OSContextValue | null>(null);
@@ -120,6 +162,25 @@ export function useOS() {
   const os = useContext(OSContext);
   if (!os) throw new Error("macOS components must be inside <MacOS>");
   return os;
+}
+
+/**
+ * Gives the menu bar an app's menus. `menus` is called each time a menu
+ * opens, so it can reflect the app's state then (labels, checkmarks).
+ */
+export function useAppMenus(app: string, menus: () => Menu[]) {
+  const os = useContext(OSContext);
+  const latest = useRef(menus);
+  useEffect(() => {
+    latest.current = menus;
+  });
+  const register = os?.registerMenus;
+  useEffect(() => register?.(app, () => latest.current()), [register, app]);
+}
+
+/** Notifications for apps: post one, as Rex does when an agent finishes. Null outside <MacOS>. */
+export function useNotify() {
+  return useContext(OSContext)?.notify ?? null;
 }
 
 /** Light or dark, for apps that need it in code (CSS can use light-dark()). Null outside <MacOS>. */

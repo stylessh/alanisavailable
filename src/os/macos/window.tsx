@@ -41,6 +41,8 @@ export type MacWindowContext = {
   minimize: () => void;
   toggleZoom: () => void;
   toggleFullscreen: () => void;
+  /** bring the window to the front with focus, back from the Dock if minimized */
+  bringToFront: () => void;
 };
 
 const WindowContext = createContext<MacWindowContext | null>(null);
@@ -199,6 +201,7 @@ export function MacWindow({
     prepareMinimize,
     toggleZoom: () => !fixedSize && setMode(win.mode === "zoomed" ? "normal" : "zoomed"),
     toggleFullscreen: () => !fixedSize && setMode(win.mode === "fullscreen" ? "normal" : "fullscreen"),
+    bringToFront: () => dispatch({ type: "restore", id }),
   };
 
   // ⌃⌘F toggles full screen for the focused window, as in macOS.

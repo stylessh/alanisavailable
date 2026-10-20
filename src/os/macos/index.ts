@@ -14,5 +14,17 @@ export { MacOS } from "./mac-os";
 export { DRAG_REGION, MacWindow, type MacWindowContext, useMacWindow } from "./window";
 export { TrafficLights } from "./traffic-lights";
 export { IPHONE_MIRRORING_APP, IPHONE_SCREEN, IPhoneMirroring, StatusBar } from "./iphone-mirroring";
-export { type Appearance, type AppearancePref, appearanceStyle, useMacAppearance } from "./window-manager";
+export {
+  type Appearance,
+  type AppearancePref,
+  appearanceStyle,
+  type Menu,
+  type MenuItem,
+  type Notice,
+  useAppMenus,
+  useMacAppearance,
+  useNotify,
+} from "./window-manager";
+export { windowMenuItems } from "./menus";
+export type { SeedNotice } from "./notifications";
 export { type AppInfo, type DockApp, type DockItem, dockWith, DOCK_H, FINDER, GHOSTTY, IPHONE_MIRRORING, MENU_BAR_H, SYSTEM_SETTINGS, TRASH } from "./data";

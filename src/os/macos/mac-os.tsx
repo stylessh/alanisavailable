@@ -1,10 +1,11 @@
 "use client";
 
-import { useLayoutEffect, useReducer, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useLayoutEffect, useReducer, useRef, useState, useSyncExternalStore } from "react";
 import type { DockItem } from "./data";
 import { Dock } from "./dock";
 import { MenuBar } from "./menu-bar";
-import { appearanceStyle, type AppearancePref, initialOS, OSContext, osReducer, type Screen } from "./window-manager";
+import { Banners, type SeedNotice } from "./notifications";
+import { appearanceStyle, type AppearancePref, initialOS, type Menu, type Notice, OSContext, osReducer, type Screen } from "./window-manager";
 
 const DARK_QUERY = "(prefers-color-scheme: dark)";
 const subscribeScheme = (onChange: () => void) => {
@@ -40,11 +41,14 @@ export function MacOS({
   dock,
   wallpaper = WALLPAPER,
   appearance: initialAppearance = "auto",
+  notices: initialNotices = [],
   children,
 }: {
   dock: DockItem[];
   wallpaper?: { src: string; srcSet?: string };
   appearance?: AppearancePref;
+  /** notifications already in Notification Center when the page opens */
+  notices?: SeedNotice[];
   children?: React.ReactNode;
 }) {
   const [appearancePref, setAppearance] = useState<AppearancePref>(initialAppearance);
@@ -56,6 +60,29 @@ export function MacOS({
   const appearance = appearancePref === "auto" ? (systemDark ? "dark" : "light") : appearancePref;
   const [state, dispatch] = useReducer(osReducer, initialOS);
   const [screen, setScreen] = useState<Screen | null>(null);
+  // the source of each app's menus, kept outside React state: they're read when a menu opens
+  const menuSources = useRef<Record<string, () => Menu[]>>({});
+  const registerMenus = useCallback((app: string, menus: () => Menu[]) => {
+    menuSources.current[app] = menus;
+    return () => {
+      if (menuSources.current[app] === menus) delete menuSources.current[app];
+    };
+  }, []);
+  const menusFor = useCallback((app: string) => menuSources.current[app]?.() ?? null, []);
+  const [notices, setNotices] = useState<Notice[]>(() =>
+    initialNotices.map(({ ago, ...n }, i) => ({ ...n, id: `seed${i}`, at: Date.now() - ago * 60_000 })),
+  );
+  const [banners, setBanners] = useState<Notice[]>([]);
+  const [brightness, setBrightness] = useState(1);
+  const notify = (n: Omit<Notice, "id" | "at">, options: { banner?: boolean } = {}) => {
+    const notice = { ...n, id: `n${Date.now()}${Math.random().toString(36).slice(2, 6)}`, at: Date.now() };
+    setNotices((all) => [notice, ...all]);
+    if (options.banner !== false) setBanners((b) => [notice, ...b].slice(0, 3));
+  };
+  const dismissNotice = (id: string) => {
+    setNotices((all) => all.filter((n) => n.id !== id));
+    setBanners((b) => b.filter((n) => n.id !== id));
+  };
   const screenRef = useRef<HTMLDivElement>(null);
 
   useLayoutEffect(() => {
@@ -72,7 +99,25 @@ export function MacOS({
   const fullscreen = front?.status === "open" && front.mode === "fullscreen";
 
   return (
-    <OSContext.Provider value={{ state, dispatch, screen, screenRef, appearance, appearancePref, setAppearance }}>
+    <OSContext.Provider
+      value={{
+        state,
+        dispatch,
+        screen,
+        screenRef,
+        appearance,
+        appearancePref,
+        setAppearance,
+        registerMenus,
+        menusFor,
+        notify,
+        notices,
+        dismissNotice,
+        clearNotices: () => setNotices([]),
+        brightness,
+        setBrightness,
+      }}
+    >
       <div className="mac-desktop fixed inset-0 overflow-hidden bg-black">
         <div
           ref={screenRef}
@@ -102,8 +147,11 @@ export function MacOS({
             className="mac-wallpaper absolute inset-0 size-full object-cover select-none"
           />
           {children}
+          <Banners banners={banners} onDone={(id) => setBanners((b) => b.filter((n) => n.id !== id))} />
           <MenuBar hidden={fullscreen} />
           <Dock items={dock} hidden={fullscreen} />
+          {/* Display brightness: the whole screen dims under the slider */}
+          <div aria-hidden className="pointer-events-none absolute inset-0 z-[3000] bg-black transition-opacity duration-150" style={{ opacity: 1 - brightness }} />
         </div>
       </div>
     </OSContext.Provider>

@@ -17,6 +17,15 @@ export function Desktop() {
   return (
     <RexProvider>
       <MacOS
+        notices={[
+          {
+            app: "Rex",
+            icon: "/products/superlogical/rex/dock-icon.png",
+            subtitle: "Codex · rex-snake",
+            body: "Finished: Stress-test Snake demo",
+            ago: 12,
+          },
+        ]}
         dock={dockWith({ id: "rex", name: "Rex", icon: "/products/superlogical/rex/dock-icon.png" }, IPHONE_MIRRORING)}
       >
         {/* first, so Rex opens in front with focus */}
