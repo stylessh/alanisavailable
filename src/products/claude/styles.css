@@ -273,8 +273,8 @@
   --cc-window-rim: inset 0 0 0 1px rgb(0 0 0 / 0.06);
 }
 
-/* The image viewer is open: the window's content dims to 18% (as if under
-   82% black) and its own fill turns black, so the rounded edge darkens with
+/* The image viewer is open: the window's content dims to 32% (as if under
+   68% black) and its own fill turns black, so the rounded edge darkens with
    everything else, with no light fill left to show through it. */
 .claude .cc-dimmable {
   transition: filter 0.22s ease-out;
@@ -283,7 +283,7 @@
   background: #000 !important;
 }
 .claude .cc-window[data-viewing] .cc-dimmable {
-  filter: brightness(0.18);
+  filter: brightness(0.32);
 }
 @media (prefers-reduced-motion: reduce) {
   .claude .cc-dimmable {
