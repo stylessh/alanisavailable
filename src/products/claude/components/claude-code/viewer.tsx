@@ -1,6 +1,6 @@
 "use client";
 
-import { animate, AnimatePresence, motion, useMotionValue } from "motion/react";
+import { animate, AnimatePresence, motion, type MotionValue, useMotionValue, useTransform } from "motion/react";
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Icon } from "./icon";
 
@@ -8,6 +8,14 @@ import { Icon } from "./icon";
 // 82% and the image sits centered; the tool that produced it ("Read") is
 // named bottom-left, a "1 of 3" pager with arrows sits bottom-center and a
 // close button top-right. ← → page, Escape closes.
+//
+// A group of images opens as a carousel: the picture on show sits in the
+// middle and its neighbours peek in on either side, smaller and dimmer, both
+// following each one's distance from the middle, so the strip reads as one
+// continuous track. ← → and the pager slide it on a spring; dragging moves it
+// under the pointer (with resistance past the ends) and on release it snaps
+// to the nearest picture, carried on by a flick; clicking a neighbour brings
+// it to the middle.
 //
 // Opening and closing are a shared-element move: the picture flies from
 // the thumbnail that was clicked to the center and back. A clipped frame
@@ -42,7 +50,7 @@ export function ViewerProvider({ children }: { children: ReactNode }) {
   return (
     <ViewerContext.Provider value={open}>
       {children}
-      <AnimatePresence>{viewing && <Lightbox key={viewing.id} viewing={viewing} onChange={setViewing} onClose={() => setViewing(null)} />}</AnimatePresence>
+      <AnimatePresence>{viewing && <Lightbox key={viewing.id} viewing={viewing} onClose={() => setViewing(null)} />}</AnimatePresence>
     </ViewerContext.Provider>
   );
 }
@@ -50,9 +58,21 @@ export function ViewerProvider({ children }: { children: ReactNode }) {
 type Box = { x: number; y: number; w: number; h: number; r: number };
 
 const FLY = { type: "spring", stiffness: 380, damping: 36, mass: 0.9, restDelta: 0.5, restSpeed: 10 } as const;
-/** the picture's largest size, as a share of the window */
+/** the picture's largest size, as a share of the window: a single picture, and one in a carousel (smaller, so its neighbours show) */
 const MAX_W = 0.72;
 const MAX_H = 0.78;
+const GROUP_MAX_W = 0.56;
+const GROUP_MAX_H = 0.7;
+/** Carousel geometry: centre-to-centre distance (share of the window's width), and how much a neighbour shrinks and fades */
+const SLOT = 0.56;
+const NEIGHBOUR_SCALE = 0.84;
+const NEIGHBOUR_OPACITY = 0.45;
+/** sliding to a picture (keys, pager, release) */
+const SNAP = { type: "spring", stiffness: 320, damping: 34, mass: 0.9 } as const;
+/** past the first or last picture, the strip moves this fraction of the drag */
+const RUBBER = 0.28;
+/** a release projects the flick this far ahead (ms) to pick the picture to snap to */
+const FLICK_MS = 160;
 const THUMB_RADIUS = 6;
 
 // Scrims: the dimmed window darkens further toward its top and bottom edges,
@@ -90,13 +110,13 @@ function boxIn(overlay: HTMLElement, el: HTMLElement): Box {
   };
 }
 
-function centered(overlay: HTMLElement, aspect: number): Box {
-  const W = overlay.offsetWidth;
-  const H = overlay.offsetHeight;
-  let w = W * MAX_W;
+/** A picture's box in the middle of a W × H overlay, as large as fits. */
+function centered(W: number, H: number, aspect: number, group: boolean): Box {
+  const [mw, mh] = group ? [GROUP_MAX_W, GROUP_MAX_H] : [MAX_W, MAX_H];
+  let w = W * mw;
   let h = w / aspect;
-  if (h > H * MAX_H) {
-    h = H * MAX_H;
+  if (h > H * mh) {
+    h = H * mh;
     w = h * aspect;
   }
   return { x: (W - w) / 2, y: (H - h) / 2, w, h, r: 8 };
@@ -111,16 +131,74 @@ function loadAspect(src: string) {
   });
 }
 
-function Lightbox({ viewing, onChange, onClose }: { viewing: Viewing; onChange: (v: Viewing) => void; onClose: () => void }) {
-  const { images, index, label, sourceOf } = viewing;
+type Stage = { W: number; H: number; aspects: number[] };
+
+/** One picture in the strip: placed by its distance from the strip's position (`pos`, in pictures). */
+function Slide({
+  src,
+  i,
+  pos,
+  stage,
+  group,
+  appear,
+  hiddenNow,
+}: {
+  src: string;
+  i: number;
+  pos: MotionValue<number>;
+  stage: Stage;
+  group: boolean;
+  appear: MotionValue<number>;
+  /** the picture on show while it flies (the flying frame stands in for it) */
+  hiddenNow: boolean;
+}) {
+  const box = centered(stage.W, stage.H, stage.aspects[i], group);
+  const slot = stage.W * SLOT;
+  const x = useTransform(pos, (p) => (i - p) * slot);
+  const near = useTransform(pos, (p) => Math.min(1, Math.abs(i - p)));
+  const scale = useTransform(near, (n) => 1 - (1 - NEIGHBOUR_SCALE) * n);
+  const fade = useTransform([near, appear], ([n, a]: number[]) => (1 - (1 - NEIGHBOUR_OPACITY) * n) * (i === Math.round(pos.get()) ? 1 : a));
+  return (
+    <motion.div
+      data-slide={i}
+      className="absolute overflow-hidden"
+      style={{
+        left: box.x,
+        top: box.y,
+        width: box.w,
+        height: box.h,
+        borderRadius: box.r,
+        x,
+        scale,
+        opacity: fade,
+        visibility: hiddenNow ? "hidden" : "visible",
+        boxShadow: "0 20px 50px rgb(0 0 0 / 0.35)",
+      }}
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img alt="" src={src} className="pointer-events-none size-full max-w-none object-cover" draggable={false} />
+    </motion.div>
+  );
+}
+
+function Lightbox({ viewing, onClose }: { viewing: Viewing; onClose: () => void }) {
+  const { images, label, sourceOf } = viewing;
+  const group = images.length > 1;
   const overlay = useRef<HTMLDivElement>(null);
+  const [index, setIndex] = useState(viewing.index);
+  const [stage, setStage] = useState<Stage | null>(null);
   const [closing, setClosing] = useState(false);
+  /** the flying frame (open and close) is up; once it lands, the strip's own slide takes over */
+  const [flying, setFlying] = useState(true);
+  // the strip's position, in pictures (fractional while it moves)
+  const pos = useMotionValue(viewing.index);
+  // neighbours fade in after the flight and out as it closes
+  const appear = useMotionValue(0);
   const x = useMotionValue(0);
   const y = useMotionValue(0);
   const w = useMotionValue(0);
   const h = useMotionValue(0);
   const radius = useMotionValue(8);
-  const [ready, setReady] = useState(false);
   const hidden = useRef<HTMLElement | null>(null);
 
   const reveal = () => {
@@ -144,52 +222,80 @@ function Lightbox({ viewing, onChange, onClose }: { viewing: Viewing; onChange: 
     [x, y, w, h, radius],
   );
 
-  // Open, and page: start at the thumbnail (or just short of the center when
-  // it has none on screen), then settle in the middle.
+  // Open: measure the window, then fly the clicked picture in from its thumbnail at once.
+  // Proportions come from any copy of each picture already on the page (the clicked one
+  // always is); the others fill in as they load.
   useLayoutEffect(() => {
     const el = overlay.current;
     if (!el) return;
     let cancelled = false;
-    const src = sourceOf?.(index) ?? null;
-    loadAspect(images[index]).then((aspect) => {
-      if (cancelled) return;
-      const target = centered(el, aspect);
-      const first = !ready;
-      if (first) {
-        const from = src ? boxIn(el, src) : { ...target, x: target.x + target.w * 0.02, y: target.y + target.h * 0.02, w: target.w * 0.96, h: target.h * 0.96 };
-        flyTo(from, true);
-        setReady(true);
-      }
-      // the thumbnail of the picture on show is the one that's away
-      reveal();
-      if (src) {
-        src.style.visibility = "hidden";
-        hidden.current = src;
-      }
-      flyTo(target);
+    const known = images.map((src) => {
+      const img = [...document.querySelectorAll<HTMLImageElement>("img")].find((i) => i.getAttribute("src") === src && i.naturalWidth);
+      return img ? img.naturalWidth / img.naturalHeight : 16 / 10;
     });
+    const next = { W: el.offsetWidth, H: el.offsetHeight, aspects: known };
+    setStage(next);
+    const target = centered(next.W, next.H, known[viewing.index], group);
+    const src = sourceOf?.(viewing.index) ?? null;
+    const from = src ? boxIn(el, src) : { ...target, x: target.x + target.w * 0.02, y: target.y + target.h * 0.02, w: target.w * 0.96, h: target.h * 0.96 };
+    flyTo(from, true);
+    flyTo(target).then(() => {
+      if (cancelled) return;
+      setFlying(false);
+      animate(appear, 1, { duration: 0.22, ease: "easeOut" });
+    });
+    images.forEach((src, i) =>
+      loadAspect(src).then((aspect) => {
+        if (!cancelled && Math.abs(aspect - known[i]) > 0.001) setStage((s) => s && { ...s, aspects: s.aspects.map((a, j) => (j === i ? aspect : a)) });
+      }),
+    );
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- re-run per image only
-  }, [index]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once per opening
+  }, []);
 
-  // Closing flies the picture back to wherever its thumbnail is now.
+  // the thumbnail of the picture on show is the one that's away
+  useEffect(() => {
+    reveal();
+    const src = sourceOf?.(index) ?? null;
+    if (src) {
+      src.style.visibility = "hidden";
+      hidden.current = src;
+    }
+  }, [index, sourceOf]);
+  useEffect(() => () => reveal(), []);
+
+  /** slide the strip to picture i (clamped to the group) */
+  const slideTo = useCallback(
+    (i: number, velocity = 0) => {
+      const to = Math.max(0, Math.min(images.length - 1, i));
+      setIndex(to);
+      animate(pos, to, { ...SNAP, velocity });
+    },
+    [images.length, pos],
+  );
+  const go = useCallback((d: number) => slideTo(index + d), [index, slideTo]);
+
+  // Closing flies the picture on show back to wherever its thumbnail is now.
   const close = useCallback(() => {
-    if (closing) return;
+    if (closing || !stage) return;
     setClosing(true);
     const el = overlay.current;
+    animate(appear, 0, { duration: 0.15 });
+    pos.stop();
+    pos.jump(index);
     const src = sourceOf?.(index) ?? null;
     const back = el && src ? boxIn(el, src) : null;
     const done = () => {
       reveal();
       onClose();
     };
-    if (back) flyTo(back).then(done);
-    else done();
-  }, [closing, sourceOf, index, flyTo, onClose]);
-
-  useEffect(() => () => reveal(), []);
+    if (!back) return done();
+    flyTo(centered(stage.W, stage.H, stage.aspects[index], group), true);
+    setFlying(true);
+    flyTo(back).then(done);
+  }, [closing, stage, appear, pos, index, sourceOf, flyTo, group, onClose]);
 
   // The window dims by darkening its own content (see .cc-window[data-viewing] in styles.css)
   // rather than under a black overlay: an overlay clipped to the window's rounded corners
@@ -201,11 +307,6 @@ function Lightbox({ viewing, onChange, onClose }: { viewing: Viewing; onChange: 
     return () => win?.removeAttribute("data-viewing");
   }, [closing]);
 
-  const go = useCallback(
-    (d: number) => onChange({ ...viewing, index: (index + d + images.length) % images.length }),
-    [viewing, index, images.length, onChange],
-  );
-
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") close();
@@ -216,34 +317,98 @@ function Lightbox({ viewing, onChange, onClose }: { viewing: Viewing; onChange: 
     return () => document.removeEventListener("keydown", onKey);
   }, [go, close]);
 
+  // Drag: the strip follows the pointer; a short press without movement is a click
+  // (a neighbour comes to the middle, the backdrop closes, the picture on show stays).
+  const drag = useRef<{ x0: number; p0: number; t0: number; lastX: number; lastT: number; v: number; moved: boolean; slide: number } | null>(null);
+  const onPointerDown = (e: React.PointerEvent) => {
+    if (e.button !== 0 || closing || flying || !stage) return;
+    pos.stop();
+    drag.current = {
+      x0: e.clientX,
+      p0: pos.get(),
+      t0: e.timeStamp,
+      lastX: e.clientX,
+      lastT: e.timeStamp,
+      v: 0,
+      moved: false,
+      slide: Number((e.target as HTMLElement).closest<HTMLElement>("[data-slide]")?.dataset.slide ?? -1),
+    };
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+  const onPointerMove = (e: React.PointerEvent) => {
+    const d = drag.current;
+    if (!d || !stage) return;
+    const scale = (overlay.current?.getBoundingClientRect().width ?? stage.W) / stage.W || 1;
+    const dx = (e.clientX - d.x0) / scale;
+    if (Math.abs(dx) > 4) d.moved = true;
+    if (!d.moved || !group) return;
+    const dt = Math.max(1, e.timeStamp - d.lastT);
+    d.v = (0.7 * ((e.clientX - d.lastX) / scale)) / dt + 0.3 * d.v;
+    d.lastX = e.clientX;
+    d.lastT = e.timeStamp;
+    let p = d.p0 - dx / (stage.W * SLOT);
+    const max = images.length - 1;
+    if (p < 0) p *= RUBBER;
+    else if (p > max) p = max + (p - max) * RUBBER;
+    pos.set(p);
+  };
+  const onPointerUp = () => {
+    const d = drag.current;
+    drag.current = null;
+    if (!d || !stage) return;
+    if (!d.moved) {
+      // the press's own target (pointer capture retargets the release to the overlay)
+      const i = d.slide;
+      if (i < 0) close();
+      else if (i !== index) slideTo(i);
+      return;
+    }
+    if (!group) return;
+    const slot = stage.W * SLOT;
+    const projected = pos.get() - (d.v * FLICK_MS) / slot;
+    slideTo(Math.round(projected), (-d.v * 1000) / slot);
+  };
+
   return (
     <motion.div
       ref={overlay}
       data-no-drag
-      className="absolute inset-0 z-[900] text-[13px]"
+      className="absolute inset-0 z-[900] text-[13px] select-none"
       // the viewer is dark in both appearances, so its controls are always light
-      style={{ color: "#ebeae6" }}
-      onClick={close}
+      style={{ color: "#ebeae6", cursor: group && !flying ? "grab" : undefined, touchAction: "none" }}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onPointerCancel={() => (drag.current = null)}
       exit={{ opacity: 0, transition: { duration: 0.12 } }}
     >
-      <motion.div aria-hidden className="pointer-events-none absolute inset-0" initial={{ opacity: 0 }} animate={{ opacity: closing ? 0 : 1 }} transition={{ duration: 0.22 }}>
+      <motion.div
+        aria-hidden
+        className="pointer-events-none absolute inset-0"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: closing ? 0 : 1 }}
+        transition={{ duration: 0.22 }}
+      >
         <div className="absolute inset-x-0 top-0" style={{ height: SCRIM_TOP, background: SCRIMS.top }} />
         <div className="absolute inset-x-0 bottom-0" style={{ height: SCRIM_BOTTOM, background: SCRIMS.bottom }} />
       </motion.div>
 
+      {stage &&
+        images.map((src, i) => <Slide key={src + i} src={src} i={i} pos={pos} stage={stage} group={group} appear={appear} hiddenNow={flying && i === index} />)}
+
+      {/* the flying frame: from the thumbnail to the middle and back */}
       <motion.div
-        className="absolute overflow-hidden"
+        className="pointer-events-none absolute overflow-hidden"
         style={{
           left: x,
           top: y,
           width: w,
           height: h,
           borderRadius: radius,
-          visibility: ready ? "visible" : "hidden",
+          visibility: stage && flying ? "visible" : "hidden",
           // as in the app: no rim, just the picture on the dimmed window (a soft shadow keeps it lifted)
           boxShadow: "0 20px 50px rgb(0 0 0 / 0.35)",
         }}
-        onClick={(e) => e.stopPropagation()}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img alt="" src={images[index]} className="size-full max-w-none object-cover" draggable={false} />
@@ -252,32 +417,31 @@ function Lightbox({ viewing, onChange, onClose }: { viewing: Viewing; onChange: 
         <motion.button
           type="button"
           aria-label="Close"
-          className="absolute flex size-[28px] items-center justify-center rounded-[6px] hover:bg-white/10"
+          className="absolute flex size-[28px] cursor-default items-center justify-center rounded-[6px] hover:bg-white/10"
           style={{ top: 12, right: 14 }}
           initial={{ opacity: 0 }}
           animate={{ opacity: closing ? 0 : 1 }}
-          onClick={(e) => {
-            e.stopPropagation();
-            close();
-          }}
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={close}
         >
           <Icon name="close" size={16} />
         </motion.button>
-        <motion.span className="absolute" style={{ left: 20, bottom: 18 }} initial={{ opacity: 0 }} animate={{ opacity: closing ? 0 : 1 }}>
+        <motion.span className="pointer-events-none absolute" style={{ left: 20, bottom: 18 }} initial={{ opacity: 0 }} animate={{ opacity: closing ? 0 : 1 }}>
           {label}
         </motion.span>
-        {images.length > 1 && (
+        {group && (
           <motion.div
-            className="absolute left-1/2 flex -translate-x-1/2 items-center gap-[14px]"
+            className="absolute left-1/2 flex -translate-x-1/2 cursor-default items-center gap-[14px]"
             style={{ bottom: 12 }}
             initial={{ opacity: 0 }}
             animate={{ opacity: closing ? 0 : 1 }}
-            onClick={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
           >
             <button
               type="button"
               aria-label="Previous image"
-              className="flex size-[28px] items-center justify-center rounded-[6px] hover:bg-white/10"
+              disabled={index === 0}
+              className="flex size-[28px] items-center justify-center rounded-[6px] enabled:hover:bg-white/10 disabled:opacity-35"
               onClick={() => go(-1)}
             >
               <Icon name="chevronLeft" size={14} />
@@ -288,7 +452,8 @@ function Lightbox({ viewing, onChange, onClose }: { viewing: Viewing; onChange: 
             <button
               type="button"
               aria-label="Next image"
-              className="flex size-[28px] items-center justify-center rounded-[6px] hover:bg-white/10"
+              disabled={index === images.length - 1}
+              className="flex size-[28px] items-center justify-center rounded-[6px] enabled:hover:bg-white/10 disabled:opacity-35"
               onClick={() => go(1)}
             >
               <Icon name="chevronRight" size={14} />
