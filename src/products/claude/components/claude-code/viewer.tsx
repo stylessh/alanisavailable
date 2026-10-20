@@ -55,6 +55,27 @@ const MAX_W = 0.72;
 const MAX_H = 0.78;
 const THUMB_RADIUS = 6;
 
+// Scrims: the dimmed window darkens further toward its top and bottom edges,
+// so the close button, the source label and the pager read cleanly over
+// whatever is behind. Each is one eased ramp (black at most 80%), not a
+// linear one: a linear fade shows a hard edge where it starts and stops.
+const SCRIM_TOP = 110;
+const SCRIM_BOTTOM = 170;
+const SCRIM_ALPHA = 0.8;
+
+const easeInOutSine = (t: number) => -(Math.cos(Math.PI * t) - 1) / 2;
+
+/** A black-to-transparent gradient whose alpha follows an ease-in-out curve: dense near the edge, then gently gone. */
+function easedScrim(to: "top" | "bottom", alpha: number, steps = 14) {
+  const stops = Array.from({ length: steps + 1 }, (_, i) => {
+    const t = i / steps;
+    return `rgb(0 0 0 / ${(alpha * (1 - easeInOutSine(t))).toFixed(3)}) ${(t * 100).toFixed(1)}%`;
+  });
+  return `linear-gradient(to ${to}, ${stops.join(", ")})`;
+}
+
+const SCRIMS = { top: easedScrim("bottom", SCRIM_ALPHA), bottom: easedScrim("top", SCRIM_ALPHA) };
+
 /** A rectangle in the overlay's own (unscaled) coordinates; the screen may be drawn scaled. */
 function boxIn(overlay: HTMLElement, el: HTMLElement): Box {
   const o = overlay.getBoundingClientRect();
@@ -200,10 +221,15 @@ function Lightbox({ viewing, onChange, onClose }: { viewing: Viewing; onChange: 
       ref={overlay}
       data-no-drag
       className="absolute inset-0 z-[900] text-[13px]"
-      style={{ color: "var(--cc-text-strong)" }}
+      // the viewer is dark in both appearances, so its controls are always light
+      style={{ color: "#ebeae6" }}
       onClick={close}
       exit={{ opacity: 0, transition: { duration: 0.12 } }}
     >
+      <motion.div aria-hidden className="pointer-events-none absolute inset-0" initial={{ opacity: 0 }} animate={{ opacity: closing ? 0 : 1 }} transition={{ duration: 0.22 }}>
+        <div className="absolute inset-x-0 top-0" style={{ height: SCRIM_TOP, background: SCRIMS.top }} />
+        <div className="absolute inset-x-0 bottom-0" style={{ height: SCRIM_BOTTOM, background: SCRIMS.bottom }} />
+      </motion.div>
 
       <motion.div
         className="absolute overflow-hidden"
