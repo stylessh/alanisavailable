@@ -12,9 +12,10 @@ export default async function Home() {
     <Container className="flex min-h-dvh flex-col">
       <header className="mb-12 space-y-8">
         <AvailableFor />
-        <p className="text-normal max-w-md">
-          I redesign the products of companies I&apos;d love to work for, then
-          add my own take on top.
+        <p className="text-normal max-w-md text-pretty">
+          I&apos;m looking for my next role, so I&apos;m rebuilding my favorite
+          products to show how I work, then trying to make them a little
+          better.
         </p>
       </header>
 

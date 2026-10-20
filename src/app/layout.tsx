@@ -32,7 +32,7 @@ export const metadata: Metadata = {
     template: "%s · Alan is available",
   },
   description:
-    "Alan Daniel's own take on the products he'd love to work on.",
+    "Alan Daniel rebuilds favorite products from scratch, then tries to make them a little better.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
