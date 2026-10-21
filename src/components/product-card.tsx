@@ -109,3 +109,20 @@ export function ProductCard({
     </li>
   );
 }
+
+/**
+ * The next product, not yet revealed: the same card, but unlit (no shadow
+ * or sheen), on a quiet neutral fill with a hairline edge and a muted
+ * question mark in the middle. Not a link.
+ */
+export function SurpriseCard() {
+  return (
+    <li className="w-[78vw] max-w-[22rem] shrink-0 snap-start" aria-label="A new one is on its way">
+      <div className="relative grid aspect-video place-items-center overflow-hidden rounded-2xl bg-[#f5f5f5] shadow-[inset_0_0_0_1px_var(--border)] dark:bg-[#121212]">
+        <span aria-hidden className="text-muted-foreground/70 text-[44px] leading-none font-medium select-none">
+          ?
+        </span>
+      </div>
+    </li>
+  );
+}

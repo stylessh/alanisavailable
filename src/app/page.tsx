@@ -1,6 +1,6 @@
 import { AvailableFor } from "@/components/available-for";
 import { CardScroller } from "@/components/card-scroller";
-import { ProductCard } from "@/components/product-card";
+import { ProductCard, SurpriseCard } from "@/components/product-card";
 import { Container } from "@/components/container";
 import { emailHref, xDmHref } from "@/lib/contact";
 import { getAllProducts } from "@/lib/products";
@@ -28,6 +28,7 @@ export default async function Home() {
             {products.map((p) => (
               <ProductCard key={p.slug} {...p} />
             ))}
+            <SurpriseCard />
           </CardScroller>
         )}
       </Section>
