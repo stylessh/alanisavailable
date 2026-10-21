@@ -111,7 +111,9 @@ export type Action =
   | { type: "toggle-activity" }
   /** a space by id, or the next/previous one */
   | { type: "space"; space: string }
-  | { type: "step-space"; by: 1 | -1 };
+  | { type: "step-space"; by: 1 | -1 }
+  /** the next or previous tab in the space, wrapping around */
+  | { type: "step-tab"; by: 1 | -1 };
 
 // ─── Geometry (window-relative px, measured from the reference) ────────────
 
@@ -1137,6 +1139,12 @@ export function reducer(st: State, a: Action): State {
       if (!tab) return st;
       const space = spaceOf(st).devices.includes(tab.device) ? st.space : st.spaces.find((sp) => sp.devices.includes(tab.device))!.id;
       return { ...st, active: a.tab, space, spaceTabs: { ...st.spaceTabs, [space]: a.tab } };
+    }
+    case "step-tab": {
+      const shown = tabsIn(st);
+      const i = shown.findIndex((t) => t.id === st.active);
+      if (!shown.length) return st;
+      return { ...st, active: shown[(i + a.by + shown.length) % shown.length].id };
     }
     case "space":
     case "step-space": {

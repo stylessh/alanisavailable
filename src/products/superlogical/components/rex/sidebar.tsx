@@ -432,7 +432,7 @@ export function Sidebar({
                 role="tab"
                 aria-selected={active}
                 aria-label={sp.name}
-                title={`${sp.name} (⌃⌘← ⌃⌘→)`}
+                title={`${sp.name} (⌥← ⌥→)`}
                 tabIndex={-1}
                 onClick={() => onSpace(sp.id)}
                 // the hit area is the dot's whole pitch, 20pt tall
