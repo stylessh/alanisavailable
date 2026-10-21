@@ -101,6 +101,20 @@ const PRESS = { type: "spring", stiffness: 320, damping: 17, mass: 0.9 } as cons
 // Angular fade for the side rim: opaque at 3 and 9 o'clock, gone by 12 and 6.
 const SIDE_MASK =
   "conic-gradient(transparent 20deg, #000 90deg, transparent 160deg, transparent 200deg, #000 270deg, transparent 340deg)";
+const MUTED_SIDE: React.CSSProperties = { boxShadow: "inset 0 0 0 0.75px light-dark(rgb(0 0 0 / 0.16), transparent)", maskImage: SIDE_MASK };
+
+/** an unfocused window's lights: gray glass, shaded like the colored ones */
+const MUTED: React.CSSProperties = {
+  background: [
+    "radial-gradient(60% 46% at 50% 86%, light-dark(#d9d9dc, #4a4a4e) 0%, light-dark(#d9d9dc, #4a4a4e) 30%, transparent 100%)",
+    "linear-gradient(to bottom, light-dark(#bdbdc1, #38383b) 0%, light-dark(#c4c4c8, #3d3d40) 55%, light-dark(#cbcbcf, #434346) 100%)",
+  ].join(", "),
+  boxShadow: [
+    "inset 0 0 0 0.5px light-dark(rgb(0 0 0 / 0.12), rgb(255 255 255 / 0.08))",
+    "inset 0 0.75px 0 light-dark(transparent, rgb(255 255 255 / 0.24))",
+    "inset 0 -0.75px 0 light-dark(transparent, rgb(255 255 255 / 0.12))",
+  ].join(", "),
+};
 
 const LIGHTS = [
   {
@@ -190,6 +204,7 @@ export function TrafficLights({
 
   if (win?.mode === "fullscreen" && !floating) return null;
   const pos = lifted ? at : { x: left, y: top };
+  const unfocused = !!win && !win.focused;
   const lights = (
     <div
       className="group pointer-events-auto absolute z-10 flex transition-opacity duration-200"
@@ -218,34 +233,39 @@ export function TrafficLights({
             filter: "brightness(1) saturate(1)",
             width: size,
             height: size,
-            background: [
-              `radial-gradient(60% 46% at 50% 86%, ${l.glow} 0%, ${l.glow} 30%, transparent 100%)`,
-              `linear-gradient(to bottom, ${l.upper} 0%, ${l.mid} 55%, ${l.lower} 100%)`,
-            ].join(", "),
-            boxShadow: [
-              `inset 0 0 0 0.5px ${l.edge}`,
-              // dark mode: bright crescents top and bottom
-              "inset 0 0.75px 0 light-dark(transparent, rgb(255 255 255 / 0.4))",
-              "inset 0 -0.75px 0 light-dark(transparent, rgb(255 255 255 / 0.22))",
-            ].join(", "),
           }}
         >
+          {/* Unfocused, the light is gray glass (shaded like the colored one: gradient, low glow,
+              crescents in dark mode, side rim in light mode) and the color only comes back on hover.
+              The colored glass sits on top of the gray, so no color rings the muted light. */}
+          {unfocused && (
+            <span aria-hidden className="absolute inset-0 rounded-full" style={MUTED}>
+              <span aria-hidden className="absolute inset-0 rounded-full" style={MUTED_SIDE} />
+            </span>
+          )}
           <span
             aria-hidden
-            className="absolute inset-0 rounded-full"
-            // light mode only: the dark rim at the sides
-            style={{ boxShadow: `inset 0 0 0 0.75px light-dark(${l.side}, transparent)`, maskImage: SIDE_MASK }}
-          />
-          {win && !win.focused && (
+            className={`absolute inset-0 rounded-full transition-opacity duration-100 ${unfocused ? "opacity-0 group-hover:opacity-100" : ""}`}
+            style={{
+              background: [
+                `radial-gradient(60% 46% at 50% 86%, ${l.glow} 0%, ${l.glow} 30%, transparent 100%)`,
+                `linear-gradient(to bottom, ${l.upper} 0%, ${l.mid} 55%, ${l.lower} 100%)`,
+              ].join(", "),
+              boxShadow: [
+                `inset 0 0 0 0.5px ${l.edge}`,
+                // dark mode: bright crescents top and bottom
+                "inset 0 0.75px 0 light-dark(transparent, rgb(255 255 255 / 0.4))",
+                "inset 0 -0.75px 0 light-dark(transparent, rgb(255 255 255 / 0.22))",
+              ].join(", "),
+            }}
+          >
             <span
               aria-hidden
-              className="absolute inset-0 rounded-full transition-opacity duration-100 group-hover:opacity-0"
-              style={{
-                background: "light-dark(#d4d4d6, #4b4b4f)",
-                boxShadow: "inset 0 0 0 0.5px light-dark(rgb(0 0 0 / 0.12), rgb(255 255 255 / 0.1))",
-              }}
+              className="absolute inset-0 rounded-full"
+              // light mode only: the dark rim at the sides
+              style={{ boxShadow: `inset 0 0 0 0.75px light-dark(${l.side}, transparent)`, maskImage: SIDE_MASK }}
             />
-          )}
+          </span>
           <svg
             aria-hidden
             width={size}
