@@ -13,8 +13,8 @@ export default async function Home() {
       <header className="mb-12 space-y-8">
         <AvailableFor />
         <p className="text-normal max-w-md text-pretty">
-          This is how I market myself, and a look at my process: replicating
-          some of my favorite products and brands, then improving on them.
+          As a fun way to market myself, I&apos;m going to rebuild and improve
+          my favorite products and apps and share the process online.
         </p>
       </header>
 
