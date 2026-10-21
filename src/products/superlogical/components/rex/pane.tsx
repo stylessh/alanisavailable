@@ -1,11 +1,53 @@
 "use client";
 
-import { motion } from "motion/react";
+import { AnimatePresence, motion } from "motion/react";
 import { CloseIcon, MaximizeIcon, SplitDownIcon, SplitRightIcon } from "./icons";
-import type { Rect } from "./model";
+import type { AttentionKind, Rect } from "./model";
 import { useTile } from "./tween";
 
 export type PaneShortcut = { label: string; aria: string };
+
+/**
+ * How a tile shows that it's calling for you, by kind of attention: for now
+ * a tint; a shake or status dots would sit here beside it.
+ */
+export type AttentionEffect = {
+  /** mixed into the tile's own fill, so it keeps its glass, edge and highlight and only takes on the color */
+  tint: string;
+};
+export const ATTENTION_EFFECTS: Record<AttentionKind, AttentionEffect> = {
+  done: { tint: "var(--rex-attention-done)" },
+  input: { tint: "var(--rex-attention-input)" },
+};
+/** How much of the tint a tile's fill takes */
+const TINT = "8%";
+
+/**
+ * The shortcut that focuses a pane calling for you, in its top-right corner
+ * where the header controls go (they take the spot back on hover). A badge
+ * in a deep shade of the pane's tint, so it reads as part of the same call.
+ */
+function JumpHint({ shortcut, color }: { shortcut: PaneShortcut; color: string }) {
+  return (
+    // motion animates the outer span in and out; the hover fade is the chip's own
+    <motion.span
+      aria-hidden
+      className="pointer-events-none absolute top-[8px] right-[9px]"
+      initial={{ opacity: 0, scale: 0.9 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.9 }}
+      transition={{ duration: 0.2, ease: "easeOut" }}
+    >
+      <kbd
+        className="block rounded-[5px] px-[5px] font-sans text-[10.5px] leading-[16px] font-semibold tracking-[0.06em] text-white transition-opacity duration-150 group-hover/pane:opacity-0"
+        // a solid badge in a deep shade of the tint, white on it
+        style={{ background: `color-mix(in oklab, ${color}, black 32%)`, boxShadow: "inset 0 0.5px 0 rgb(255 255 255 / 0.25)" }}
+      >
+        {shortcut.label}
+      </kbd>
+    </motion.span>
+  );
+}
 
 /**
  * A header control: the glyph stays at its measured spot, the button pads
@@ -72,6 +114,8 @@ export function Pane({
   leaving = false,
   vanishing = false,
   focused,
+  attention,
+  jump,
   zoomed,
   shortcuts,
   icon,
@@ -92,6 +136,10 @@ export function Pane({
   /** closed and interrupted by a newer change: gone at once, before anything can cross it */
   vanishing?: boolean;
   focused: boolean;
+  /** the pane is calling for you: it shows the effect for this kind */
+  attention?: AttentionKind;
+  /** the shortcut that focuses it, when it's the pane that shortcut goes to */
+  jump?: PaneShortcut;
   /** this pane is the zoomed one: its zoom control shows as on */
   zoomed: boolean;
   /** shortcuts shown in the controls' tooltips */
@@ -105,18 +153,22 @@ export function Pane({
   children: React.ReactNode;
 }) {
   const { left, top, width, height, opacity } = useTile(id, rect);
+  const fill = focused ? "var(--rex-pane-active)" : "var(--rex-pane-inactive)";
   return (
     <motion.section
       onPointerDown={leaving ? undefined : onFocus}
-      aria-label={title}
+      aria-label={attention ? `${title}, ${attention === "input" ? "waiting for you" : "finished"}` : title}
+      aria-keyshortcuts={jump?.aria}
       aria-hidden={flat || undefined}
       className="group/pane rex-ui absolute overflow-hidden"
       style={{
         borderRadius: "var(--rex-pane-radius)",
         // The focused pane is solid; the others are translucent, so the
         // window's glass (and the wallpaper behind it) reads through.
-        background: `var(--rex-pane-beam), ${focused ? "var(--rex-pane-active)" : "var(--rex-pane-inactive)"}`,
-        transition: "background-color 160ms ease",
+        // A pane calling for you is the same tile with its tint mixed into the
+        // fill; it eases in and, once seen, back out.
+        background: `var(--rex-pane-beam), ${attention ? `color-mix(in oklab, ${fill}, ${ATTENTION_EFFECTS[attention].tint} ${TINT})` : fill}`,
+        transition: `background-color ${attention ? 450 : 160}ms ease`,
         // explicit: the layer the panes sit in passes events through
         pointerEvents: flat || leaving ? "none" : "auto",
         left,
@@ -172,6 +224,9 @@ export function Pane({
           <CloseIcon />
         </Control>
       </div>
+      <AnimatePresence>
+        {attention && jump && !focused && <JumpHint key="jump" shortcut={jump} color={ATTENTION_EFFECTS[attention].tint} />}
+      </AnimatePresence>
       {/* Rex dims unfocused panes */}
       <div className="transition-opacity duration-150" style={{ opacity: focused ? 1 : "var(--rex-dim)" }}>
         {children}

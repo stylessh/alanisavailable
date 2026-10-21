@@ -14,6 +14,8 @@ import {
   type Action,
   activeTab,
   AREA,
+  attentionTarget,
+  tabAttention,
   areaOf,
   bounds,
   collapse,
@@ -57,6 +59,7 @@ const SHORTCUTS: Shortcut[] = [
   { code: "KeyK", meta: true, alt: true, action: { type: "clear" }, label: "⌥⌘K" },
   { code: "KeyS", meta: true, ctrl: true, action: { type: "toggle-sidebar" }, label: "⌃⌘S" },
   { code: "Period", meta: true, action: { type: "toggle-activity" }, label: "⌘." },
+  { code: "KeyJ", meta: true, action: { type: "focus-attention" }, label: "⌘J" },
   // ⇧⌥←/→ switch spaces (as do ⌃⌘←/→), ⇧⌥↑/↓ step through the space's tabs in
   // sidebar order: plain ⌥ and ⇧ arrows stay with text editing
   { code: "ArrowLeft", alt: true, shift: true, action: { type: "step-space", by: -1 }, label: "⇧⌥←" },
@@ -95,6 +98,8 @@ const PANE_SHORTCUTS = {
   zoom: shortcutFor("zoom"),
   close: shortcutFor("close-pane"),
 };
+/** Shown on the pane calling for you, the one it focuses. */
+const JUMP_SHORTCUT = shortcutFor("focus-attention")!;
 
 function match(e: KeyboardEvent) {
   return SHORTCUTS.find(
@@ -237,6 +242,8 @@ export function Workspace() {
   // Zoom pushes the other panes out of the area rather than covering them,
   // so it animates like any other layout change.
   const rects = tab.zoom ? zoomLayout(tab.root, area, tab.focus, tiled) : tiled;
+  // the pane ⌘J would take you to wears its shortcut
+  const jumpTo = attentionTarget(state);
   const visible = tab.zoom ? [tab.focus] : leaves(tab.root);
 
   // One tween moves every tile: the panes and the sidebar, whose revealed
@@ -278,6 +285,7 @@ export function Workspace() {
       back: leaves(t.root)
         .filter((id) => id !== t.focus)
         .map((id) => state.panes[id].program),
+      attention: tabAttention(state, t),
     };
   });
 
@@ -314,6 +322,9 @@ export function Workspace() {
     { id: "clear", group: "Pane", title: "Clear Screen", shortcut: label("clear"), run: run({ type: "clear" }) },
     { id: "sidebar", group: "View", title: state.view === "sidebar" ? "Show Tab Bar" : "Show Sidebar", icon: <SidebarIcon />, shortcut: label("toggle-sidebar"), run: run({ type: "toggle-sidebar" }) },
     { id: "activity", group: "View", title: state.activity ? "Hide Activity" : "Show Activity", icon: <EyeIcon />, shortcut: label("toggle-activity"), run: run({ type: "toggle-activity" }) },
+    ...(attentionTarget(state)
+      ? [{ id: "focus-attention", group: "Pane", title: "Go to Pane Needing Attention", shortcut: label("focus-attention"), run: run({ type: "focus-attention" }) }]
+      : []),
     ...(look
       ? [
           {
@@ -530,6 +541,8 @@ export function Workspace() {
                 leaving={!!ghost}
                 vanishing={id in tween.vanishing}
                 focused={focused}
+                attention={pane.attention?.kind}
+                jump={id === jumpTo ? JUMP_SHORTCUT : undefined}
                 zoomed={tab.zoom && id === tab.focus}
                 shortcuts={PANE_SHORTCUTS}
                 icon={PROGRAMS[pane.program].icon}

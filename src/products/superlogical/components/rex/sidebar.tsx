@@ -4,7 +4,8 @@ import { AnimatePresence, motion, useMotionTemplate, useTransform } from "motion
 import { useEffect, useRef, useState } from "react";
 import { DRAG_REGION, useMacWindow } from "@/os/macos";
 import { EyeIcon, HostIcon, PlusIcon, ServerIcon, SidebarIcon } from "./icons";
-import { activePaneOf, activityOf, type Device, leaves, SIDEBAR_W, type Space, type State, titles } from "./model";
+import { activePaneOf, activityOf, type AttentionKind, type Device, leaves, SIDEBAR_W, type Space, type State, tabAttention, titles } from "./model";
+import { ATTENTION_EFFECTS } from "./pane";
 import { useTile } from "./tween";
 import { ChipStack } from "./tab-chip";
 import { LIGHTS_SPACE } from "./title-bar";
@@ -56,6 +57,21 @@ function useNow(every = 15_000) {
     return () => clearInterval(t);
   }, [every]);
   return now;
+}
+
+/** A tile in the row's tab is calling for you (attention): a dot like an unread one, in the tile's tint. */
+function AttentionDot({ kind }: { kind: AttentionKind }) {
+  return (
+    <motion.span
+      aria-label={kind === "input" ? "Waiting for you" : "Finished"}
+      className="size-[7px] rounded-full"
+      style={{ background: ATTENTION_EFFECTS[kind].tint }}
+      initial={{ opacity: 0, scale: 0.4 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.4 }}
+      transition={SPRING}
+    />
+  );
 }
 
 /** Rex's working indicator: three dots pulsing in turn. */
@@ -235,6 +251,7 @@ function TabRow({
   const selected = tab.id === state.active;
   const detailed = state.activity && !!activity;
   const back = leaves(tab.root).filter((id) => id !== pane.id).map((id) => state.panes[id].program);
+  const calling = tabAttention(state, tab);
   return (
     <motion.button
       type="button"
@@ -280,7 +297,7 @@ function TabRow({
         </motion.span>
       </span>
       <span className="flex shrink-0 flex-col items-end gap-[3px] self-stretch justify-center">
-        {activity?.working && <Working />}
+        {activity?.working ? <Working /> : <AnimatePresence initial={false}>{calling && <AttentionDot key={calling} kind={calling} />}</AnimatePresence>}
         <motion.span
           initial={false}
           animate={{ height: detailed ? 14 : 0, opacity: detailed ? 1 : 0 }}

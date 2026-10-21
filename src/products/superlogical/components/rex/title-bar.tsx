@@ -4,11 +4,20 @@ import { AnimatePresence, animate, type AnimationPlaybackControls, motion, useMo
 import { useEffect, useRef } from "react";
 import { DRAG_REGION, TrafficLights, useMacWindow } from "@/os/macos";
 import { CloseIcon, CommandIcon, HostIcon, PlusIcon, ServerIcon, SidebarIcon } from "./icons";
-import type { ProgramKind } from "./model";
+import type { AttentionKind, ProgramKind } from "./model";
+import { ATTENTION_EFFECTS } from "./pane";
 import { TabChip, TITLE_OFFSET } from "./tab-chip";
 
 /** A tab as the strip shows it; `device` is the machine it runs on, shown small under the title. */
-export type TabView = { id: string; title: string; device: { name: string; remote: boolean }; front: ProgramKind; back: ProgramKind[] };
+export type TabView = {
+  id: string;
+  title: string;
+  device: { name: string; remote: boolean };
+  front: ProgramKind;
+  back: ProgramKind[];
+  /** one of its panes is calling for you */
+  attention: AttentionKind | null;
+};
 
 // Tab strip geometry (window-relative px, from the reference): each tab takes
 // a 210pt slot and the active tab is a pill 2pt inside its slot. The
@@ -36,16 +45,20 @@ const EDGE = 34;
 export const LIGHTS_SPACE = 71.5;
 const GLIDE = "320ms cubic-bezier(0.2, 0.85, 0.25, 1)";
 const SPRING = { type: "spring", stiffness: 520, damping: 42 } as const;
-/** A tab's badge and title changing over: quick, no overshoot to speak of */
-const SWAP = { type: "spring", stiffness: 560, damping: 38, mass: 0.7 } as const;
+/** A tab's badge and title changing over: quick, no overshoot to speak of (the phone's tab bar uses it too) */
+export const SWAP = { type: "spring", stiffness: 560, damping: 38, mass: 0.7 } as const;
 
 /** The machine a tab runs on, under its title: a small host or server glyph and its name. */
-function TabDevice({ device }: { device: TabView["device"] }) {
+export function TabDevice({ device, size = 9.5 }: { device: TabView["device"]; /** its text size; the glyph scales with it (the phone's is bigger) */ size?: number }) {
   const Icon = device.remote ? ServerIcon : HostIcon;
+  const k = size / 9.5;
   return (
-    <span className="flex items-center gap-[3.5px] text-[9.5px] leading-[11px] font-medium text-[var(--rex-ink-faint)] [-webkit-text-stroke:0]">
+    <span
+      className="flex items-center font-medium text-[var(--rex-ink-faint)] [-webkit-text-stroke:0]"
+      style={{ gap: 3.5 * k, fontSize: size, lineHeight: `${11 * k}px` }}
+    >
       {/* the 14pt glyphs at 10pt */}
-      <Icon className="shrink-0" style={{ width: 10, height: device.remote ? 7 : 6 }} />
+      <Icon className="shrink-0" style={{ width: 10 * k, height: (device.remote ? 7 : 6) * k }} />
       <span className="truncate">{device.name}</span>
     </span>
   );
@@ -271,6 +284,30 @@ export function TitleBar({
                   {/* two lines in the 28pt tab: the title, then where it runs */}
                   <TabDevice device={tab.device} />
                 </motion.div>
+                {/* A pane in the tab calling for you: a dot in its tint, where the
+                    close button goes; the button takes the spot back on hover. */}
+                <AnimatePresence initial={false}>
+                  {tab.attention && (
+                    // motion pops the dot in and out; hiding it on hover is the inner span's
+                    // own fade, which motion's inline opacity would otherwise override
+                    <motion.span
+                      key={tab.attention}
+                      aria-label={tab.attention === "input" ? "Waiting for you" : "Finished"}
+                      className="pointer-events-none absolute top-[9.75px] size-[6px]"
+                      // centred at (right − 13.5, 12.75), as the close button is
+                      style={{ left: right - 16.5 }}
+                      initial={{ opacity: 0, scale: 0.4 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.4 }}
+                      transition={SPRING}
+                    >
+                      <span
+                        className="block size-full rounded-full transition-opacity duration-100 group-hover:opacity-0"
+                        style={{ background: ATTENTION_EFFECTS[tab.attention].tint }}
+                      />
+                    </motion.span>
+                  )}
+                </AnimatePresence>
                 {/* the close button, on hover */}
                 <button
                   type="button"
