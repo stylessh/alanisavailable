@@ -79,8 +79,6 @@
     0 1px 3px light-dark(rgb(0 0 0 / 0.08), rgb(0 0 0 / 0.3));
   --rex-tab-text: light-dark(#29292c, #f2f2f4);
   --rex-tab-text-muted: light-dark(#87878b, #8e8e93);
-  --rex-tab-divider: light-dark(rgb(0 0 0 / 0.1), rgb(255 255 255 / 0.12));
-  --rex-tab-divider-active: light-dark(#d6d6d9, rgb(255 255 255 / 0.14));
   --rex-chrome-ink: light-dark(#616164, #c7c7cc);
   --rex-session-ink: light-dark(#606063, #e5e5ea);
   --rex-command-ink: light-dark(#59595c, #d1d1d6);

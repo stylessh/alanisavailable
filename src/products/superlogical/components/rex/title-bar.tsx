@@ -208,8 +208,6 @@ export function TitleBar({
             const left = 2 + i * pitch;
             const textLeft = TITLE_OFFSET[Math.min(tab.back.length, 2)];
             const right = pitch - 2; // tab width
-            // A hairline sits between two inactive neighbours.
-            const divider = i > 0 && !isActive && tabs[i - 1].id !== active;
             return (
               <motion.div
                 key={tab.id}
@@ -223,13 +221,6 @@ export function TitleBar({
                 transition={{ left: SPRING, opacity: { duration: 0.2 } }}
                 style={{ width: right }}
               >
-                {/* dividers fade as the pill passes rather than blinking */}
-                {i > 0 && (
-                  <div
-                    className="absolute -left-[2.5px] top-[5.25px] h-[17px] w-[1px] bg-[var(--rex-tab-divider)] transition-opacity duration-150"
-                    style={{ opacity: divider ? 1 : 0 }}
-                  />
-                )}
                 {/* When the tab's program changes, its badge dips out and the new
                     one springs in, and the title crossfades in place; both subtle. */}
                 <AnimatePresence initial={false} mode="wait">
@@ -248,14 +239,14 @@ export function TitleBar({
                 <motion.div
                   className={`absolute top-[2px] overflow-hidden text-[12px] leading-[14px] font-medium whitespace-nowrap [-webkit-text-stroke:0.1px_currentColor] ${
                     // Titles fade out at their tail (the reference fades the
-                    // active title's last letter into the divider). On hover the
+                    // active title's last letter where its divider was). On hover the
                     // fade starts earlier, so nothing visible sits under the ×.
                     isActive
                       ? "[mask-image:linear-gradient(to_right,#000_calc(100%-16px),transparent)] group-hover:[mask-image:linear-gradient(to_right,#000_calc(100%-24px),transparent_calc(100%-7px))]"
                       : "[mask-image:linear-gradient(to_right,#000_calc(100%-22px),transparent)] group-hover:[mask-image:linear-gradient(to_right,#000_calc(100%-28px),transparent_calc(100%-9px))]"
                   }`}
                   initial={false}
-                  // up to the divider (active) or 12pt short of the tab's end;
+                  // 14pt (active) or 12pt short of the tab's end;
                   // it moves over as the badge stack grows or shrinks
                   animate={{ left: textLeft, width: right - textLeft - (isActive ? 14 : 12) }}
                   transition={SWAP}
@@ -280,14 +271,7 @@ export function TitleBar({
                   {/* two lines in the 28pt tab: the title, then where it runs */}
                   <TabDevice device={tab.device} />
                 </motion.div>
-                {/* The active tab's divider and the close button share one spot:
-                    the divider at rest, the close button on hover. */}
-                <div
-                  className={`absolute top-[6.25px] h-[13px] w-[1px] bg-[var(--rex-tab-divider-active)] transition-opacity duration-150 ${
-                    isActive ? "group-hover:opacity-0" : "opacity-0"
-                  }`}
-                  style={{ left: right - 14 }}
-                />
+                {/* the close button, on hover */}
                 <button
                   type="button"
                   aria-label={`Close ${tab.title}`}
@@ -295,7 +279,7 @@ export function TitleBar({
                   onPointerDown={(e) => e.stopPropagation()}
                   onClick={() => onClose(tab.id)}
                   className="absolute top-[5.75px] grid size-[14px] cursor-default place-items-center rounded-full text-[var(--rex-ink-muted)] opacity-0 transition-[opacity,background-color] duration-100 group-hover:opacity-100 hover:bg-[var(--rex-hover)] hover:text-[var(--rex-ink)]"
-                  // centred on the divider (x right − 13.5, y 12.75)
+                  // centred at (right − 13.5, 12.75)
                   style={{ left: right - 20.5 }}
                 >
                   <CloseIcon style={{ transform: "scale(0.75)" }} />
