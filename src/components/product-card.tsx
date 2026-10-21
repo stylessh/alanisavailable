@@ -110,65 +110,19 @@ export function ProductCard({
   );
 }
 
-// Brushed metal: fine horizontal streaks of uneven length and strength (noise
-// stretched sideways), not regular lines, so it reads as a satin finish.
-const BRUSHED = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='b'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.004 .9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23b)'/%3E%3C/svg%3E")`;
-
 /**
- * The question mark as a blueprint: a large outlined glyph with just its
- * construction circle and centre left in, drawn in currentColor (muted ink).
- */
-function BlueprintQuestion() {
-  // centreline: a bowl around (60, 42) r 20, the stem down to 82, the dot at 100
-  const glyph = "M40 42 a20 20 0 1 1 30.5 17 C64 63 60 67 60 74 v6";
-  return (
-    <svg aria-hidden viewBox="0 0 120 120" className="relative h-[72%] w-auto" fill="none" stroke="currentColor" strokeLinecap="round">
-      <defs>
-        {/* the outline: a wide stroke of the glyph with a narrower one cut out of it */}
-        <mask id="bp-outline" maskUnits="userSpaceOnUse">
-          <path d={glyph} stroke="#fff" strokeWidth="12" />
-          <circle cx="60" cy="99" r="6.8" fill="#fff" stroke="none" />
-          <path d={glyph} stroke="#000" strokeWidth="10.2" />
-          <circle cx="60" cy="99" r="5.9" fill="#000" stroke="none" />
-        </mask>
-      </defs>
-      <g strokeWidth="0.55" opacity="0.6">
-        <circle cx="60" cy="42" r="20" strokeDasharray="1.6 2.4" />
-        <path d="M57 42h6M60 39v6" />
-      </g>
-      <rect width="120" height="120" fill="currentColor" stroke="none" mask="url(#bp-outline)" />
-    </svg>
-  );
-}
-
-/**
- * The next product, not yet revealed: the same card in brushed metal (a
- * steel gradient, fine horizontal brushing, a sheen from above and a lit top
- * edge; silver on the light page, gunmetal on the dark one) with a blueprint
- * question mark in muted ink. Not a link.
+ * The next product, not yet revealed: the same card, on a quiet neutral fill
+ * with the same lift and a hairline edge, and a question mark set in the
+ * page's own typeface as a thin outline over a faint grid. Not a link.
  */
 export function SurpriseCard() {
   return (
     <li className="w-[78vw] max-w-[22rem] shrink-0 snap-start" aria-label="A new one is on its way">
-      <div
-        // silver on the light page, gunmetal on the dark one: darkest a little below the middle
-        className="shadow-card relative grid aspect-video place-items-center overflow-hidden rounded-2xl bg-[linear-gradient(170deg,#f2f3f5_0%,#dadde2_38%,#c2c6cd_64%,#e3e5e9_100%)] text-[rgb(40_52_72/0.55)] [--card-shadow-alpha:0.07] dark:bg-[linear-gradient(170deg,#3a3d43_0%,#27292e_40%,#191a1d_66%,#2a2c31_100%)] dark:text-[rgb(200_214_235/0.45)]"
-      >
-        {/* fine horizontal brushing */}
+      <div className="shadow-card relative grid aspect-video place-items-center overflow-hidden rounded-2xl bg-[#f3f3f3] text-(--ink) [--card-shadow-alpha:0.06] [--ink:#a3a3a3] dark:bg-[#141414] dark:[--ink:#525252]">
+        {/* a faint grid across the card, fading out toward its edges */}
         <span
           aria-hidden
-          className="pointer-events-none absolute inset-0 opacity-50 mix-blend-soft-light"
-          style={{ backgroundImage: BRUSHED }}
-        />
-        {/* sheen: a soft band of light from above, and a cooler fall-off at the bottom */}
-        <span
-          aria-hidden
-          className="pointer-events-none absolute inset-0 bg-[radial-gradient(90%_70%_at_30%_0%,rgb(255_255_255/0.35),transparent_60%),linear-gradient(to_top,rgb(0_0_0/0.08),transparent_45%)] dark:bg-[radial-gradient(90%_70%_at_30%_0%,rgb(255_255_255/0.09),transparent_60%),linear-gradient(to_top,rgb(0_0_0/0.25),transparent_45%)]"
-        />
-        {/* a blueprint grid across the card, fading out toward its edges */}
-        <span
-          aria-hidden
-          className="pointer-events-none absolute inset-0 opacity-[0.16]"
+          className="pointer-events-none absolute inset-0 opacity-[0.07] dark:opacity-[0.12]"
           style={{
             backgroundImage: "linear-gradient(to right, currentColor 1px, transparent 1px), linear-gradient(to bottom, currentColor 1px, transparent 1px)",
             backgroundSize: "16px 16px",
@@ -176,11 +130,16 @@ export function SurpriseCard() {
             maskImage: "radial-gradient(60% 75% at 50% 50%, #000 15%, transparent 90%)",
           }}
         />
-        <BlueprintQuestion />
-        {/* the edge: a lit top rim and a hairline around */}
         <span
           aria-hidden
-          className="pointer-events-none absolute inset-0 rounded-[inherit] shadow-[inset_0_1px_0_rgb(255_255_255/0.85),inset_0_0_0_1px_rgb(0_0_0/0.08)] dark:shadow-[inset_0_1px_0_rgb(255_255_255/0.14),inset_0_0_0_1px_rgb(255_255_255/0.07)]"
+          className="relative text-[112px] leading-none font-medium select-none"
+          style={{ color: "transparent", WebkitTextStroke: "1.25px var(--ink)" }}
+        >
+          ?
+        </span>
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-0 rounded-[inherit] shadow-[inset_0_0_0_1px_rgb(0_0_0/0.06)] dark:shadow-[inset_0_0_0_1px_rgb(255_255_255/0.07)]"
         />
       </div>
     </li>
