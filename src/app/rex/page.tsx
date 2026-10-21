@@ -8,6 +8,7 @@ import { rexMono } from "@/products/superlogical/fonts";
 
 export const metadata: Metadata = {
   title: "Rex for iPhone",
+  alternates: { canonical: "/rex" },
   appleWebApp: { capable: true, statusBarStyle: "black-translucent", title: "Rex" },
 };
 

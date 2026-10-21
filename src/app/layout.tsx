@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import localFont from "next/font/local";
 import "./globals.css";
@@ -25,14 +25,66 @@ const mono = localFont({
   display: "swap",
 });
 
+const DESCRIPTION =
+  "Alan Daniel rebuilds and improves his favorite products and apps, and shares the process online.";
+
 export const metadata: Metadata = {
   metadataBase: new URL("https://alanisavailable.com"),
   title: {
     default: "Alan is available",
     template: "%s · Alan is available",
   },
-  description:
-    "Alan Daniel rebuilds and improves his favorite products and apps, and shares the process online.",
+  description: DESCRIPTION,
+  applicationName: "Alan is available",
+  authors: [{ name: "Alan Daniel", url: "https://x.com/stylessh" }],
+  creator: "Alan Daniel",
+  keywords: [
+    "Alan Daniel",
+    "product engineer",
+    "design engineer",
+    "frontend",
+    "portfolio",
+    "hire",
+  ],
+  alternates: { canonical: "/" },
+  openGraph: {
+    type: "website",
+    url: "/",
+    siteName: "Alan is available",
+    title: "Alan is available",
+    description: DESCRIPTION,
+    locale: "en_US",
+  },
+  twitter: {
+    card: "summary_large_image",
+    creator: "@stylessh",
+    title: "Alan is available",
+    description: DESCRIPTION,
+  },
+  // A white square in light mode, a dark one in dark mode.
+  icons: {
+    icon: [
+      {
+        url: "/icon-light.svg",
+        type: "image/svg+xml",
+        media: "(prefers-color-scheme: light)",
+      },
+      {
+        url: "/icon-dark.svg",
+        type: "image/svg+xml",
+        media: "(prefers-color-scheme: dark)",
+      },
+    ],
+    // Listing icons here replaces the file-based ones, so point at apple-icon.tsx.
+    apple: "/apple-icon",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#fbfbfb" },
+    { media: "(prefers-color-scheme: dark)", color: "#0a0a0a" },
+  ],
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
