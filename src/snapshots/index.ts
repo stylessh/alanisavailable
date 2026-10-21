@@ -7,10 +7,12 @@ import type { Snapshot } from "@/lib/snapshots";
 
 export const VERSIONS: Record<string, { live: string; snapshots: Snapshot[] }> = {
   "superlogical": {
-    live: "Top bar",
+    live: "iOS app",
     snapshots: [
       {"id":"v1","name":"Original","date":"2026-10-21","commit":"da3990d"},
       {"id":"v2","name":"Spaces","date":"2026-10-21","commit":"da3990d"},
+      {"id":"v3","name":"Top bar","date":"2026-10-21","commit":"fb1cfea"},
+      {"id":"v4","name":"Attention","date":"2026-10-21","commit":"fb1cfea"},
     ],
   },
 };
