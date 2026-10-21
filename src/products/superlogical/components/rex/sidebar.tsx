@@ -414,21 +414,11 @@ export function Sidebar({
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 2, scale: 0.98, transition: { duration: 0.24, ease: PAGE.ease } }}
               transition={{ duration: 0.18, ease: PAGE.ease }}
-              // a glass pill, so it reads over a long list; centered 13pt above the dots
-              className="pointer-events-none absolute left-1/2 -ml-[60px] flex w-[120px] justify-center"
+              // plain text, centered 13pt above the dots
+              className="pointer-events-none absolute left-1/2 -ml-[60px] w-[120px] truncate text-center text-[11.5px] leading-[20px] font-semibold text-[var(--rex-ink-2)]"
               style={{ bottom: 20.5 + 13 }}
             >
-              <span
-                className="h-[20px] truncate rounded-full px-[9px] text-[11.5px] leading-[20px] font-semibold text-[var(--rex-ink-2)]"
-                style={{
-                  background: "var(--rex-popover-bg)",
-                  backdropFilter: "blur(30px) saturate(1.8)",
-                  WebkitBackdropFilter: "blur(30px) saturate(1.8)",
-                  boxShadow: "var(--rex-popover-shadow)",
-                }}
-              >
-                {space.name}
-              </span>
+              {space.name}
             </motion.div>
           )}
         </AnimatePresence>
