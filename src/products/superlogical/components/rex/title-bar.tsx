@@ -1,20 +1,25 @@
 "use client";
 
 import { AnimatePresence, animate, type AnimationPlaybackControls, motion, useMotionTemplate, useMotionValue, useTransform } from "motion/react";
-import { useEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { DRAG_REGION, TrafficLights, useMacWindow } from "@/os/macos";
-import { CloseIcon, CommandIcon, HostIcon, PlusIcon } from "./icons";
+import { CloseIcon, CommandIcon, PlusIcon, SidebarIcon } from "./icons";
 import type { ProgramKind } from "./model";
 import { TabChip, TITLE_OFFSET } from "./tab-chip";
 
-export type TabView = { id: string; title: string; front: ProgramKind; back: ProgramKind[] };
+/** A tab as the strip shows it; `device` is the machine it runs on, shown small after the title. */
+export type TabView = { id: string; title: string; device: string; front: ProgramKind; back: ProgramKind[] };
 
-// Tab strip geometry (window-relative px, from the reference): the track
-// starts at 190 and each tab takes a 210pt slot (three tabs end at 820); the
-// active tab is a pill 2pt inside its slot. The track grows with its tabs
+// Tab strip geometry (window-relative px, from the reference): each tab takes
+// a 210pt slot and the active tab is a pill 2pt inside its slot. The
+// reference's track starts at 190, after a session chip; ours has the sidebar
+// toggle there instead (in the spot the sidebar's own header uses, so it
+// stays put when the view changes) and the track starts 8pt after it. The track grows with its tabs
 // until it reaches the ⌘ and + buttons, which hang off the right edge, and
 // scrolls from there.
-const TRACK_LEFT = 190;
+/** The sidebar toggle: a 24pt button at (84, 9), as in the sidebar's header */
+const TOGGLE = { left: 84, top: 9, size: 24 };
+const TRACK_LEFT = TOGGLE.left + TOGGLE.size + 8;
 const SLOT = 210;
 /** The ⌘ and + buttons: 21.5pt boxes, glyph centers 26pt apart, + centered 22pt from the right edge */
 const ACTION = { box: 21.5, plus: 22, pitch: 26 };
@@ -26,21 +31,50 @@ const FADE = 52;
 /** A tab scrolled into view stops this far from the edge, clear of most of the fade */
 const EDGE = 34;
 /** The traffic lights' share of the bar: in full screen they leave it and
-    everything after them moves in by this much (the session chip goes from
-    86pt to the lights' 14.5pt). */
+    everything after them moves in by this much (the sidebar toggle takes
+    the lights' place). */
 export const LIGHTS_SPACE = 71.5;
 const GLIDE = "320ms cubic-bezier(0.2, 0.85, 0.25, 1)";
 const SPRING = { type: "spring", stiffness: 520, damping: 42 } as const;
 /** A tab's badge and title changing over: quick, no overshoot to speak of */
 const SWAP = { type: "spring", stiffness: 560, damping: 38, mass: 0.7 } as const;
 
-/** Traffic lights, session, tab strip and window actions (window-relative px). */
+/**
+ * A tab's title with its device after it, small and quiet. The device never
+ * truncates: a long title gives way and fades out at its own end instead.
+ */
+function TabLabel({ title, device, fade }: { title: string; device: string; fade: number }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const [clipped, setClipped] = useState(false);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const check = () => setClipped(el.scrollWidth > el.clientWidth + 0.5);
+    check();
+    const ro = new ResizeObserver(check);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [title]);
+  return (
+    // padded clear of the tab's own tail fade (the title used to fade into it)
+    <span className="flex min-w-0 items-baseline" style={{ paddingRight: fade }}>
+      <span
+        ref={ref}
+        className="min-w-0 overflow-hidden"
+        style={clipped ? { maskImage: "linear-gradient(to right, #000 calc(100% - 14px), transparent)", WebkitMaskImage: "linear-gradient(to right, #000 calc(100% - 14px), transparent)" } : undefined}
+      >
+        {title}
+      </span>
+      <span className="ml-[4px] shrink-0 text-[9.5px] font-medium text-[var(--rex-ink-faint)] [-webkit-text-stroke:0]">{device}</span>
+    </span>
+  );
+}
+
+/** Traffic lights, sidebar toggle, tab strip and window actions (window-relative px). */
 export function TitleBar({
   width,
   tabs,
   active,
-  session,
-  device,
   sidebar,
   onToggleSidebar,
   onSelect,
@@ -52,10 +86,6 @@ export function TitleBar({
   width: number;
   tabs: TabView[];
   active: string;
-  /** the active tab's session, shown beside the traffic lights */
-  session: string;
-  /** the device it runs on, under it */
-  device: string;
   /** with the sidebar showing, the strip and its neighbours step aside */
   sidebar: boolean;
   onToggleSidebar: () => void;
@@ -154,23 +184,18 @@ export function TitleBar({
         transition={{ duration: 0.16 }}
         style={{ pointerEvents: sidebar ? "none" : "auto" }}
       >
-        {/* The session and its host. Clicking it opens the sidebar. */}
-        <div className="absolute inset-0" style={{ transform: `translateX(${-inset}px)`, transition: `transform ${GLIDE}` }}>
-          <button
-            type="button"
-            aria-label="Show sidebar (⌃⌘S)"
-            title="Show sidebar (⌃⌘S)"
-            tabIndex={-1}
-            onClick={onToggleSidebar}
-            className="absolute top-[7px] left-[86px] h-[30px] w-[96px] cursor-default rounded-[8px] transition-colors hover:bg-[var(--rex-hover-soft)]"
-          />
-          <HostIcon className="pointer-events-none absolute" style={{ left: 92, top: 16.5, color: "var(--rex-chrome-ink)" }} />
-          {/* ends 6pt short of the tab track; long session names truncate */}
-          <div className="pointer-events-none absolute left-[114.5px] top-[9px] w-[69.5px] leading-[13px] [-webkit-text-stroke:0.1px_currentColor]">
-            <div className="truncate text-[11.5px] font-semibold text-[var(--rex-session-ink)]">{session}</div>
-            <div className="truncate text-[9.5px] leading-[12px] font-medium text-[var(--rex-ink-muted)]">{device}</div>
-          </div>
-        </div>
+        {/* The sidebar toggle, where the sidebar's header has its own */}
+        <button
+          type="button"
+          aria-label="Show sidebar (⌃⌘S)"
+          title="Show sidebar (⌃⌘S)"
+          tabIndex={-1}
+          onClick={onToggleSidebar}
+          className="absolute grid cursor-default place-items-center rounded-[7px] text-[var(--rex-chrome-ink)] transition-colors hover:bg-[var(--rex-hover)]"
+          style={{ left: TOGGLE.left - inset, top: TOGGLE.top, width: TOGGLE.size, height: TOGGLE.size, transition: `left ${GLIDE}, background-color 150ms` }}
+        >
+          <SidebarIcon />
+        </button>
 
         <motion.div
           className="absolute top-[5.5px] h-[32.5px] rounded-full"
@@ -268,7 +293,7 @@ export function TitleBar({
                       exit={{ opacity: 0 }}
                       transition={{ duration: 0.16, ease: "easeOut" }}
                     >
-                      {tab.title}
+                      <TabLabel title={tab.title} device={tab.device} fade={isActive ? 16 : 22} />
                     </motion.span>
                   </AnimatePresence>
                 </motion.div>

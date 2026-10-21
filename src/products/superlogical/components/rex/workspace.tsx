@@ -273,6 +273,7 @@ export function Workspace() {
     return {
       id: t.id,
       title: titles(focused).tab,
+      device: state.devices[t.device].name,
       front: focused.program,
       back: leaves(t.root)
         .filter((id) => id !== t.focus)
@@ -482,8 +483,6 @@ export function Workspace() {
           width={state.size.w}
           tabs={tabs}
           active={state.active}
-          session={tab.session}
-          device={state.devices[tab.device].name}
           sidebar={state.view === "sidebar"}
           onToggleSidebar={() => dispatch({ type: "toggle-sidebar" })}
           onSelect={(id) => dispatch({ type: "select-tab", tab: id })}
