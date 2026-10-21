@@ -113,12 +113,12 @@ export function ProductCard({
 /**
  * The next product, not yet revealed: the same card, on a quiet neutral fill
  * with the same lift and a hairline edge, and a question mark set in the
- * page's own typeface as a thin outline over a faint grid. Not a link.
+ * page's own typeface, filled in muted ink, over a faint grid. Not a link.
  */
 export function SurpriseCard() {
   return (
     <li className="w-[78vw] max-w-[22rem] shrink-0 snap-start" aria-label="A new one is on its way">
-      <div className="shadow-card relative grid aspect-video place-items-center overflow-hidden rounded-2xl bg-[#f3f3f3] text-(--ink) [--card-shadow-alpha:0.06] [--ink:#a3a3a3] dark:bg-[#141414] dark:[--ink:#525252]">
+      <div className="shadow-card relative grid aspect-video place-items-center overflow-hidden rounded-2xl bg-[#f3f3f3] text-(--ink) [--card-shadow-alpha:0.06] [--ink:#cfcfcf] dark:bg-[#141414] dark:[--ink:#333333]">
         {/* a faint grid across the card, fading out toward its edges */}
         <span
           aria-hidden
@@ -133,7 +133,7 @@ export function SurpriseCard() {
         <span
           aria-hidden
           className="relative text-[112px] leading-none font-medium select-none"
-          style={{ color: "transparent", WebkitTextStroke: "1.25px var(--ink)" }}
+          style={{ color: "var(--ink)" }}
         >
           ?
         </span>
