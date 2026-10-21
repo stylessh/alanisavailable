@@ -273,7 +273,7 @@ export function Workspace() {
     return {
       id: t.id,
       title: titles(focused).tab,
-      device: state.devices[t.device].name,
+      device: state.devices[t.device],
       front: focused.program,
       back: leaves(t.root)
         .filter((id) => id !== t.focus)

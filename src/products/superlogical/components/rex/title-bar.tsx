@@ -1,14 +1,14 @@
 "use client";
 
 import { AnimatePresence, animate, type AnimationPlaybackControls, motion, useMotionTemplate, useMotionValue, useTransform } from "motion/react";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { DRAG_REGION, TrafficLights, useMacWindow } from "@/os/macos";
-import { CloseIcon, CommandIcon, PlusIcon, SidebarIcon } from "./icons";
+import { CloseIcon, CommandIcon, HostIcon, PlusIcon, ServerIcon, SidebarIcon } from "./icons";
 import type { ProgramKind } from "./model";
 import { TabChip, TITLE_OFFSET } from "./tab-chip";
 
-/** A tab as the strip shows it; `device` is the machine it runs on, shown small after the title. */
-export type TabView = { id: string; title: string; device: string; front: ProgramKind; back: ProgramKind[] };
+/** A tab as the strip shows it; `device` is the machine it runs on, shown small under the title. */
+export type TabView = { id: string; title: string; device: { name: string; remote: boolean }; front: ProgramKind; back: ProgramKind[] };
 
 // Tab strip geometry (window-relative px, from the reference): each tab takes
 // a 210pt slot and the active tab is a pill 2pt inside its slot. The
@@ -39,33 +39,14 @@ const SPRING = { type: "spring", stiffness: 520, damping: 42 } as const;
 /** A tab's badge and title changing over: quick, no overshoot to speak of */
 const SWAP = { type: "spring", stiffness: 560, damping: 38, mass: 0.7 } as const;
 
-/**
- * A tab's title with its device after it, small and quiet. The device never
- * truncates: a long title gives way and fades out at its own end instead.
- */
-function TabLabel({ title, device, fade }: { title: string; device: string; fade: number }) {
-  const ref = useRef<HTMLSpanElement>(null);
-  const [clipped, setClipped] = useState(false);
-  useLayoutEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const check = () => setClipped(el.scrollWidth > el.clientWidth + 0.5);
-    check();
-    const ro = new ResizeObserver(check);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [title]);
+/** The machine a tab runs on, under its title: a small host or server glyph and its name. */
+function TabDevice({ device }: { device: TabView["device"] }) {
+  const Icon = device.remote ? ServerIcon : HostIcon;
   return (
-    // padded clear of the tab's own tail fade (the title used to fade into it)
-    <span className="flex min-w-0 items-baseline" style={{ paddingRight: fade }}>
-      <span
-        ref={ref}
-        className="min-w-0 overflow-hidden"
-        style={clipped ? { maskImage: "linear-gradient(to right, #000 calc(100% - 14px), transparent)", WebkitMaskImage: "linear-gradient(to right, #000 calc(100% - 14px), transparent)" } : undefined}
-      >
-        {title}
-      </span>
-      <span className="ml-[4px] shrink-0 text-[9.5px] font-medium text-[var(--rex-ink-faint)] [-webkit-text-stroke:0]">{device}</span>
+    <span className="flex items-center gap-[3.5px] text-[9.5px] leading-[11px] font-medium text-[var(--rex-ink-faint)] [-webkit-text-stroke:0]">
+      {/* the 14pt glyphs at 10pt */}
+      <Icon className="shrink-0" style={{ width: 10, height: device.remote ? 7 : 6 }} />
+      <span className="truncate">{device.name}</span>
     </span>
   );
 }
@@ -265,7 +246,7 @@ export function TitleBar({
                   </motion.span>
                 </AnimatePresence>
                 <motion.div
-                  className={`absolute top-[4.75px] overflow-hidden text-[12px] leading-[17px] font-medium whitespace-nowrap [-webkit-text-stroke:0.1px_currentColor] ${
+                  className={`absolute top-[2px] overflow-hidden text-[12px] leading-[14px] font-medium whitespace-nowrap [-webkit-text-stroke:0.1px_currentColor] ${
                     // Titles fade out at their tail (the reference fades the
                     // active title's last letter into the divider). On hover the
                     // fade starts earlier, so nothing visible sits under the ×.
@@ -293,9 +274,11 @@ export function TitleBar({
                       exit={{ opacity: 0 }}
                       transition={{ duration: 0.16, ease: "easeOut" }}
                     >
-                      <TabLabel title={tab.title} device={tab.device} fade={isActive ? 16 : 22} />
+                      {tab.title}
                     </motion.span>
                   </AnimatePresence>
+                  {/* two lines in the 28pt tab: the title, then where it runs */}
+                  <TabDevice device={tab.device} />
                 </motion.div>
                 {/* The active tab's divider and the close button share one spot:
                     the divider at rest, the close button on hover. */}
