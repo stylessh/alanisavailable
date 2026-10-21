@@ -16,6 +16,18 @@ export type Version = { id: string; name: string; href: string; date?: string };
 
 export const CURRENT = "current";
 
+/** Where a version opens: in the versions canvas, which moves between versions without reloading. */
+export const versionHref = (slug: string, id: string) => `/${slug}/versions?v=${id}`;
+
+/**
+ * Where a product starts: its first version, so the story runs oldest to
+ * newest. A product without versions opens on its own page.
+ */
+export function entryHref(slug: string) {
+  const [first] = getVersions(slug);
+  return first ? versionHref(slug, first.id) : `/${slug}`;
+}
+
 export function getSnapshots(slug: string): Snapshot[] {
   return Object.hasOwn(VERSIONS, slug) ? VERSIONS[slug].snapshots : [];
 }

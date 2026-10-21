@@ -63,3 +63,10 @@ export const STATUS_ITEMS = [
   { id: "now-playing", label: "Now Playing", right: 211, width: 17 },
   { id: "control-center", label: "Control Center", right: 174, width: 16 },
 ] as const;
+
+/** The desktop picture every screen starts with. */
+export const WALLPAPER = {
+  // "Mono Dark Distortion 2" from raycast.com/wallpapers
+  src: "/os/macos/wallpaper/mono-dark-distortion-2-1920.webp",
+  srcSet: "/os/macos/wallpaper/mono-dark-distortion-2-1920.webp 1920w, /os/macos/wallpaper/mono-dark-distortion-2-3840.webp 3840w",
+};

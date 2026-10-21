@@ -29,10 +29,11 @@ const edge = (background: string, page: "light" | "dark") =>
     : "rgb(0 0 0 / 0.1)";
 
 export function ProductCard({
-  slug,
+  href,
   metadata,
 }: {
-  slug: string;
+  /** Where the card opens: the product's first version, or its page. */
+  href: string;
   metadata: ProductMeta;
 }) {
   const { company, logo, flat, grain } = metadata;
@@ -56,7 +57,7 @@ export function ProductCard({
   return (
     <li className="w-[78vw] max-w-[22rem] shrink-0 snap-start">
       <Link
-        href={`/${slug}`}
+        href={href}
         aria-label={company}
         className="group block outline-none"
         style={vars}
