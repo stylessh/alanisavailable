@@ -1,8 +1,9 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { VERSION_KEY_MESSAGE, type VersionKey, VersionBar, versionKey } from "@/components/version-switcher";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
+import { formatDate, VERSION_KEY_MESSAGE, type VersionKey, VersionBar, versionKey } from "@/components/version-switcher";
+import { PrefetchPages } from "@/lib/prefetch";
 import type { Version } from "@/lib/snapshots";
 import { type Camera, fit, lerp, loadCamera, type Rect, sane, saveCamera, zoomAt } from "./camera";
 
@@ -11,6 +12,14 @@ const LABEL = 36; // screen pixels a frame's name takes above it
 const DRAG = 4; // screen pixels a press moves before it pans instead of clicking
 const STEP = 1.25; // zoom per key press
 const FADE = 160; // ms the label and outline take to fade before zooming in
+
+// A touchscreen as the main input: a phone or tablet, with a phone or tablet's memory.
+const TOUCH = "(pointer: coarse)";
+const subscribeTouch = (change: () => void) => {
+  const query = matchMedia(TOUCH);
+  query.addEventListener("change", change);
+  return () => query.removeEventListener("change", change);
+};
 
 const ease = (t: number) => 1 - (1 - t) ** 3;
 const easeInOut = (t: number) => (t < 0.5 ? 4 * t ** 3 : 1 - (-2 * t + 2) ** 3 / 2);
@@ -26,6 +35,12 @@ const easeInOut = (t: number) => (t < 0.5 ? 4 * t ** 3 : 1 - (-2 * t + 2) ** 3 /
  * Arriving on a version loads that one first and the rest once it's up, so
  * they're ready before you switch. Until a frame has loaded it shows
  * `backdrop` (the picture its page opens on), then fades its page in.
+ *
+ * Phones and tablets run one version at a time: every frame is a whole
+ * desktop laid out at full size, and a few at once is more memory than iOS
+ * gives a tab (Safari kills the page). There, only the open version (or the
+ * last one opened, in the overview) is live; the others show their backdrop
+ * and load from the HTTP cache, prefetched, when you switch to them.
  */
 export function VersionsCanvas({
   slug,
@@ -57,13 +72,25 @@ export function VersionsCanvas({
   // the open version has finished zooming in; the switcher waits for it
   const [settled, setSettled] = useState(false);
 
+  const single = useSyncExternalStore(subscribeTouch, () => matchMedia(TOUCH).matches, () => false);
+  const [lastOpen, setLastOpen] = useState(open);
+  if (open && open !== lastOpen) setLastOpen(open);
+
   // Frames whose page has loaded, and frames that have started loading: the
   // open one goes first, the rest follow once any frame is up (in the
-  // overview they all start together). A started frame never stops.
+  // overview they all start together). A started frame never stops, except
+  // in single mode, where only one is ever live.
   const [loaded, setLoaded] = useState<ReadonlySet<string>>(() => new Set());
   const [started, setStarted] = useState<ReadonlySet<string>>(() => new Set());
-  const due = versions.filter((v) => !open || v.id === open || loaded.size > 0).map((v) => v.id);
-  if (due.some((id) => !started.has(id))) setStarted(new Set([...started, ...due]));
+  const live = single ? (open ?? lastOpen) : null;
+  if (single) {
+    const only = new Set(live ? [live] : []);
+    if (started.size !== only.size || [...only].some((id) => !started.has(id))) setStarted(only);
+    if ([...loaded].some((id) => !only.has(id))) setLoaded(new Set([...loaded].filter((id) => only.has(id))));
+  } else {
+    const due = versions.filter((v) => !open || v.id === open || loaded.size > 0).map((v) => v.id);
+    if (due.some((id) => !started.has(id))) setStarted(new Set([...started, ...due]));
+  }
 
   const gap = size ? Math.round(size.w * 0.12) : 0;
   const rectOf = useCallback(
@@ -462,18 +489,17 @@ export function VersionsCanvas({
                       className="absolute inset-0 size-full object-cover"
                     />
                   )}
-                  <iframe
-                    src={started.has(v.id) ? v.href : undefined}
-                    title={v.name}
-                    tabIndex={isOpen ? 0 : -1}
-                    aria-hidden={!isOpen}
-                    onLoad={(e) => {
-                      // a frame that hasn't started yet loads about:blank, which doesn't count
-                      if (e.currentTarget.contentWindow?.location.href === "about:blank") return;
-                      setLoaded((s) => (s.has(v.id) ? s : new Set(s).add(v.id)));
-                    }}
-                    className={`relative size-full border-0 transition-opacity duration-200 ${loaded.has(v.id) ? "" : "opacity-0"} ${isOpen ? "" : "pointer-events-none"}`}
-                  />
+                  {/* a frame that hasn't started (or was let go) isn't there at all, so its page is freed */}
+                  {started.has(v.id) && (
+                    <iframe
+                      src={v.href}
+                      title={v.name}
+                      tabIndex={isOpen ? 0 : -1}
+                      aria-hidden={!isOpen}
+                      onLoad={() => setLoaded((s) => (s.has(v.id) ? s : new Set(s).add(v.id)))}
+                      className={`relative size-full border-0 transition-opacity duration-200 ${loaded.has(v.id) ? "" : "opacity-0"} ${isOpen ? "" : "pointer-events-none"}`}
+                    />
+                  )}
                 </span>
                 {/* hover and keyboard focus outline, kept the same width at any zoom */}
                 <span
@@ -489,6 +515,8 @@ export function VersionsCanvas({
           })}
       </div>
 
+      {single && <PrefetchPages hrefs={versions.filter((v) => v.id !== live).map((v) => v.href)} />}
+
       <VersionBar
         versions={versions}
         current={open}
@@ -497,8 +525,4 @@ export function VersionsCanvas({
       />
     </div>
   );
-}
-
-function formatDate(iso: string) {
-  return new Date(`${iso}T12:00:00`).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
