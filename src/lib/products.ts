@@ -25,6 +25,8 @@ export type ProductMeta = {
   /** "fullscreen" renders the MDX edge to edge, with no page chrome. */
   layout?: "fullscreen";
   status?: "researching" | "applied" | "interviewing" | "closed";
+  /** Leave the card off the homepage; the page stays reachable by URL. */
+  hidden?: boolean;
 };
 
 type Slug = keyof typeof PRODUCTS;
@@ -47,9 +49,11 @@ export async function getProduct(slug: string) {
 export async function getAllProducts() {
   const slugs = await getProductSlugs();
   const products = await Promise.all(slugs.map(getProduct));
-  return products.sort(
-    (a, b) =>
-      Number(!!b.metadata.favorite) - Number(!!a.metadata.favorite) ||
-      (a.metadata.order ?? Infinity) - (b.metadata.order ?? Infinity),
-  );
+  return products
+    .filter((p) => !p.metadata.hidden)
+    .sort(
+      (a, b) =>
+        Number(!!b.metadata.favorite) - Number(!!a.metadata.favorite) ||
+        (a.metadata.order ?? Infinity) - (b.metadata.order ?? Infinity),
+    );
 }
