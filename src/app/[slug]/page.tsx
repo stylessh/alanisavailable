@@ -3,7 +3,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { Container } from "@/components/container";
+import { VersionSwitcher } from "@/components/version-switcher";
 import { getProduct, getProductSlugs } from "@/lib/products";
+import { CURRENT, getVersions } from "@/lib/snapshots";
 
 export async function generateStaticParams() {
   const slugs = await getProductSlugs();
@@ -37,7 +39,14 @@ async function Product({ params }: Pick<PageProps<"/[slug]">, "params">) {
   if (!(await getProductSlugs()).includes(slug)) notFound();
   const { Content, metadata } = await getProduct(slug);
 
-  if (metadata.layout === "fullscreen") return <Content />;
+  if (metadata.layout === "fullscreen") {
+    return (
+      <>
+        <Content />
+        <VersionSwitcher slug={slug} versions={getVersions(slug)} current={CURRENT} />
+      </>
+    );
+  }
 
   return (
     <Container>
