@@ -133,6 +133,10 @@
     0 1px 2px light-dark(rgb(0 0 0 / 0.04), rgb(0 0 0 / 0.2));
   --rex-pane-title: light-dark(#28292b, #f2f2f4);
   --rex-pane-title-muted: light-dark(#626364, #c7c7cc);
+  /* A pane calling for you (pane.tsx): macOS's green when its work is done,
+     orange when an agent is waiting on you */
+  --rex-attention-done: light-dark(#28cd41, #32d74b);
+  --rex-attention-input: light-dark(#ff9500, #ff9f0a);
   --rex-pane-control: light-dark(#a0a1a1, #8e8e93);
   --rex-pane-control-hover: light-dark(#6e6f71, #d1d1d6);
   /* pane header glyphs, measured per program */

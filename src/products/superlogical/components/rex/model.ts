@@ -17,6 +17,13 @@ export type Node =
   | { kind: "split"; id: string; dir: Dir; ratio: number; a: Node; b: Node };
 export type Rect = { x: number; y: number; w: number; h: number };
 
+/** Why a pane wants you: its program finished, or an agent stopped to ask you something. */
+export type AttentionKind = "done" | "input";
+/** A pane calling for you. It's set when the pane's work ends while you're
+    looking elsewhere, and cleared once you focus the pane. How a tile shows
+    it is up to the tile (pane.tsx), by kind. */
+export type Attention = { kind: AttentionKind; at: number };
+
 export type Pane = {
   id: string;
   /** the hostname of the device it runs on, for the shell prompt */
@@ -39,6 +46,7 @@ export type Pane = {
   busy: number;
   /** when the program last did something (ms), for Activity Mode */
   activeAt: number;
+  attention?: Attention;
   snake?: SnakeState;
 };
 
@@ -110,6 +118,8 @@ export type Action =
   | { type: "clear" }
   | { type: "launch"; command: string; cwd?: string }
   | { type: "done"; pane: string }
+  /** go to the pane calling for you (attentionTarget) */
+  | { type: "focus-attention" }
   | { type: "tick"; pane: string }
   | { type: "palette"; open: boolean }
   | { type: "toggle-sidebar" }
@@ -493,6 +503,8 @@ type Agent = {
   /** its prompt, at the bottom of the screen */
   input: (p: Pane, cols: number) => Row[];
   reply: () => Row[];
+  /** shown after its reply when it stops to ask you something (a permission prompt) instead of finishing */
+  ask?: () => Row[];
 };
 
 /** A boxed prompt field, as Claude Code, Gemini and opencode draw theirs. */
@@ -538,6 +550,15 @@ export const AGENTS: Record<AgentKind, Agent> = {
       [s("  └  ", "--t-dim"), s("README.md  Package.swift  Sources  Tests", "--t-dim")],
       [],
       ...REPLY.map((line, i): Row => [s(i === 0 ? "● " : "  ", "--t-fg"), s(line, "--t-fg")]),
+    ],
+    ask: () => [
+      [],
+      [s("● ", "--t-claude"), s("Update", "--t-strong", b), s("(Sources/App.swift)", "--t-fg")],
+      [],
+      [s(" Do you want to make this edit to ", "--t-fg"), s("App.swift", "--t-strong", b), s("?", "--t-fg")],
+      [s(" ❯ 1. Yes", "--t-claude")],
+      [s("   2. Yes, allow all edits during this session", "--t-fg")],
+      [s("   3. No, and tell Claude what to do differently ", "--t-fg"), s("(esc)", "--t-dim")],
     ],
   },
   cursor: {
@@ -604,6 +625,20 @@ export function activityOf(p: Pane): Activity | null {
     default:
       return null;
   }
+}
+
+/** A tab's call for you, from its panes: one waiting on you outranks one that's only finished. */
+export function tabAttention(st: State, tab: Tab): AttentionKind | null {
+  const kinds = leaves(tab.root).map((id) => st.panes[id].attention?.kind);
+  return kinds.includes("input") ? "input" : kinds.includes("done") ? "done" : null;
+}
+
+/** The pane calling for you that you'd want first: one waiting on you before one that's only finished, then the latest. */
+export function attentionTarget(st: State): string | null {
+  const rank = (p: Pane) => (p.attention?.kind === "input" ? 1 : 0);
+  const calling = Object.values(st.panes).filter((p) => p.attention && tabOf(st, p.id));
+  calling.sort((a, b) => rank(b) - rank(a) || b.attention!.at - a.attention!.at);
+  return calling[0]?.id ?? null;
 }
 
 /** The pane a tab is represented by in Activity Mode: its focused pane if it's running something. */
@@ -1132,8 +1167,20 @@ function onKey(st: State, k: Key): State {
 
 // ─── Reducer ────────────────────────────────────────────────────────────────
 
+/** Every change goes through here: the pane you end up looking at has been seen, so it stops calling for you. */
 export function reducer(st: State, a: Action): State {
+  const next = reduce(st, a);
+  const id = activeTab(next).focus;
+  return next.panes[id]?.attention ? put(next, id, () => ({ attention: undefined })) : next;
+}
+
+function reduce(st: State, a: Action): State {
   switch (a.type) {
+    case "focus-attention": {
+      const id = attentionTarget(st);
+      if (!id) return st;
+      return reduce(reduce(st, { type: "select-tab", tab: tabOf(st, id)!.id }), { type: "focus", pane: id });
+    }
     case "focus": {
       const tab = tabOf(st, a.pane);
       if (!tab || tab.focus === a.pane) return st;
@@ -1225,17 +1272,22 @@ export function reducer(st: State, a: Action): State {
       if (!p?.busy) return st;
       const now = Date.now();
       if (p.program === "bun") {
-        return put(print(st, a.pane, [[s(" ✓ ", "--t-green"), s("Ready in 812ms", "--t-fg")]]), a.pane, () => ({ busy: 0, activeAt: now }));
+        return put(print(st, a.pane, [[s(" ✓ ", "--t-green"), s("Ready in 812ms", "--t-fg")]]), a.pane, () => ({
+          busy: 0,
+          activeAt: now,
+          attention: { kind: "done", at: now },
+        }));
       }
       if (isAgent(p.program)) {
-        const reply = AGENTS[p.program].reply();
+        const agent = AGENTS[p.program];
         return put(st, a.pane, (q) => ({
           busy: 0,
           activeAt: now,
-          screen: [...q.screen.slice(0, -1), ...reply],
+          screen: [...q.screen.slice(0, -1), ...agent.reply(), ...(agent.ask?.() ?? [])],
+          attention: { kind: agent.ask ? "input" : "done", at: now },
         }));
       }
-      return put(st, a.pane, () => ({ busy: 0, activeAt: now }));
+      return put(st, a.pane, () => ({ busy: 0, activeAt: now, attention: { kind: "done", at: now } }));
     }
     case "tick": {
       const p = st.panes[a.pane];
