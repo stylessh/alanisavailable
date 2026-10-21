@@ -10,7 +10,14 @@ import { Workspace } from "./workspace";
 export { REX_APP };
 
 /** The Rex window: a Liquid Glass surface holding the interactive workspace. */
-export function RexWindow({ at }: { at?: (screen: { w: number; h: number }) => { x?: number; y?: number } }) {
+export function RexWindow({
+  at,
+  closed = false,
+}: {
+  at?: (screen: { w: number; h: number }) => { x?: number; y?: number };
+  /** start closed, until its Dock icon is clicked */
+  closed?: boolean;
+}) {
   // The active space tints the window (styles.css mixes it into the glass,
   // panes and controls). Going back to a neutral space keeps the last hue and
   // only fades its strength, so the color doesn't drift through gray.
@@ -21,6 +28,7 @@ export function RexWindow({ at }: { at?: (screen: { w: number; h: number }) => {
     <MacWindow
       id="rex"
       at={at}
+      closed={closed}
       app={REX_APP}
       width={WINDOW.w}
       height={WINDOW.h}
