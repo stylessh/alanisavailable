@@ -57,19 +57,14 @@ const SHORTCUTS: Shortcut[] = [
   { code: "KeyK", meta: true, alt: true, action: { type: "clear" }, label: "⌥⌘K" },
   { code: "KeyS", meta: true, ctrl: true, action: { type: "toggle-sidebar" }, label: "⌃⌘S" },
   { code: "Period", meta: true, action: { type: "toggle-activity" }, label: "⌘." },
-  // spaces on ⌥←/→ (and ⌃⌘←/→); tabs in the space on ⇧ and an arrow, in sidebar or tab bar order
-  { code: "ArrowLeft", alt: true, action: { type: "step-space", by: -1 }, label: "⌥←" },
-  { code: "ArrowRight", alt: true, action: { type: "step-space", by: 1 }, label: "⌥→" },
+  // ⇧⌥←/→ switch spaces (as do ⌃⌘←/→), ⇧⌥↑/↓ step through the space's tabs in
+  // sidebar order: plain ⌥ and ⇧ arrows stay with text editing
+  { code: "ArrowLeft", alt: true, shift: true, action: { type: "step-space", by: -1 }, label: "⇧⌥←" },
+  { code: "ArrowRight", alt: true, shift: true, action: { type: "step-space", by: 1 }, label: "⇧⌥→" },
+  { code: "ArrowUp", alt: true, shift: true, action: { type: "step-tab", by: -1 }, label: "⇧⌥↑" },
+  { code: "ArrowDown", alt: true, shift: true, action: { type: "step-tab", by: 1 }, label: "⇧⌥↓" },
   { code: "ArrowLeft", meta: true, ctrl: true, action: { type: "step-space", by: -1 }, label: "⌃⌘←" },
   { code: "ArrowRight", meta: true, ctrl: true, action: { type: "step-space", by: 1 }, label: "⌃⌘→" },
-  { code: "ArrowUp", shift: true, action: { type: "step-tab", by: -1 }, label: "⇧↑" },
-  { code: "ArrowDown", shift: true, action: { type: "step-tab", by: 1 }, label: "⇧↓" },
-  { code: "ArrowLeft", shift: true, action: { type: "step-tab", by: -1 }, label: "⇧←" },
-  { code: "ArrowRight", shift: true, action: { type: "step-tab", by: 1 }, label: "⇧→" },
-  { code: "ArrowLeft", meta: true, alt: true, action: { type: "move-focus", dir: "left" }, label: "⌥⌘←" },
-  { code: "ArrowRight", meta: true, alt: true, action: { type: "move-focus", dir: "right" }, label: "⌥⌘→" },
-  { code: "ArrowUp", meta: true, alt: true, action: { type: "move-focus", dir: "up" }, label: "⌥⌘↑" },
-  { code: "ArrowDown", meta: true, alt: true, action: { type: "move-focus", dir: "down" }, label: "⌥⌘↓" },
   ...Array.from({ length: 9 }, (_, i): Shortcut => ({
     code: `Digit${i + 1}`,
     ctrl: true,
