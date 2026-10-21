@@ -2,8 +2,10 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { VersionsCanvas } from "@/components/versions-canvas/versions-canvas";
+import { preloadWallpaper } from "@/lib/prefetch";
 import { getProduct, getProductSlugs } from "@/lib/products";
 import { getVersions } from "@/lib/snapshots";
+import { WALLPAPER } from "@/os/macos/data";
 
 export async function generateMetadata({
   params,
@@ -27,5 +29,8 @@ async function Versions({ params }: Pick<PageProps<"/[slug]/versions">, "params"
   const versions = getVersions(slug);
   if (versions.length === 0) notFound();
   const { metadata } = await getProduct(slug);
-  return <VersionsCanvas slug={slug} title={metadata.company} versions={versions} />;
+  preloadWallpaper("high");
+  // Versioned products are desktop apps on the macOS shell, so each frame
+  // shows the wallpaper until its version has loaded on top of it.
+  return <VersionsCanvas slug={slug} title={metadata.company} versions={versions} backdrop={WALLPAPER} />;
 }

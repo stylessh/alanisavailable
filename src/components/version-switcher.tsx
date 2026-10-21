@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useSyncExternalStore } from "react";
+import { PrefetchPages } from "@/lib/prefetch";
 import type { Version } from "@/lib/snapshots";
 
 const subscribeNothing = () => () => {};
@@ -47,11 +48,15 @@ export function VersionSwitcher({ slug, versions, current }: { slug: string; ver
 
   if (framed || versions.length === 0) return null;
   return (
-    <VersionBar
-      versions={versions}
-      current={current}
-      render={(id, props) => <Link href={hrefOf(id)} {...props} />}
-    />
+    <>
+      <VersionBar
+        versions={versions}
+        current={current}
+        render={(id, props) => <Link href={hrefOf(id)} {...props} />}
+      />
+      {/* the canvas loads every version in a frame; have them cached by then */}
+      <PrefetchPages hrefs={versions.filter((v) => v.id !== current).map((v) => v.href)} />
+    </>
   );
 }
 

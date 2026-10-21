@@ -3,10 +3,16 @@ import { CardScroller } from "@/components/card-scroller";
 import { ProductCard, SurpriseCard } from "@/components/product-card";
 import { Container } from "@/components/container";
 import { emailHref, xDmHref } from "@/lib/contact";
+import { PrefetchPages, preloadWallpaper } from "@/lib/prefetch";
 import { getAllProducts } from "@/lib/products";
+import { entryHref, getVersions } from "@/lib/snapshots";
 
 export default async function Home() {
   const products = await getAllProducts();
+  // While the visitor reads, fetch what a card opens onto: the wallpaper and
+  // each product's first version, the page its canvas frame loads first.
+  preloadWallpaper("low");
+  const firsts = products.flatMap((p) => getVersions(p.slug).slice(0, 1).map((v) => v.href));
 
   return (
     <Container className="flex min-h-dvh flex-col">
@@ -26,12 +32,14 @@ export default async function Home() {
         ) : (
           <CardScroller>
             {products.map((p) => (
-              <ProductCard key={p.slug} {...p} />
+              <ProductCard key={p.slug} href={entryHref(p.slug)} metadata={p.metadata} />
             ))}
             <SurpriseCard />
           </CardScroller>
         )}
       </Section>
+
+      <PrefetchPages hrefs={firsts} />
 
       <Section className="mt-auto pb-0">
         <p className="text-normal text-muted-foreground">

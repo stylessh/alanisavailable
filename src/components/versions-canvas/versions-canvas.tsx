@@ -22,8 +22,22 @@ const easeInOut = (t: number) => (t < 0.5 ? 4 * t ** 3 : 1 - (-2 * t + 2) ** 3 /
  * zoom into it. An open version fills the window and is the real thing (its
  * frame takes input), and the switcher slides between versions without ever
  * reloading one. `?v=<id>` names the open version, so Back works.
+ *
+ * Arriving on a version loads that one first and the rest once it's up, so
+ * they're ready before you switch. Until a frame has loaded it shows
+ * `backdrop` (the picture its page opens on), then fades its page in.
  */
-export function VersionsCanvas({ slug, title, versions }: { slug: string; title: string; versions: Version[] }) {
+export function VersionsCanvas({
+  slug,
+  title,
+  versions,
+  backdrop,
+}: {
+  slug: string;
+  title: string;
+  versions: Version[];
+  backdrop?: { src: string; srcSet?: string };
+}) {
   const viewport = useRef<HTMLDivElement>(null);
   const world = useRef<HTMLDivElement>(null);
   const camera = useRef<Camera>({ x: 0, y: 0, z: 1 });
@@ -42,6 +56,14 @@ export function VersionsCanvas({ slug, title, versions }: { slug: string; title:
   const openRef = useRef(open);
   // the open version has finished zooming in; the switcher waits for it
   const [settled, setSettled] = useState(false);
+
+  // Frames whose page has loaded, and frames that have started loading: the
+  // open one goes first, the rest follow once any frame is up (in the
+  // overview they all start together). A started frame never stops.
+  const [loaded, setLoaded] = useState<ReadonlySet<string>>(() => new Set());
+  const [started, setStarted] = useState<ReadonlySet<string>>(() => new Set());
+  const due = versions.filter((v) => !open || v.id === open || loaded.size > 0).map((v) => v.id);
+  if (due.some((id) => !started.has(id))) setStarted(new Set([...started, ...due]));
 
   const gap = size ? Math.round(size.w * 0.12) : 0;
   const rectOf = useCallback(
@@ -429,12 +451,28 @@ export function VersionsCanvas({ slug, title, versions }: { slug: string; title:
                     boxShadow: isOpen ? "none" : "0 0 0 calc(1px * var(--inv)) var(--border)",
                   }}
                 >
+                  {backdrop && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={backdrop.src}
+                      srcSet={backdrop.srcSet}
+                      sizes="100vw"
+                      alt=""
+                      draggable={false}
+                      className="absolute inset-0 size-full object-cover"
+                    />
+                  )}
                   <iframe
-                    src={v.href}
+                    src={started.has(v.id) ? v.href : undefined}
                     title={v.name}
                     tabIndex={isOpen ? 0 : -1}
                     aria-hidden={!isOpen}
-                    className={`size-full border-0 ${isOpen ? "" : "pointer-events-none"}`}
+                    onLoad={(e) => {
+                      // a frame that hasn't started yet loads about:blank, which doesn't count
+                      if (e.currentTarget.contentWindow?.location.href === "about:blank") return;
+                      setLoaded((s) => (s.has(v.id) ? s : new Set(s).add(v.id)));
+                    }}
+                    className={`relative size-full border-0 transition-opacity duration-200 ${loaded.has(v.id) ? "" : "opacity-0"} ${isOpen ? "" : "pointer-events-none"}`}
                   />
                 </span>
                 {/* hover and keyboard focus outline, kept the same width at any zoom */}

@@ -27,4 +27,4 @@ export {
 } from "./window-manager";
 export { windowMenuItems } from "./menus";
 export type { SeedNotice } from "./notifications";
-export { type AppInfo, type DockApp, type DockItem, dockWith, DOCK_H, FINDER, GHOSTTY, IPHONE_MIRRORING, MENU_BAR_H, SYSTEM_SETTINGS, TRASH } from "./data";
+export { type AppInfo, type DockApp, type DockItem, dockWith, DOCK_H, FINDER, GHOSTTY, IPHONE_MIRRORING, MENU_BAR_H, SYSTEM_SETTINGS, TRASH, WALLPAPER } from "./data";

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useLayoutEffect, useReducer, useRef, useState, useSyncExternalStore } from "react";
-import type { DockItem } from "./data";
+import { type DockItem, WALLPAPER } from "./data";
 import { Dock } from "./dock";
 import { MenuBar } from "./menu-bar";
 import { Banners, type SeedNotice } from "./notifications";
@@ -20,12 +20,6 @@ const subscribeNothing = () => () => {};
 // stays in real screen points.
 const MIN_W = 1100;
 const MIN_H = 760;
-
-const WALLPAPER = {
-  // "Mono Dark Distortion 2" from raycast.com/wallpapers
-  src: "/os/macos/wallpaper/mono-dark-distortion-2-1920.webp",
-  srcSet: "/os/macos/wallpaper/mono-dark-distortion-2-1920.webp 1920w, /os/macos/wallpaper/mono-dark-distortion-2-3840.webp 3840w",
-};
 
 /**
  * A macOS screen: wallpaper, menu bar, Dock and a window manager. Products
