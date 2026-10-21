@@ -1,0 +1,12 @@
+import { ImageResponse } from "next/og";
+
+export const size = { width: 180, height: 180 };
+export const contentType = "image/png";
+
+// iOS rounds the corners itself, so this is just the favicon's white fill.
+export default function AppleIcon() {
+  return new ImageResponse(
+    <div style={{ width: "100%", height: "100%", background: "#ffffff" }} />,
+    size,
+  );
+}

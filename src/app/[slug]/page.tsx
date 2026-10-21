@@ -21,7 +21,11 @@ export async function generateMetadata({
   const { slug } = await params;
   if (!(await getProductSlugs()).includes(slug)) return {};
   const { metadata } = await getProduct(slug);
-  return { title: metadata.company };
+  return {
+    title: metadata.company,
+    alternates: { canonical: `/${slug}` },
+    openGraph: { url: `/${slug}`, title: `${metadata.company} · Alan is available` },
+  };
 }
 
 // Every known slug is prerendered, so this boundary never shows a fallback
