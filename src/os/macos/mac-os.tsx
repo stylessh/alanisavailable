@@ -13,6 +13,7 @@ const subscribeScheme = (onChange: () => void) => {
   mq.addEventListener("change", onChange);
   return () => mq.removeEventListener("change", onChange);
 };
+const subscribeNothing = () => () => {};
 
 // Below this size the whole screen is drawn smaller rather than squeezing
 // its windows: it reads as a Mac screen at a glance, and window dragging
@@ -58,6 +59,8 @@ export function MacOS({
     () => false,
   );
   const appearance = appearancePref === "auto" ? (systemDark ? "dark" : "light") : appearancePref;
+  // true while rendering on the server and hydrating its HTML, false for a screen React draws itself
+  const fromServer = useSyncExternalStore(subscribeNothing, () => false, () => true);
   const [state, dispatch] = useReducer(osReducer, initialOS);
   const [screen, setScreen] = useState<Screen | null>(null);
   // the source of each app's menus, kept outside React state: they're read when a menu opens
@@ -136,11 +139,13 @@ export function MacOS({
             transform: screen && screen.scale < 1 ? `scale(${screen.scale})` : undefined,
           }}
         >
-          {appearancePref === "auto" && (
+          {appearancePref === "auto" && fromServer && (
             // Following the system, the server renders "light" (it can't know the setting),
             // so a dark Mac would paint light colors until the page loads. This runs while
             // the HTML is parsed, before anything inside the screen paints, and puts the
             // system's appearance on the screen; the store then agrees once React is up.
+            // Only the server's HTML needs it: React never runs a script it creates, and
+            // on a client navigation the store already knows the setting.
             <script
               dangerouslySetInnerHTML={{
                 __html: `document.currentScript.parentElement.dataset.appearance=matchMedia(${JSON.stringify(DARK_QUERY)}).matches?"dark":"light"`,
