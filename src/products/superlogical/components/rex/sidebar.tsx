@@ -33,6 +33,8 @@ const EMPTY_H = 24;
 const FOOTER_H = 41;
 const DOT = 6;
 const DOT_PITCH = 12;
+/** How long the space's name stays up after switching (ms). */
+const LABEL_MS = 1000;
 /** A sideways trackpad swipe this long (px of wheel delta) turns the page. */
 const SWIPE = 40;
 const SECTION_H = 30.5;
@@ -325,8 +327,15 @@ export function Sidebar({
 
   // The page slides in from the side of the dot it came from.
   const index = state.spaces.findIndex((sp) => sp.id === state.space);
-  const [shown, setShown] = useState({ index, dir: 1 });
-  if (shown.index !== index) setShown({ index, dir: index > shown.index ? 1 : -1 });
+  // Each change also flashes the space's name above the dots for a second.
+  const [shown, setShown] = useState({ index, dir: 1, flash: 0 });
+  if (shown.index !== index) setShown({ index, dir: index > shown.index ? 1 : -1, flash: shown.flash + 1 });
+  const [faded, setFaded] = useState(0);
+  useEffect(() => {
+    if (!shown.flash) return;
+    const t = setTimeout(() => setFaded(shown.flash), LABEL_MS);
+    return () => clearTimeout(t);
+  }, [shown.flash]);
   const space = state.spaces[index];
 
   // A sideways two-finger swipe turns one page per gesture: the wheel goes
@@ -396,6 +405,33 @@ export function Sidebar({
 
       {/* Footer: the page dots, one per space */}
       <div className="absolute inset-x-0 bottom-0" style={{ height: FOOTER_H }}>
+        <AnimatePresence>
+          {shown.flash > faded && (
+            <motion.div
+              key="label"
+              aria-live="polite"
+              initial={{ opacity: 0, y: 4, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 2, scale: 0.98, transition: { duration: 0.24, ease: PAGE.ease } }}
+              transition={{ duration: 0.18, ease: PAGE.ease }}
+              // a glass pill, so it reads over a long list; centered 13pt above the dots
+              className="pointer-events-none absolute left-1/2 -ml-[60px] flex w-[120px] justify-center"
+              style={{ bottom: 20.5 + 13 }}
+            >
+              <span
+                className="h-[20px] truncate rounded-full px-[9px] text-[11.5px] leading-[20px] font-semibold text-[var(--rex-ink-2)]"
+                style={{
+                  background: "var(--rex-popover-bg)",
+                  backdropFilter: "blur(30px) saturate(1.8)",
+                  WebkitBackdropFilter: "blur(30px) saturate(1.8)",
+                  boxShadow: "var(--rex-popover-shadow)",
+                }}
+              >
+                {space.name}
+              </span>
+            </motion.div>
+          )}
+        </AnimatePresence>
         <div role="tablist" aria-label="Spaces" className="absolute left-1/2 flex -translate-x-1/2" style={{ bottom: 20.5 - 10 }}>
           {state.spaces.map((sp) => {
             const active = sp.id === state.space;
