@@ -500,7 +500,6 @@ export function Workspace() {
               onStepSpace={(by) => dispatch({ type: "step-space", by })}
               onToggleSidebar={() => dispatch({ type: "toggle-sidebar" })}
               onToggleActivity={() => dispatch({ type: "toggle-activity" })}
-              onPalette={() => dispatch({ type: "palette", open: true })}
               onNewTab={() => dispatch({ type: "new-tab" })}
             />
           )}

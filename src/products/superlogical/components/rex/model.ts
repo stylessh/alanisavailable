@@ -320,8 +320,8 @@ export const tabOf = (st: State, pane: string) => st.tabs.find((t) => leaves(t.r
 
 /** The active space. */
 export const spaceOf = (st: State) => st.spaces.find((sp) => sp.id === st.space)!;
-/** The tabs a space shows: every tab on one of its devices. */
-export const tabsIn = (st: State, space = spaceOf(st)) => st.tabs.filter((t) => space.devices.includes(t.device));
+/** The tabs a space shows: every tab on one of its devices, in the order the sidebar lists them. */
+export const tabsIn = (st: State, space = spaceOf(st)) => space.devices.flatMap((d) => st.tabs.filter((t) => t.device === d));
 
 export function paneRect(st: State, pane: string): Rect {
   const tab = tabOf(st, pane);
@@ -701,6 +701,12 @@ const FS: Record<string, string[]> = {
   "~/srv/caddy": ["Caddyfile"],
   "~/runner": ["config.toml", "e2e/", "run.sh"],
   "~/runner/e2e": ["macos.yml"],
+  "~/release": ["CHANGELOG.md", "release.sh"],
+  "~/gateway": ["Dockerfile", "deploy.yaml", "nginx.conf"],
+  "~/migrations": ["0042_split_orders.py", "env.py"],
+  "~/zigbee": ["configuration.yaml", "devices.yaml"],
+  "~/backups": ["excludes.txt", "restic.env"],
+  "~/media": ["Movies/", "Music/", "Photos/"],
   "~/desktop": [],
   "~/documents": [],
   "~/downloads": [],
@@ -1251,13 +1257,16 @@ const BUN_LOG: Row[] = [
 const DEVICES: Record<string, Device> = {
   mac: { id: "mac", name: "Mac Studio", host: "Mac-Studio", address: "This Mac", remote: false },
   devbox: { id: "devbox", name: "devbox", host: "devbox", address: "Hetzner", remote: true },
+  staging: { id: "staging", name: "staging-eu", host: "staging-eu", address: "AWS eu-west-1", remote: true },
   build: { id: "build", name: "build-01", host: "build-01", address: "Tailscale", remote: true },
   pi: { id: "pi", name: "Raspberry Pi", host: "raspberrypi", address: "raspberrypi.local", remote: true },
+  nas: { id: "nas", name: "nas", host: "nas", address: "nas.local", remote: true },
 };
+// devbox sits in two spaces: a device belongs to as many as you like
 const SPACES: Space[] = [
   { id: "personal", name: "Personal", devices: ["mac", "devbox"] },
-  { id: "work", name: "Work", devices: ["mac", "build"] },
-  { id: "homelab", name: "Homelab", devices: ["devbox", "pi"] },
+  { id: "work", name: "Work", devices: ["staging", "build"] },
+  { id: "homelab", name: "Homelab", devices: ["pi", "nas", "devbox"] },
 ];
 
 const API_LOG: Row[] = [
@@ -1273,6 +1282,43 @@ const DOCKER_PS: Row[] = [
   [s("homeassistant  ", "--t-fg"), s("Up 12 days", "--t-green")],
   [s("zigbee2mqtt    ", "--t-fg"), s("Up 12 days", "--t-green")],
   [s("mosquitto      ", "--t-fg"), s("Up 12 days", "--t-green")],
+];
+
+const PODS: Row[] = [
+  prompt("~/gateway", "kubectl get pods -l app=gateway", "staging-eu"),
+  [s("NAME                       READY   STATUS             RESTARTS", "--t-dim")],
+  [s("gateway-7d9f8c6b5d-2xkqp   1/1     ", "--t-fg"), s("Running", "--t-green"), s("            0", "--t-fg")],
+  [s("gateway-7d9f8c6b5d-8hj4m   0/1     ", "--t-fg"), s("CrashLoopBackOff", "--t-red"), s("   14", "--t-fg")],
+  [s("gateway-7d9f8c6b5d-qw9tn   1/1     ", "--t-fg"), s("Running", "--t-green"), s("            0", "--t-fg")],
+];
+
+const MIGRATION_REPL: Row[] = [
+  prompt("~/migrations", "python3", "staging-eu"),
+  ...REPL.python.banner,
+  [s(">>> ", "--t-fg"), s("rows_before - rows_after", "--t-fg")],
+  [s("0", "--t-fg")],
+];
+
+const RELEASE: Row[] = [
+  prompt("~/release", "./release.sh v2.14.0 --dry-run", "build-01"),
+  [s("→ ", "--t-blue"), s("tagging v2.14.0 (dry run)", "--t-fg")],
+  [s("→ ", "--t-blue"), s("building darwin-arm64, linux-amd64, linux-arm64", "--t-fg")],
+  [s(" ✓ ", "--t-green"), s("3 artifacts, 41.2 MB", "--t-fg")],
+  [s(" ✓ ", "--t-green"), s("changelog: 12 entries since v2.13.2", "--t-fg")],
+];
+
+const SNAPSHOTS: Row[] = [
+  prompt("~/backups", "restic snapshots --latest 3", "nas"),
+  [s("ID        Time                 Host         Paths", "--t-dim")],
+  [s("4f1c2a9e  ", "--t-gold"), s("2026-10-19 03:00:12  Mac-Studio   /Users/alan", "--t-fg")],
+  [s("b83d07f1  ", "--t-gold"), s("2026-10-20 03:00:09  Mac-Studio   /Users/alan", "--t-fg")],
+  [s("e2a6c514  ", "--t-gold"), s("2026-10-21 03:00:11  Mac-Studio   /Users/alan", "--t-fg")],
+];
+
+const DISKS: Row[] = [
+  prompt("~/media", "df -h /volume1", "nas"),
+  [s("Filesystem      Size  Used Avail Use% Mounted on", "--t-dim")],
+  [s("/dev/md2         11T  7.9T  3.1T  ", "--t-fg"), s("72%", "--t-gold"), s(" /volume1", "--t-fg")],
 ];
 
 export function initialState(): State {
@@ -1327,8 +1373,33 @@ export function initialState(): State {
       activeAt: ago(31),
     }),
     p12: makePane("p12", "~/runner", { host: "build-01", activeAt: ago(55) }),
+    p14: makePane("p14", "~/release", { host: "build-01", shell: RELEASE, activeAt: ago(18) }),
+    // staging-eu
+    p15: makePane("p15", "~/gateway", {
+      host: "staging-eu",
+      program: "gemini",
+      task: "Trace the 502s",
+      screen: [...geminiWelcome("~/gateway"), [], AGENTS.gemini.said("find the source of the 502s on /checkout"), [], ...AGENTS.gemini.reply()],
+      shell: [prompt("~/gateway", "gemini", "staging-eu")],
+      follow: false,
+      activeAt: ago(3),
+    }),
+    p16: makePane("p16", "~/gateway", { host: "staging-eu", shell: PODS, activeAt: ago(3) }),
+    p17: makePane("p17", "~/migrations", { host: "staging-eu", program: "python", shell: MIGRATION_REPL, activeAt: ago(22) }),
     // Raspberry Pi
     p13: makePane("p13", "~", { host: "raspberrypi", shell: DOCKER_PS, activeAt: ago(300) }),
+    p18: makePane("p18", "~/zigbee", {
+      host: "raspberrypi",
+      program: "opencode",
+      task: "Pair hallway sensor",
+      screen: [...opencodeWelcome("~/zigbee"), [], AGENTS.opencode.said("pair the hallway motion sensor"), [], ...AGENTS.opencode.reply()],
+      shell: [prompt("~/zigbee", "opencode", "raspberrypi")],
+      follow: false,
+      activeAt: ago(48),
+    }),
+    // nas
+    p19: makePane("p19", "~/backups", { host: "nas", shell: SNAPSHOTS, activeAt: ago(95) }),
+    p20: makePane("p20", "~/media", { host: "nas", shell: DISKS, activeAt: ago(240) }),
   };
   const leaf = (id: string): Node => ({ kind: "pane", id });
   return {
@@ -1351,7 +1422,13 @@ export function initialState(): State {
       { id: "t4", device: "devbox", session: "api", root: { kind: "split", id: "s5", dir: "right", ratio: 0.55, a: leaf("p8"), b: leaf("p9") }, focus: "p8", zoom: false },
       { id: "t5", device: "devbox", session: "caddy", root: leaf("p10"), focus: "p10", zoom: false },
       { id: "t6", device: "build", session: "runner", root: { kind: "split", id: "s6", dir: "right", ratio: 0.55, a: leaf("p11"), b: leaf("p12") }, focus: "p11", zoom: false },
+      { id: "t8", device: "build", session: "release", root: leaf("p14"), focus: "p14", zoom: false },
+      { id: "t9", device: "staging", session: "gateway", root: { kind: "split", id: "s7", dir: "right", ratio: 0.55, a: leaf("p15"), b: leaf("p16") }, focus: "p15", zoom: false },
+      { id: "t10", device: "staging", session: "migrations", root: leaf("p17"), focus: "p17", zoom: false },
       { id: "t7", device: "pi", session: "home-assistant", root: leaf("p13"), focus: "p13", zoom: false },
+      { id: "t11", device: "pi", session: "zigbee", root: leaf("p18"), focus: "p18", zoom: false },
+      { id: "t12", device: "nas", session: "backups", root: leaf("p19"), focus: "p19", zoom: false },
+      { id: "t13", device: "nas", session: "media", root: leaf("p20"), focus: "p20", zoom: false },
     ],
     active: "t1",
     devices: DEVICES,
@@ -1363,6 +1440,6 @@ export function initialState(): State {
     view: "tabs",
     activity: false,
     palette: false,
-    seq: 20,
+    seq: 30,
   };
 }

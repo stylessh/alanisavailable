@@ -141,11 +141,3 @@ export const ServerIcon = (p: P) =>
     <circle cx={3.2} cy={2.55} r={0.5} fill="currentColor" stroke="none" />
     <circle cx={3.2} cy={7.45} r={0.5} fill="currentColor" stroke="none" />
   </>);
-
-/** Chevron down: the space menu. 10×5pt, read off the reference crop at 2x */
-export const ChevronDownIcon = (p: P) =>
-  svg(10, 5, p, <path d="M0.6 0.6 5 4.4 9.4 0.6" strokeWidth={1.2} />);
-
-/** Checkmark for the selected menu item. 9×7pt */
-export const CheckIcon = (p: P) =>
-  svg(9, 7, p, <path d="M0.7 3.6 3.3 6.2 8.3 0.8" strokeWidth={1.3} />);

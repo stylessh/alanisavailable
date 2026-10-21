@@ -3,7 +3,7 @@
 import { AnimatePresence, motion, useMotionTemplate, useTransform } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { DRAG_REGION, useMacWindow } from "@/os/macos";
-import { CheckIcon, ChevronDownIcon, CommandIcon, EyeIcon, HostIcon, PlusIcon, ServerIcon, SidebarIcon } from "./icons";
+import { EyeIcon, HostIcon, PlusIcon, ServerIcon, SidebarIcon } from "./icons";
 import { activePaneOf, activityOf, type Device, leaves, SIDEBAR_W, type Space, type State, titles } from "./model";
 import { useTile } from "./tween";
 import { ChipStack } from "./tab-chip";
@@ -29,8 +29,7 @@ const HOST_H = 26;
 const DEVICE_GAP = 10;
 const EMPTY_H = 24;
 /** The footer: dots 6pt across on a 12pt pitch, centered 20.5pt above the
-    window's bottom edge, and the space menu's chevron centered 21pt in from
-    its right edge (the reference crop, at 2x). */
+    window's bottom edge (the reference crop, at 2x). */
 const FOOTER_H = 41;
 const DOT = 6;
 const DOT_PITCH = 12;
@@ -147,7 +146,7 @@ function SpacePage({ state, space, onSelect, now }: { state: State; space: Space
           on a plain child (motion rewrites an animated element's box-shadow) */}
       <motion.span
         aria-hidden
-        className="absolute inset-x-[8px] top-0 rounded-[8px]"
+        className="absolute inset-x-0 top-0 rounded-[8px]"
         initial={false}
         animate={{ y: selectedY ?? y, height: rowH, opacity: selectedY === null ? 0 : 1 }}
         transition={{ ...SPRING, opacity: FADE }}
@@ -294,71 +293,6 @@ function TabRow({
   );
 }
 
-/** The space menu, above the chevron: every space, with its devices. */
-function SpaceMenu({
-  state,
-  within,
-  onSpace,
-  onClose,
-}: {
-  state: State;
-  /** clicks in here (the menu and its chevron) don't count as clicking away */
-  within: React.RefObject<HTMLElement | null>;
-  onSpace: (id: string) => void;
-  onClose: () => void;
-}) {
-  useEffect(() => {
-    const away = (e: PointerEvent) => !within.current?.contains(e.target as Node) && onClose();
-    const esc = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    window.addEventListener("pointerdown", away, true);
-    window.addEventListener("keydown", esc, true);
-    return () => {
-      window.removeEventListener("pointerdown", away, true);
-      window.removeEventListener("keydown", esc, true);
-    };
-  }, [within, onClose]);
-  return (
-    <motion.div
-      role="menu"
-      aria-label="Spaces"
-      initial={{ opacity: 0, scale: 0.96, y: 4 }}
-      animate={{ opacity: 1, scale: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.98, transition: { duration: 0.1 } }}
-      transition={{ duration: 0.16, ease: [0.2, 0.85, 0.25, 1] }}
-      className="absolute right-[8px] bottom-[36px] w-[196px] origin-bottom-right rounded-[10px] p-[5px]"
-      style={{
-        background: "var(--rex-beam), var(--rex-popover-bg)",
-        backdropFilter: "blur(30px) saturate(1.8)",
-        WebkitBackdropFilter: "blur(30px) saturate(1.8)",
-        boxShadow: "var(--rex-popover-shadow)",
-      }}
-    >
-      {state.spaces.map((sp) => (
-        <button
-          key={sp.id}
-          type="button"
-          role="menuitemradio"
-          aria-checked={sp.id === state.space}
-          tabIndex={-1}
-          onClick={() => {
-            onSpace(sp.id);
-            onClose();
-          }}
-          className="flex w-full cursor-default items-center gap-[8px] rounded-[6px] px-[8px] py-[5px] text-left hover:bg-[var(--rex-hover)]"
-        >
-          <span className="grid w-[9px] shrink-0 place-items-center text-[var(--rex-ink)]">{sp.id === state.space && <CheckIcon />}</span>
-          <span className="min-w-0">
-            <span className="block text-[12.5px] leading-[16px] font-medium text-[var(--rex-ink)]">{sp.name}</span>
-            <span className="block truncate text-[11px] leading-[14px] text-[var(--rex-ink-muted)]">
-              {sp.devices.map((id) => state.devices[id].name).join(", ")}
-            </span>
-          </span>
-        </button>
-      ))}
-    </motion.div>
-  );
-}
-
 export function Sidebar({
   state,
   leaving = false,
@@ -367,7 +301,6 @@ export function Sidebar({
   onStepSpace,
   onToggleSidebar,
   onToggleActivity,
-  onPalette,
   onNewTab,
 }: {
   state: State;
@@ -378,7 +311,6 @@ export function Sidebar({
   onStepSpace: (by: 1 | -1) => void;
   onToggleSidebar: () => void;
   onToggleActivity: () => void;
-  onPalette: () => void;
   onNewTab: () => void;
 }) {
   const now = useNow();
@@ -390,8 +322,6 @@ export function Sidebar({
   const clipPath = useMotionTemplate`inset(0 ${hiddenWidth}px 0 0)`;
   // In full screen the traffic lights leave, and the toggle takes their place.
   const inset = useMacWindow()?.mode === "fullscreen" ? LIGHTS_SPACE : 0;
-  const [menu, setMenu] = useState(false);
-  const footer = useRef<HTMLDivElement>(null);
 
   // The page slides in from the side of the dot it came from.
   const index = state.spaces.findIndex((sp) => sp.id === state.space);
@@ -435,9 +365,6 @@ export function Sidebar({
         <HeaderButton label={state.activity ? "Hide Activity (⌘.)" : "Show Activity (⌘.)"} onClick={onToggleActivity} active={state.activity}>
           <EyeIcon />
         </HeaderButton>
-        <HeaderButton label="Command palette (⌘K)" onClick={onPalette}>
-          <CommandIcon />
-        </HeaderButton>
         <HeaderButton label="New tab (⌥⌘T)" onClick={onNewTab}>
           <PlusIcon />
         </HeaderButton>
@@ -467,8 +394,8 @@ export function Sidebar({
         </AnimatePresence>
       </div>
 
-      {/* Footer: the page dots, one per space, and the space menu */}
-      <div ref={footer} className="absolute inset-x-0 bottom-0" style={{ height: FOOTER_H }}>
+      {/* Footer: the page dots, one per space */}
+      <div className="absolute inset-x-0 bottom-0" style={{ height: FOOTER_H }}>
         <div role="tablist" aria-label="Spaces" className="absolute left-1/2 flex -translate-x-1/2" style={{ bottom: 20.5 - 10 }}>
           {state.spaces.map((sp) => {
             const active = sp.id === state.space;
@@ -494,20 +421,6 @@ export function Sidebar({
             );
           })}
         </div>
-        <button
-          type="button"
-          aria-label="Spaces"
-          aria-haspopup="menu"
-          aria-expanded={menu}
-          title="Spaces"
-          tabIndex={-1}
-          onClick={() => setMenu((m) => !m)}
-          className="absolute grid size-[24px] cursor-default place-items-center rounded-[7px] text-[var(--rex-chrome-ink)] transition-colors hover:bg-[var(--rex-hover)]"
-          style={{ right: 21 - 12, bottom: 20.5 - 12, background: menu ? "var(--rex-pressed)" : undefined }}
-        >
-          <ChevronDownIcon />
-        </button>
-        <AnimatePresence>{menu && <SpaceMenu state={state} within={footer} onSpace={onSpace} onClose={() => setMenu(false)} />}</AnimatePresence>
       </div>
     </motion.aside>
   );
