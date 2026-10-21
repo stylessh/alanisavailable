@@ -123,6 +123,8 @@ export function MacOS({
           ref={screenRef}
           className="mac-screen absolute top-0 left-0 origin-top-left"
           data-appearance={appearance}
+          // set before the first paint by the script below; React keeps it when it takes over
+          suppressHydrationWarning
           style={{
             // Following the system, the page root's own switches already track
             // it, from the first paint (the server can't know the system
@@ -134,6 +136,17 @@ export function MacOS({
             transform: screen && screen.scale < 1 ? `scale(${screen.scale})` : undefined,
           }}
         >
+          {appearancePref === "auto" && (
+            // Following the system, the server renders "light" (it can't know the setting),
+            // so a dark Mac would paint light colors until the page loads. This runs while
+            // the HTML is parsed, before anything inside the screen paints, and puts the
+            // system's appearance on the screen; the store then agrees once React is up.
+            <script
+              dangerouslySetInnerHTML={{
+                __html: `document.currentScript.parentElement.dataset.appearance=matchMedia(${JSON.stringify(DARK_QUERY)}).matches?"dark":"light"`,
+              }}
+            />
+          )}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={wallpaper.src}
