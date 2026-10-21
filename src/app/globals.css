@@ -83,3 +83,11 @@
     @apply underline decoration-border underline-offset-4 transition-colors hover:decoration-foreground;
   }
 }
+
+/* Pages you drag around in (the versions canvas, a macOS screen) never let a
+   sideways drag or swipe turn into the browser's back and forward. */
+html:has(.versions-canvas, .mac-desktop),
+html:has(.versions-canvas, .mac-desktop) body {
+  overscroll-behavior: none;
+}
+
