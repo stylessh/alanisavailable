@@ -64,7 +64,13 @@ export type Device = {
 };
 
 /** A space groups devices; a device can sit in any number of spaces. */
-export type Space = { id: string; name: string; devices: string[] };
+export type Space = {
+  id: string;
+  name: string;
+  devices: string[];
+  /** the color the window's glass and everything on it takes on; none keeps Rex's neutral gray */
+  tint?: string;
+};
 export type State = {
   /** the window's size; the OS window manager can zoom or full-screen it */
   size: { w: number; h: number };
@@ -1273,8 +1279,8 @@ const DEVICES: Record<string, Device> = {
 // devbox sits in two spaces: a device belongs to as many as you like
 const SPACES: Space[] = [
   { id: "personal", name: "Personal", devices: ["mac", "devbox"] },
-  { id: "work", name: "Work", devices: ["staging", "build"] },
-  { id: "homelab", name: "Homelab", devices: ["pi", "nas", "devbox"] },
+  { id: "work", name: "Work", devices: ["staging", "build"], tint: "#ff8a00" },
+  { id: "homelab", name: "Homelab", devices: ["pi", "nas", "devbox"], tint: "#2fbf5b" },
 ];
 
 const API_LOG: Row[] = [

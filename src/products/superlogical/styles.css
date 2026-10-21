@@ -191,6 +191,67 @@
   --t-cursor-ink: light-dark(#ffffff, #1c1c1e);
 }
 
+/* Space tints (ours, not Rex's). Each space can give the window a color:
+   the glass, the panes, the tab and sidebar slots, popovers and the quieter
+   inks all mix toward it, so the whole window reads as that space. The
+   window sets --rex-tint (a color) and --rex-tint-amount (0 for Rex's own
+   neutral gray, 1 for a tinted space); both are registered so a switch
+   crossfades. The tokens are declared again on the window because a custom
+   property resolves var() where it's declared. Dark glass needs more of
+   the tint to show than light glass, which is nearly white. */
+@property --rex-tint {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #808080;
+}
+@property --rex-tint-amount {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 0;
+}
+
+.superlogical .rex-window {
+  /* how much of the tint each layer takes, in light */
+  --rex-tint-glass: 16%;
+  --rex-tint-pane: 4%;
+  --rex-tint-pane-glass: 10%;
+  --rex-tint-slot: 5%;
+  --rex-tint-ink: 22%;
+  transition:
+    --rex-tint 420ms cubic-bezier(0.2, 0.85, 0.25, 1),
+    --rex-tint-amount 420ms cubic-bezier(0.2, 0.85, 0.25, 1);
+
+  --rex-glass-tint: color-mix(in oklab, light-dark(rgb(250 250 252 / 0.72), rgb(30 30 32 / 0.72)), var(--rex-tint) calc(var(--rex-tint-amount) * var(--rex-tint-glass)));
+  --rex-solid: color-mix(in oklab, light-dark(#d2d2d5, #262628), var(--rex-tint) calc(var(--rex-tint-amount) * var(--rex-tint-glass)));
+  --rex-pane-active: color-mix(in oklab, light-dark(#ffffff, rgb(255 255 255 / 0.075)), var(--rex-tint) calc(var(--rex-tint-amount) * var(--rex-tint-pane)));
+  --rex-pane-inactive: color-mix(in oklab, light-dark(rgb(255 255 255 / 0.62), rgb(255 255 255 / 0.04)), var(--rex-tint) calc(var(--rex-tint-amount) * var(--rex-tint-pane-glass)));
+  --rex-tab-active: linear-gradient(
+    to bottom,
+    color-mix(in oklab, light-dark(#fdfdfd, rgb(255 255 255 / 0.12)), var(--rex-tint) calc(var(--rex-tint-amount) * var(--rex-tint-slot))),
+    color-mix(in oklab, light-dark(#fdfdfd, rgb(255 255 255 / 0.03)), var(--rex-tint) calc(var(--rex-tint-amount) * var(--rex-tint-slot)))
+  );
+  --rex-popover-bg: color-mix(in oklab, light-dark(rgb(252 252 253 / 0.82), rgb(38 38 40 / 0.86)), var(--rex-tint) calc(var(--rex-tint-amount) * var(--rex-tint-glass)));
+  --rex-ink-muted: color-mix(in oklab, light-dark(#8e8e92, #8e8e93), var(--rex-tint) calc(var(--rex-tint-amount) * var(--rex-tint-ink)));
+  --rex-ink-faint: color-mix(in oklab, light-dark(#9a9a9e, #7c7c80), var(--rex-tint) calc(var(--rex-tint-amount) * var(--rex-tint-ink)));
+  --rex-chrome-ink: color-mix(in oklab, light-dark(#616164, #c7c7cc), var(--rex-tint) calc(var(--rex-tint-amount) * var(--rex-tint-ink)));
+  --rex-tab-text-muted: color-mix(in oklab, light-dark(#87878b, #8e8e93), var(--rex-tint) calc(var(--rex-tint-amount) * var(--rex-tint-ink)));
+  /* the active page dot takes the tint outright */
+  --rex-dot-active: color-mix(in oklab, light-dark(#3a3a3d, #ececee), var(--rex-tint) calc(var(--rex-tint-amount) * 85%));
+}
+.superlogical [data-appearance="dark"] .rex-window {
+  /* dark glass muddies a strong tint (orange goes brown), so it stays low */
+  --rex-tint-glass: 14%;
+  --rex-tint-pane: 6%;
+  --rex-tint-pane-glass: 5%;
+  --rex-tint-slot: 9%;
+  --rex-tint-ink: 24%;
+}
+@media (prefers-reduced-motion: reduce) {
+  .superlogical .rex-window {
+    transition: none;
+  }
+}
+
 /* Dark panes fade unfocused content only slightly: in Rex's dark frame the
    unfocused lazygit and snake panes read almost at full strength. */
 .superlogical [data-appearance="dark"] {
