@@ -463,12 +463,16 @@ export function VersionsCanvas({
                 style={{ left: r.x, top: r.y, width: r.w, height: r.h }}
               >
                 {/* names and outlines fade out before a version opens, and back in after it closes */}
+                {/* as wide on screen as the frame is, so names never run into the next one: on
+                    a small frame the type gets smaller, the date goes, then the name truncates */}
                 <span
-                  className="absolute bottom-full left-0 flex origin-bottom-left items-baseline gap-2 pb-2.5 text-[13px] whitespace-nowrap text-muted-foreground transition-opacity delay-300 duration-200 group-data-[open]/world:opacity-0 group-data-[open]/world:delay-0 group-data-[open]/world:duration-150"
-                  style={{ transform: "scale(var(--inv))" }}
+                  className="@container absolute bottom-full left-0 origin-bottom-left pb-2.5 transition-opacity delay-300 duration-200 group-data-[open]/world:opacity-0 group-data-[open]/world:delay-0 group-data-[open]/world:duration-150"
+                  style={{ width: `calc(${r.w}px / var(--inv))`, transform: "scale(var(--inv))" }}
                 >
-                  <span className="font-medium text-foreground">{v.name}</span>
-                  {v.date && <span className="tabular-nums">{formatDate(v.date)}</span>}
+                  <span className="flex items-baseline gap-2 text-[11px] whitespace-nowrap text-muted-foreground @[12rem]:text-[13px]">
+                    <span className="min-w-0 truncate font-medium text-foreground">{v.name}</span>
+                    {v.date && <span className="hidden shrink-0 tabular-nums @[10rem]:inline">{formatDate(v.date)}</span>}
+                  </span>
                 </span>
                 {/* an open version squares its corners and drops its edge as it fills the window */}
                 <span
