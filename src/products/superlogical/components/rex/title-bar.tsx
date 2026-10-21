@@ -40,6 +40,7 @@ export function TitleBar({
   tabs,
   active,
   session,
+  device,
   sidebar,
   onToggleSidebar,
   onSelect,
@@ -53,6 +54,8 @@ export function TitleBar({
   active: string;
   /** the active tab's session, shown beside the traffic lights */
   session: string;
+  /** the device it runs on, under it */
+  device: string;
   /** with the sidebar showing, the strip and its neighbours step aside */
   sidebar: boolean;
   onToggleSidebar: () => void;
@@ -165,7 +168,7 @@ export function TitleBar({
           {/* ends 6pt short of the tab track; long session names truncate */}
           <div className="pointer-events-none absolute left-[114.5px] top-[9px] w-[69.5px] leading-[13px] [-webkit-text-stroke:0.1px_currentColor]">
             <div className="truncate text-[11.5px] font-semibold text-[var(--rex-session-ink)]">{session}</div>
-            <div className="truncate text-[9.5px] leading-[12px] font-medium text-[var(--rex-ink-muted)]">Mac Studio</div>
+            <div className="truncate text-[9.5px] leading-[12px] font-medium text-[var(--rex-ink-muted)]">{device}</div>
           </div>
         </div>
 

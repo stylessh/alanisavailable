@@ -19,6 +19,8 @@ export type Rect = { x: number; y: number; w: number; h: number };
 
 export type Pane = {
   id: string;
+  /** the hostname of the device it runs on, for the shell prompt */
+  host: string;
   cwd: string;
   program: ProgramKind;
   /** an agent's task, named after its first prompt (shown as the title) */
@@ -40,7 +42,29 @@ export type Pane = {
   snake?: SnakeState;
 };
 
-export type Tab = { id: string; session: string; root: Node; focus: string; zoom: boolean };
+export type Tab = {
+  id: string;
+  /** the machine the tab's session runs on */
+  device: string;
+  session: string;
+  root: Node;
+  focus: string;
+  zoom: boolean;
+};
+
+/** A machine Rex is connected to: this Mac, or a server it reaches over SSH. */
+export type Device = {
+  id: string;
+  name: string;
+  /** its hostname, as a shell prompt shows it */
+  host: string;
+  /** "This Mac", or where Rex reaches it */
+  address: string;
+  remote: boolean;
+};
+
+/** A space groups devices; a device can sit in any number of spaces. */
+export type Space = { id: string; name: string; devices: string[] };
 export type State = {
   /** the window's size; the OS window manager can zoom or full-screen it */
   size: { w: number; h: number };
@@ -48,6 +72,12 @@ export type State = {
   view: "tabs" | "sidebar";
   /** Activity Mode: the sidebar lists only running programs, with their status */
   activity: boolean;
+  devices: Record<string, Device>;
+  spaces: Space[];
+  /** the space the sidebar and tab bar show */
+  space: string;
+  /** each space's last selected tab, so switching back returns to it */
+  spaceTabs: Record<string, string>;
   tabs: Tab[];
   active: string;
   panes: Record<string, Pane>;
@@ -78,7 +108,10 @@ export type Action =
   | { type: "palette"; open: boolean }
   | { type: "toggle-sidebar" }
   | { type: "window-size"; w: number; h: number }
-  | { type: "toggle-activity" };
+  | { type: "toggle-activity" }
+  /** a space by id, or the next/previous one */
+  | { type: "space"; space: string }
+  | { type: "step-space"; by: 1 | -1 };
 
 // ─── Geometry (window-relative px, measured from the reference) ────────────
 
@@ -285,6 +318,11 @@ export function neighborOf(rects: Record<string, Rect>, from: string, dir: Split
 export const activeTab = (st: State) => st.tabs.find((t) => t.id === st.active)!;
 export const tabOf = (st: State, pane: string) => st.tabs.find((t) => leaves(t.root).includes(pane))!;
 
+/** The active space. */
+export const spaceOf = (st: State) => st.spaces.find((sp) => sp.id === st.space)!;
+/** The tabs a space shows: every tab on one of its devices. */
+export const tabsIn = (st: State, space = spaceOf(st)) => st.tabs.filter((t) => space.devices.includes(t.device));
+
 export function paneRect(st: State, pane: string): Rect {
   const tab = tabOf(st, pane);
   const area = areaOf(st);
@@ -332,9 +370,9 @@ const shortCwd = (cwd: string) =>
     .map((part, i, all) => (i === 0 || i === all.length - 1 ? part : part[0]))
     .join("/");
 
-const prompt = (cwd: string, text?: string): Row => [
+const prompt = (cwd: string, text?: string, host = "Mac-Studio"): Row => [
   s("alan", "--t-green"),
-  s("@Mac-Studio ", "--t-fg"),
+  s(`@${host} `, "--t-fg"),
   s(shortCwd(cwd), "--t-green"),
   s("> ", "--t-fg"),
   ...(text ? [s(text, "--t-fg")] : []),
@@ -571,7 +609,7 @@ export function activePaneOf(st: State, tab: Tab): Pane | null {
 export function paneRows(p: Pane, cols: number): Row[] {
   switch (p.program) {
     case "shell":
-      return [...p.shell, [...prompt(p.cwd), s(p.input, "--t-fg"), cursor()]];
+      return [...p.shell, [...prompt(p.cwd, undefined, p.host), s(p.input, "--t-fg"), cursor()]];
     case "bun":
       return [...p.shell, [cursor()]];
     case "codex":
@@ -658,6 +696,11 @@ const FS: Record<string, string[]> = {
   "~/sites/macos-client-ui": ["Package.swift", "README.md", "Sources/", "Tests/"],
   "~/sites/macos-client-ui/sources": ["App.swift", "Sidebar.swift", "Window.swift"],
   "~/sites/macos-client-ui/tests": ["WindowTests.swift"],
+  "~/srv": ["api/", "caddy/"],
+  "~/srv/api": ["Dockerfile", "go.mod", "main.go", "ratelimit.go"],
+  "~/srv/caddy": ["Caddyfile"],
+  "~/runner": ["config.toml", "e2e/", "run.sh"],
+  "~/runner/e2e": ["macos.yml"],
   "~/desktop": [],
   "~/documents": [],
   "~/downloads": [],
@@ -715,6 +758,7 @@ const putTab = (st: State, id: string, f: (t: Tab) => Partial<Tab>): State => ({
 function makePane(id: string, cwd: string, extra: Partial<Pane> = {}): Pane {
   return {
     id,
+    host: "Mac-Studio",
     cwd,
     program: "shell",
     shell: FISH_WELCOME,
@@ -731,18 +775,22 @@ function makePane(id: string, cwd: string, extra: Partial<Pane> = {}): Pane {
 
 const nextId = (st: State, prefix: string): [string, State] => [`${prefix}${st.seq}`, { ...st, seq: st.seq + 1 }];
 
+/** A new tab beside the active one: on its device and in its session if it's in this space, else on the space's first device. */
 function newTab(st: State, cwd: string, command?: string): State {
   let tabId: string, paneId: string;
   [tabId, st] = nextId(st, "t");
   [paneId, st] = nextId(st, "p");
+  const space = spaceOf(st);
+  const from = activeTab(st);
+  const here = from && space.devices.includes(from.device) ? from : undefined;
+  const device = here?.device ?? space.devices[0];
+  const session = here?.session ?? st.tabs.find((t) => t.device === device)?.session ?? "home";
+  if (!here) cwd = "~";
   st = {
     ...st,
-    tabs: [
-      ...st.tabs,
-      { id: tabId, session: activeTab(st)?.session ?? "rex-snake", root: { kind: "pane", id: paneId }, focus: paneId, zoom: false },
-    ],
+    tabs: [...st.tabs, { id: tabId, device, session, root: { kind: "pane", id: paneId }, focus: paneId, zoom: false }],
     active: tabId,
-    panes: { ...st.panes, [paneId]: makePane(paneId, cwd) },
+    panes: { ...st.panes, [paneId]: makePane(paneId, cwd, { host: st.devices[device].host }) },
   };
   return command ? runCommand(st, paneId, command) : st;
 }
@@ -767,7 +815,7 @@ function splitPane(st: State, pane: string, dir: SplitDir, command?: string): St
     b: before ? leaf : fresh,
   }));
   st = putTab(st, tab.id, () => ({ root, focus: paneId, zoom: false }));
-  st = { ...st, panes: { ...st.panes, [paneId]: makePane(paneId, st.panes[pane].cwd, { shell: [] }) } };
+  st = { ...st, panes: { ...st.panes, [paneId]: makePane(paneId, st.panes[pane].cwd, { host: st.panes[pane].host, shell: [] }) } };
   return command ? runCommand(st, paneId, command) : st;
 }
 
@@ -777,9 +825,12 @@ function closeTab(st: State, tabId: string): State {
   const tabs = st.tabs.filter((t) => t.id !== tabId);
   const panes = Object.fromEntries(Object.entries(st.panes).filter(([id]) => !gone.has(id)));
   st = { ...st, tabs, panes };
-  if (!tabs.length) return newTab(st, "~/Sites/rex-snake");
-  if (st.active === tabId) st = { ...st, active: tabs[Math.min(index, tabs.length - 1)].id };
-  return st;
+  if (st.active !== tabId) return st;
+  // the next tab in this space takes its place, or a fresh one when it was the space's last
+  const left = tabsIn(st);
+  if (!left.length) return newTab(st, "~");
+  const after = left.find((t) => st.tabs.indexOf(t) >= index) ?? left.at(-1)!;
+  return { ...st, active: after.id };
 }
 
 function closePane(st: State, pane: string): State {
@@ -827,7 +878,7 @@ function runCommand(st: State, id: string, line: string): State {
   const p = st.panes[id];
   const text = line.trim();
   const history = text && p.history.at(-1) !== text ? [...p.history, text] : p.history;
-  st = put(st, id, (q) => ({ shell: [...q.shell, prompt(q.cwd, line)], input: "", recall: null, history, follow: true }));
+  st = put(st, id, (q) => ({ shell: [...q.shell, prompt(q.cwd, line, q.host)], input: "", recall: null, history, follow: true }));
   if (!text) return st;
 
   const [cmd, ...args] = tokenize(text);
@@ -1002,7 +1053,7 @@ function onKey(st: State, k: Key): State {
 
   switch (p.program) {
     case "shell": {
-      if (ctrlC(k)) return put(print(st, id, [prompt(p.cwd, p.input)]), id, () => ({ input: "" }));
+      if (ctrlC(k)) return put(print(st, id, [prompt(p.cwd, p.input, p.host)]), id, () => ({ input: "" }));
       if (k.ctrl && k.code === "KeyL") return put(st, id, () => ({ shell: [] }));
       if (k.key === "Enter") return runCommand(st, id, p.input);
       if (k.key === "ArrowUp" || k.key === "ArrowDown") {
@@ -1074,10 +1125,30 @@ export function reducer(st: State, a: Action): State {
       if (!tab || tab.focus === a.pane) return st;
       return putTab(st, tab.id, () => ({ focus: a.pane }));
     }
-    case "select-tab":
-      return { ...st, active: a.tab };
-    case "goto-tab":
-      return st.tabs[a.index] ? { ...st, active: st.tabs[a.index].id } : st;
+    case "select-tab": {
+      // a tab from another space (a notification, the phone) brings its space along if this one can't show it
+      const tab = st.tabs.find((t) => t.id === a.tab);
+      if (!tab) return st;
+      const space = spaceOf(st).devices.includes(tab.device) ? st.space : st.spaces.find((sp) => sp.devices.includes(tab.device))!.id;
+      return { ...st, active: a.tab, space, spaceTabs: { ...st.spaceTabs, [space]: a.tab } };
+    }
+    case "space":
+    case "step-space": {
+      const i = st.spaces.findIndex((sp) => sp.id === st.space);
+      const to = a.type === "space" ? st.spaces.find((sp) => sp.id === a.space) : st.spaces[i + a.by];
+      if (!to || to.id === st.space) return st;
+      // back to the tab it last showed, if that's still there, else its first
+      const shown = tabsIn(st, to);
+      const remembered = shown.find((t) => t.id === st.spaceTabs[to.id]);
+      const keep = shown.find((t) => t.id === st.active);
+      st = { ...st, space: to.id, spaceTabs: { ...st.spaceTabs, [st.space]: st.active } };
+      const tab = remembered ?? keep ?? shown[0];
+      return tab ? { ...st, active: tab.id } : newTab(st, "~");
+    }
+    case "goto-tab": {
+      const tab = tabsIn(st)[a.index];
+      return tab ? { ...st, active: tab.id } : st;
+    }
     case "new-tab":
       return newTab({ ...st, palette: false }, st.panes[activeTab(st).focus]?.cwd ?? "~/Sites/rex-snake", a.command);
     case "close-tab":
@@ -1175,6 +1246,35 @@ const BUN_LOG: Row[] = [
   [s(" GET ", "--t-fg"), s("/", "--t-fg"), s(" 200", "--t-green"), s(" in 412ms", "--t-dim")],
 ];
 
+// Devices and spaces aren't in the reference: Rex connects to more than this
+// Mac, so these seed a few servers and spaces that mix them.
+const DEVICES: Record<string, Device> = {
+  mac: { id: "mac", name: "Mac Studio", host: "Mac-Studio", address: "This Mac", remote: false },
+  devbox: { id: "devbox", name: "devbox", host: "devbox", address: "Hetzner", remote: true },
+  build: { id: "build", name: "build-01", host: "build-01", address: "Tailscale", remote: true },
+  pi: { id: "pi", name: "Raspberry Pi", host: "raspberrypi", address: "raspberrypi.local", remote: true },
+};
+const SPACES: Space[] = [
+  { id: "personal", name: "Personal", devices: ["mac", "devbox"] },
+  { id: "work", name: "Work", devices: ["mac", "build"] },
+  { id: "homelab", name: "Homelab", devices: ["devbox", "pi"] },
+];
+
+const API_LOG: Row[] = [
+  prompt("~/srv/api", "journalctl -fu api", "devbox"),
+  [s("Oct 21 09:14:02 devbox api[812]: ", "--t-dim"), s("listening on :8080", "--t-fg")],
+  [s("Oct 21 09:14:09 devbox api[812]: ", "--t-dim"), s("POST /v1/runs ", "--t-fg"), s("201", "--t-green"), s(" 38ms", "--t-dim")],
+  [s("Oct 21 09:14:11 devbox api[812]: ", "--t-dim"), s("GET /v1/runs/482 ", "--t-fg"), s("200", "--t-green"), s(" 4ms", "--t-dim")],
+  [s("Oct 21 09:15:47 devbox api[812]: ", "--t-dim"), s("POST /v1/runs ", "--t-fg"), s("429", "--t-gold"), s(" 1ms", "--t-dim")],
+];
+
+const DOCKER_PS: Row[] = [
+  prompt("~", "docker ps --format '{{.Names}}  {{.Status}}'", "raspberrypi"),
+  [s("homeassistant  ", "--t-fg"), s("Up 12 days", "--t-green")],
+  [s("zigbee2mqtt    ", "--t-fg"), s("Up 12 days", "--t-green")],
+  [s("mosquitto      ", "--t-fg"), s("Up 12 days", "--t-green")],
+];
+
 export function initialState(): State {
   const snakeCwd = "~/Sites/rex-snake";
   const ago = (minutes: number) => Date.now() - minutes * 60_000;
@@ -1204,6 +1304,31 @@ export function initialState(): State {
       shell: [prompt("~/sites/macos-client-ui", "claude")],
       activeAt: ago(26),
     }),
+    // devbox
+    p8: makePane("p8", "~/srv/api", {
+      host: "devbox",
+      program: "claude",
+      task: "Rate-limit POST /v1/runs",
+      screen: [...claudeWelcome("~/srv/api"), [], AGENTS.claude.said("rate-limit POST /v1/runs per API key"), [], ...AGENTS.claude.reply()],
+      shell: [prompt("~/srv/api", "claude", "devbox")],
+      follow: false,
+      activeAt: ago(7),
+    }),
+    p9: makePane("p9", "~/srv/api", { host: "devbox", shell: API_LOG, activeAt: ago(1) }),
+    p10: makePane("p10", "~/srv/caddy", { host: "devbox", activeAt: ago(180) }),
+    // build-01
+    p11: makePane("p11", "~/runner", {
+      host: "build-01",
+      program: "codex",
+      task: "Fix flaky macOS e2e job",
+      screen: [...codexWelcome("~/runner"), [], AGENTS.codex.said("fix the flaky macOS e2e job"), [], ...AGENTS.codex.reply()],
+      shell: [prompt("~/runner", "codex", "build-01")],
+      follow: false,
+      activeAt: ago(31),
+    }),
+    p12: makePane("p12", "~/runner", { host: "build-01", activeAt: ago(55) }),
+    // Raspberry Pi
+    p13: makePane("p13", "~", { host: "raspberrypi", shell: DOCKER_PS, activeAt: ago(300) }),
   };
   const leaf = (id: string): Node => ({ kind: "pane", id });
   return {
@@ -1216,19 +1341,28 @@ export function initialState(): State {
           a: { kind: "split", id: "s2", dir: "down", ratio: 236 / (AREA.h - GAP.y), a: leaf("p1"), b: leaf("p2") },
           b: leaf("p3"),
         },
+        device: "mac",
         session: "rex-snake",
         focus: "p1",
         zoom: false,
       },
-      { id: "t2", session: "announcements", root: { kind: "split", id: "s3", dir: "right", ratio: 0.58, a: leaf("p4"), b: leaf("p5") }, focus: "p4", zoom: false },
-      { id: "t3", session: "macos-client-ui", root: { kind: "split", id: "s4", dir: "right", ratio: 0.5, a: leaf("p6"), b: leaf("p7") }, focus: "p6", zoom: false },
+      { id: "t2", device: "mac", session: "announcements", root: { kind: "split", id: "s3", dir: "right", ratio: 0.58, a: leaf("p4"), b: leaf("p5") }, focus: "p4", zoom: false },
+      { id: "t3", device: "mac", session: "macos-client-ui", root: { kind: "split", id: "s4", dir: "right", ratio: 0.5, a: leaf("p6"), b: leaf("p7") }, focus: "p6", zoom: false },
+      { id: "t4", device: "devbox", session: "api", root: { kind: "split", id: "s5", dir: "right", ratio: 0.55, a: leaf("p8"), b: leaf("p9") }, focus: "p8", zoom: false },
+      { id: "t5", device: "devbox", session: "caddy", root: leaf("p10"), focus: "p10", zoom: false },
+      { id: "t6", device: "build", session: "runner", root: { kind: "split", id: "s6", dir: "right", ratio: 0.55, a: leaf("p11"), b: leaf("p12") }, focus: "p11", zoom: false },
+      { id: "t7", device: "pi", session: "home-assistant", root: leaf("p13"), focus: "p13", zoom: false },
     ],
     active: "t1",
+    devices: DEVICES,
+    spaces: SPACES,
+    space: "personal",
+    spaceTabs: {},
     panes,
     size: WINDOW,
     view: "tabs",
     activity: false,
     palette: false,
-    seq: 10,
+    seq: 20,
   };
 }

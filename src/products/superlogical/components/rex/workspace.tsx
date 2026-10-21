@@ -29,6 +29,7 @@ import {
   type Rect,
   SIDEBAR_W,
   splitOf,
+  tabsIn,
   TERM,
   titles,
   zoomLayout,
@@ -56,6 +57,8 @@ const SHORTCUTS: Shortcut[] = [
   { code: "KeyK", meta: true, alt: true, action: { type: "clear" }, label: "⌥⌘K" },
   { code: "KeyS", meta: true, ctrl: true, action: { type: "toggle-sidebar" }, label: "⌃⌘S" },
   { code: "Period", meta: true, action: { type: "toggle-activity" }, label: "⌘." },
+  { code: "ArrowLeft", meta: true, ctrl: true, action: { type: "step-space", by: -1 }, label: "⌃⌘←" },
+  { code: "ArrowRight", meta: true, ctrl: true, action: { type: "step-space", by: 1 }, label: "⌃⌘→" },
   { code: "ArrowLeft", meta: true, alt: true, action: { type: "move-focus", dir: "left" }, label: "⌥⌘←" },
   { code: "ArrowRight", meta: true, alt: true, action: { type: "move-focus", dir: "right" }, label: "⌥⌘→" },
   { code: "ArrowUp", meta: true, alt: true, action: { type: "move-focus", dir: "up" }, label: "⌥⌘↑" },
@@ -262,7 +265,8 @@ export function Workspace() {
     },
   });
 
-  const tabs: TabView[] = state.tabs.map((t) => {
+  // the tab bar, like the sidebar, shows the active space
+  const tabs: TabView[] = tabsIn(state).map((t) => {
     const focused = state.panes[t.focus];
     return {
       id: t.id,
@@ -321,6 +325,12 @@ export function Workspace() {
           },
         ]
       : []),
+    ...state.spaces.map((sp): Command => ({
+      id: `space-${sp.id}`,
+      group: "Space",
+      title: `Switch to ${sp.name}`,
+      run: run({ type: "space", space: sp.id }),
+    })),
     { id: "new-tab", group: "Tab", title: "New Tab", icon: <PlusIcon />, shortcut: label("new-tab"), run: run({ type: "new-tab" }) },
     { id: "close-tab", group: "Tab", title: "Close Tab", run: run({ type: "close-tab", tab: tab.id }) },
     ...tabs.map((t, i): Command => ({
@@ -411,6 +421,10 @@ export function Workspace() {
       items: [
         cmd("sidebar"),
         cmd("activity"),
+        {
+          label: "Spaces",
+          submenu: state.spaces.map((sp) => ({ label: sp.name, checked: sp.id === state.space, run: () => dispatch({ type: "space", space: sp.id }) })),
+        },
         { type: "separator" },
         { label: "Command Palette…", shortcut: "⌘K", run: () => dispatch({ type: "palette", open: true }) },
         { type: "separator" },
@@ -467,6 +481,7 @@ export function Workspace() {
           tabs={tabs}
           active={state.active}
           session={tab.session}
+          device={state.devices[tab.device].name}
           sidebar={state.view === "sidebar"}
           onToggleSidebar={() => dispatch({ type: "toggle-sidebar" })}
           onSelect={(id) => dispatch({ type: "select-tab", tab: id })}
@@ -481,6 +496,8 @@ export function Workspace() {
               state={state}
               leaving={state.view !== "sidebar"}
               onSelect={(id) => dispatch({ type: "select-tab", tab: id })}
+              onSpace={(space) => dispatch({ type: "space", space })}
+              onStepSpace={(by) => dispatch({ type: "step-space", by })}
               onToggleSidebar={() => dispatch({ type: "toggle-sidebar" })}
               onToggleActivity={() => dispatch({ type: "toggle-activity" })}
               onPalette={() => dispatch({ type: "palette", open: true })}

@@ -99,6 +99,11 @@
   --rex-selected: light-dark(rgb(0 0 0 / 0.065), rgb(255 255 255 / 0.09));
   --rex-pressed: light-dark(rgb(0 0 0 / 0.08), rgb(255 255 255 / 0.12));
   --rex-working: light-dark(#7c7c80, #aeaeb2);
+  /* Spaces: page dots under the sidebar (not in the reference frame; read
+     off a crop of Rex's dark sidebar, the active dot white, the rest gray) */
+  --rex-dot: light-dark(rgb(0 0 0 / 0.18), rgb(255 255 255 / 0.24));
+  --rex-dot-hover: light-dark(rgb(0 0 0 / 0.32), rgb(255 255 255 / 0.4));
+  --rex-dot-active: light-dark(#3a3a3d, #ececee);
   --rex-icon-ring:
     0 0 0 0.5px light-dark(rgb(0 0 0 / 0.12), rgb(255 255 255 / 0.14)),
     0 1px 1.5px light-dark(rgb(0 0 0 / 0.1), rgb(0 0 0 / 0.4));

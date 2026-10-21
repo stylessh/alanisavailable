@@ -132,3 +132,20 @@ export const AppearanceIcon = (p: P) =>
     <circle cx={5.5} cy={5.5} r={4.9} strokeWidth={1.1} />
     <path d="M5.5 0.6a4.9 4.9 0 0 1 0 9.8z" fill="currentColor" stroke="none" />
   </>);
+
+/** Remote server: two stacked units, each with a status light. 14×10pt, in line with the host chip */
+export const ServerIcon = (p: P) =>
+  svg(14, 10, p, <>
+    <rect x={0.6} y={0.6} width={12.8} height={3.9} rx={1.3} strokeWidth={1.1} />
+    <rect x={0.6} y={5.5} width={12.8} height={3.9} rx={1.3} strokeWidth={1.1} />
+    <circle cx={3.2} cy={2.55} r={0.5} fill="currentColor" stroke="none" />
+    <circle cx={3.2} cy={7.45} r={0.5} fill="currentColor" stroke="none" />
+  </>);
+
+/** Chevron down: the space menu. 10×5pt, read off the reference crop at 2x */
+export const ChevronDownIcon = (p: P) =>
+  svg(10, 5, p, <path d="M0.6 0.6 5 4.4 9.4 0.6" strokeWidth={1.2} />);
+
+/** Checkmark for the selected menu item. 9×7pt */
+export const CheckIcon = (p: P) =>
+  svg(9, 7, p, <path d="M0.7 3.6 3.3 6.2 8.3 0.8" strokeWidth={1.3} />);
