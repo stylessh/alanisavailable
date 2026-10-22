@@ -28,7 +28,7 @@
   --cc-tile-border-w: 1px;
   /* the Chat / Code switch's track (the search field's fill, in dark) */
   --cc-switch-track: #1d1d1d;
-  /* the open session's row, "Relaunch to update" */
+  /* the open session's row */
   --cc-row-active: #232323;
   /* rows and icon buttons under the pointer: no reference yet, a step
      between the sidebar and the open session's row */

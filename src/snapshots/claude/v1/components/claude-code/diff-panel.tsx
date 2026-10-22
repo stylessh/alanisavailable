@@ -19,7 +19,10 @@ function Stats({ added, removed }: { added: number; removed: number }) {
   return (
     <span className="flex-none whitespace-nowrap">
       <span style={{ color: "var(--cc-added)" }}>+{added}</span>
-      <span style={{ color: "var(--cc-removed)" }}>−{removed}</span>
+      {/* a little apart, so the two counts don't run together */}
+      <span className="ml-[4px]" style={{ color: "var(--cc-removed)" }}>
+        −{removed}
+      </span>
     </span>
   );
 }

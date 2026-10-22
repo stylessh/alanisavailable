@@ -24,6 +24,8 @@ const ICONS_GAP = 20;
 const COLUMN = 768;
 const SIDE_MIN = 24;
 const GUTTER = 8;
+/** how far the transcript fades out above the composer (pt) */
+const BOTTOM_FADE = 24;
 const column = {
   width: `min(${COLUMN}px, 100% - ${2 * SIDE_MIN}px)`,
   transform: `translateX(-${GUTTER / 2}px)`,
@@ -95,6 +97,8 @@ export function Main() {
         style={{
           scrollbarWidth: "none",
           marginRight: reserved,
+          // what scrolls under the composer fades out (BOTTOM_FADE) instead of cutting off (the header has its own fade at the top)
+          maskImage: `linear-gradient(to bottom, #000 calc(100% - ${BOTTOM_FADE}px), transparent)`,
         }}
       >
         <div ref={content} className="mx-auto flex flex-col gap-[14px] pt-[60px] pb-[49.5px] tracking-[-0.007em]" style={column}>

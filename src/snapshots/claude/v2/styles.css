@@ -1,0 +1,424 @@
+/* Claude style guide. Every value is measured from 2x captures and screen
+   recordings of the Claude desktop app's Code tab (macOS 27); see
+   components/claude-code for where each is used. The tokens below are the
+   dark appearance; the light one follows in [data-appearance="light"],
+   which the macOS screen sets from the desktop's appearance (system, or
+   Control Center's toggle). Claude's neutrals are warm: text and the
+   composer lean yellow, the window's own fills are near-grays. */
+
+.claude {
+  --cc-sans: var(--font-claude-sans), ui-sans-serif, system-ui, sans-serif;
+  --cc-mono: var(--font-claude-mono), ui-monospace, monospace;
+
+  /* Surfaces */
+  --cc-sidebar: #111111;
+  /* the sidebar floating over the session while hidden: lighter, with a
+     1px edge and a short shadow to its right (full-screen capture) */
+  --cc-sidebar-floating: #1f1f1f;
+  --cc-sidebar-floating-edge: #323232;
+  --cc-main: #151515;
+  /* the sidebar's right edge and the line above its footer: 1 device px */
+  --cc-divider: #292929;
+  /* Search field and the Chat / Code switch's track */
+  --cc-field: #1d1d1d;
+  --cc-field-border: #343434;
+  /* the Chat / Code switch's selected tile */
+  --cc-tile: #343434;
+  --cc-tile-border: #484848;
+  --cc-tile-border-w: 1px;
+  /* the Chat / Code switch's track (the search field's fill, in dark) */
+  --cc-switch-track: #1d1d1d;
+  /* the open session's row */
+  --cc-row-active: #232323;
+  /* rows and icon buttons under the pointer: no reference yet, a step
+     between the sidebar and the open session's row */
+  --cc-row-hover: #1b1b1b;
+  --cc-raised: #232323;
+  --cc-bubble: #212121;
+  --cc-composer: #20201f;
+  --cc-composer-border: #363635;
+  --cc-card-border: #2c2c2b;
+
+  /* Text. Calibrated against the reference's glyph cores; one gray serves
+     everything secondary (search, placeholder, section labels, effort). */
+  --cc-text: #bebdb2;
+  --cc-text-strong: #ebeae6;
+  --cc-text-muted: #868580;
+  /* panel and composer icons render a touch brighter than labels */
+  --cc-icon: #cbcac0;
+  --cc-code: #e57373;
+  --cc-code-bg: #1f1f1e;
+  --cc-code-border: #2e2e2d;
+  /* Claude's clay: the working spinner */
+  --cc-clay: #e87e5c;
+
+  /* Session status dots and the worktree branch mark */
+  --cc-dot-working: #6a6965;
+  --cc-dot-waiting: #f4ae1a;
+  --cc-dot-done: #2976d1;
+  --cc-branch: #a084de;
+  /* the line joining a session to the sessions it started */
+  --cc-tree: #404040;
+
+  /* Menus and popovers (from the screen recording) */
+  --cc-menu: #1d1d1d;
+  --cc-menu-rim: #2f2f2f;
+  --cc-menu-row: #2b2b2b;
+  --cc-menu-rule: #303030;
+  --cc-menu-text: #ebebeb;
+  --cc-check: #3b82f6;
+  --cc-toggle-on: #246dd1;
+  --cc-toggle-off: #3a3a3a;
+  --cc-tag: #2c2c2c;
+  --cc-warning: #f0a33a;
+  --cc-warning-bg: #3a2a12;
+  --cc-accent: #4c8ff0;
+  --cc-accent-bg: #16294a;
+  --cc-ultracode: #a78bfa;
+  --cc-danger: #f0605a;
+  --cc-chip-hover: #2a2a2a;
+  /* the session panel's cards */
+  --cc-card: #151515;
+  --cc-card-rim: #282828;
+  --cc-added: #4ade80;
+  --cc-removed: #f05a5a;
+
+  /* The transcript's tool calls and links (from the second recording) */
+  --cc-code-band: #0a0a0a;
+  --cc-diff-add: #1a2918;
+  --cc-diff-del: #311719;
+  --cc-added-bg: #1b331e;
+  --cc-removed-bg: #3c1a1f;
+  --cc-text-faint: #6b6b66;
+  --cc-link: #5e9ff0;
+  --cc-session-link: #5682bf;
+  --cc-session-link-bg: #161a20;
+
+  /* The header's side panels (Terminal, Diff, Browser, Files) */
+  --cc-panel: #171717;
+  --cc-panel-rim: #262626;
+  --cc-terminal: #171717;
+  --cc-code-pane: #0b0b0b;
+  --cc-tab: #323232;
+  --cc-rule: #1f1f1f;
+  --cc-active: #4c8ff0;
+  --cc-active-bg: #0b2340;
+  --cc-diff-head: #0b0b0b;
+  --cc-diff-add: #1a2918;
+  --cc-diff-add-rule: #2cd143;
+  --cc-diff-del: #2e1717;
+  --cc-tree-selected: #1f1f1f;
+
+  /* The window's edge and shadow, fitted to the alpha of a macOS capture of
+     the real window with its shadow (window-shadow.png): a 0.5pt black
+     outline at 93%, then a shadow cast downward that reaches about 16pt
+     above the window, 28pt beside it and 34pt below. Two Gaussian layers
+     reproduce its falloff on every side to within 0.02 alpha. */
+  --cc-window-shadow:
+    0 0 0 0.5px rgb(0 0 0 / 0.93),
+    0 19.5px 44.5px -7px rgb(0 0 0 / 0.59),
+    0 15.5px 36.5px 1px rgb(0 0 0 / 0.33);
+  /* inside the outline, a 1pt light rim all the way round: white at 10%
+     (41 over the sidebar's #111, 44 over the main pane's #151515) */
+  --cc-window-rim: inset 0 0 0 1px rgb(255 255 255 / 0.1);
+
+  /* Code: the Files/Diff views, transcript diffs and the Bash card */
+  --cc-syn-tag: #f07854;
+  --cc-syn-attr: #54c060;
+  --cc-syn-string: #54c090;
+  --cc-syn-keyword: #cc6be4;
+  --cc-syn-number: #f05478;
+  --cc-syn-property: #fc9048;
+  --cc-syn-fn: #82aaff;
+  --cc-syn-comment: #6b6b6b;
+  --cc-syn-punct: #8a8a8a;
+  --cc-syn-plain: #e5e5e5;
+  --cc-gutter: #6e6e6e;
+  --cc-indent-guide: #262626;
+  --cc-sh-command: #9360ff;
+  --cc-sh-string: #59c369;
+  --cc-sh-text: #a4a4a4;
+  --cc-bash-output: #bbbab4;
+  --cc-terminal-text: #d4d4d4;
+
+  /* Smaller pieces */
+  --cc-button-hover: rgb(255 255 255 / 0.05);
+  --cc-composer-icon: #dfdeda;
+  --cc-ring: #4177cf;
+  --cc-ring-track: #444444;
+  --cc-meter-track: #2e2e2e;
+  --cc-meter-track-accent: #152a4d;
+  --cc-task-ring: #3a3a39;
+  --cc-sidebar-floating-shadow: 4px 0 18px rgb(0 0 0 / 0.45);
+  --cc-surface-shadow: 0 8px 24px rgb(0 0 0 / 0.35), 0 2px 6px rgb(0 0 0 / 0.25);
+}
+
+/* The light appearance, sampled from a full-screen recording of the app in
+   light mode. It's declared on the screen (which carries the appearance),
+   so it overrides the dark tokens for everything on it. The window's edge,
+   a few accents and the syntax colors have no clean sample and are matched
+   by eye to the recording. */
+.claude [data-appearance="light"] {
+  --cc-sidebar: #fafaf8;
+  --cc-sidebar-floating: #fafaf8;
+  --cc-sidebar-floating-edge: #dededc;
+  --cc-main: #fcfcf9;
+  --cc-divider: #dededc;
+  --cc-field: #fdfdfa;
+  --cc-field-border: #e1e1de;
+  --cc-tile: #ffffff;
+  --cc-tile-border: #e3e3e3;
+  --cc-tile-border-w: 0.5px;
+  --cc-switch-track: #ececea;
+  --cc-row-active: #eeebe8;
+  --cc-row-hover: #f2f0ed;
+  --cc-raised: #eeebe8;
+  --cc-bubble: #eeeeeb;
+  --cc-composer: #ffffff;
+  --cc-composer-border: #dbdbd8;
+  --cc-card-border: #e3e3e0;
+
+  --cc-text: #454542;
+  --cc-text-strong: #0a0a08;
+  --cc-text-muted: #7a7a76;
+  --cc-icon: #444441;
+  --cc-code: #841c24;
+  --cc-code-bg: #eeeeeb;
+  --cc-code-border: #d5d5d3;
+  --cc-clay: #d97757;
+
+  --cc-dot-working: #a3a39e;
+  --cc-dot-waiting: #fea916;
+  --cc-dot-done: #236dd5;
+  --cc-branch: #8160d7;
+  --cc-tree: #c2c2c0;
+
+  --cc-menu: #ffffff;
+  --cc-menu-rim: #d0d0ce;
+  --cc-menu-row: #f1f1f1;
+  --cc-menu-rule: #e2e2e2;
+  --cc-menu-text: #0a0a0a;
+  --cc-check: #236dd5;
+  --cc-toggle-on: #236dd5;
+  --cc-toggle-off: #e2e2df;
+  --cc-tag: #eeeeeb;
+  --cc-warning: #b86b00;
+  --cc-warning-bg: #fdf0d8;
+  --cc-accent: #1f63c4;
+  --cc-accent-bg: #e1ecfb;
+  --cc-ultracode: #7c4dd6;
+  --cc-danger: #d42e2e;
+  --cc-chip-hover: #eeeeeb;
+  --cc-card: #fcfcf9;
+  --cc-card-rim: #e3e3e0;
+  --cc-added: #19953b;
+  --cc-removed: #cd2456;
+
+  --cc-code-band: #f1f1ef;
+  --cc-diff-add: #e5f1e3;
+  --cc-diff-del: #fbe6ea;
+  --cc-added-bg: #e1f1e3;
+  --cc-removed-bg: #fbe3e9;
+  --cc-text-faint: #a3a39e;
+  --cc-link: #1f63c4;
+  --cc-session-link: #2d5fa8;
+  --cc-session-link-bg: #e8eef7;
+
+  --cc-panel: #f3f3f3;
+  --cc-panel-rim: #d6d6d6;
+  --cc-terminal: #f3f3f3;
+  --cc-code-pane: #ffffff;
+  --cc-tab: #e2e2e2;
+  --cc-rule: #e5e5e5;
+  --cc-active: #1f63c4;
+  --cc-active-bg: #c5ddfa;
+  --cc-diff-head: #f1f1f1;
+  --cc-diff-add-rule: #19953b;
+  --cc-tree-selected: #e8e8e8;
+
+  --cc-syn-tag: #cf4628;
+  --cc-syn-attr: #19953b;
+  --cc-syn-string: #19953b;
+  --cc-syn-keyword: #a626a4;
+  --cc-syn-number: #1c7fbf;
+  --cc-syn-property: #cf4628;
+  --cc-syn-fn: #2f6fd0;
+  --cc-syn-comment: #8a8a87;
+  --cc-syn-punct: #6b6b6b;
+  --cc-syn-plain: #1f1f1d;
+  --cc-gutter: #a3a39e;
+  --cc-indent-guide: #e5e5e3;
+  --cc-sh-command: #7c3aed;
+  --cc-sh-string: #148855;
+  --cc-sh-text: #4a4a48;
+  --cc-bash-output: #3d3d3a;
+  --cc-terminal-text: #2a2a2a;
+
+  --cc-button-hover: rgb(0 0 0 / 0.05);
+  --cc-composer-icon: #2a2a28;
+  --cc-ring: #256bd4;
+  --cc-ring-track: #dcdcd9;
+  --cc-meter-track: #e5e5e2;
+  --cc-meter-track-accent: #d6e5fa;
+  --cc-task-ring: #c2c2c0;
+  --cc-sidebar-floating-shadow: 4px 0 18px rgb(0 0 0 / 0.08);
+  --cc-surface-shadow: 0 8px 24px rgb(0 0 0 / 0.1), 0 2px 6px rgb(0 0 0 / 0.06);
+
+  /* a light window: a soft dark outline and a lighter shadow; its inner rim is a faint dark line
+     (a white one turns into a bright ring once the image viewer dims the window) */
+  --cc-window-shadow:
+    0 0 0 0.5px rgb(0 0 0 / 0.22),
+    0 19.5px 44.5px -7px rgb(0 0 0 / 0.3),
+    0 15.5px 36.5px 1px rgb(0 0 0 / 0.16);
+  --cc-window-rim: inset 0 0 0 1px rgb(0 0 0 / 0.06);
+}
+
+/* The image viewer is open: the window's content dims to 32% (as if under
+   68% black) and its own fill turns black, so the rounded edge darkens with
+   everything else, with no light fill left to show through it. */
+.claude .cc-dimmable {
+  transition: filter 0.22s ease-out;
+}
+.claude .cc-window[data-viewing] {
+  background: #000 !important;
+}
+.claude .cc-window[data-viewing] .cc-dimmable {
+  filter: brightness(0.32);
+}
+/* the scratchpad dims it further, so the picture being marked up is all there is */
+.claude .cc-window[data-viewing][data-scratching] .cc-dimmable {
+  filter: brightness(0.12);
+}
+@media (prefers-reduced-motion: reduce) {
+  .claude .cc-dimmable {
+    transition: none;
+  }
+}
+
+.claude .cc-window {
+  /* Electron's window corners are plain circular arcs, not the continuous
+     curve native windows use: the reference's corner profile fits r 16.5pt */
+  corner-shape: round;
+  font-family: var(--cc-sans);
+  color: var(--cc-text);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* A menu or popover's surface: its rim and a soft drop shadow */
+.claude .cc-surface {
+  background: var(--cc-menu);
+  box-shadow:
+    inset 0 0 0 1px var(--cc-menu-rim),
+    var(--cc-surface-shadow);
+}
+.claude .cc-menu-row:hover,
+.claude .cc-menu-row[data-open] {
+  background: var(--cc-menu-row);
+}
+
+/* Anthropicons: every glyph sits in a 1em square (ascent 1em, no descent) */
+.claude .cc-icon {
+  display: inline-block;
+  flex: none;
+  width: 1em;
+  height: 1em;
+  font-family: var(--font-claude-icons);
+  font-style: normal;
+  font-weight: 400;
+  line-height: 1;
+  font-optical-sizing: auto;
+  speak: never;
+}
+
+/* The working label: a bright band sweeps across muted text */
+@keyframes cc-shimmer {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: 0 0;
+  }
+}
+.claude .cc-shimmer {
+  background: linear-gradient(
+      90deg,
+      var(--cc-text-muted) 40%,
+      var(--cc-text-strong) 50%,
+      var(--cc-text-muted) 60%
+    )
+    0 0 / 300% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: cc-shimmer 2.4s linear infinite;
+}
+
+/* The terminal's block cursor */
+@keyframes cc-cursor-blink {
+  0%,
+  49% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+.claude .cc-cursor-blink {
+  animation: cc-cursor-blink 1.06s step-end infinite;
+}
+
+/* A block streaming in ends in a soft caret: a short bar that pulses */
+@keyframes cc-caret {
+  0%,
+  100% {
+    opacity: 0.2;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
+.claude .cc-caret {
+  display: inline-block;
+  width: 7px;
+  height: 14px;
+  margin-left: 2px;
+  vertical-align: -2px;
+  border-radius: 2px;
+  background: var(--cc-text-muted);
+  animation: cc-caret 0.9s ease-in-out infinite;
+}
+
+/* A block that just arrived (a tool call that finished, an image) fades up */
+@keyframes cc-settle {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+}
+.claude .cc-settle {
+  animation: cc-settle 0.28s cubic-bezier(0.2, 0, 0, 1);
+}
+
+/* The working spinner: Claude's dots pulsing in turn */
+@keyframes cc-blink {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.claude .cc-blink {
+  animation: cc-blink 1.2s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .claude .cc-blink,
+  .claude .cc-shimmer,
+  .claude .cc-cursor-blink,
+  .claude .cc-caret,
+  .claude .cc-settle {
+    animation: none;
+  }
+}

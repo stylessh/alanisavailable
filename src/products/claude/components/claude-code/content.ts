@@ -7,6 +7,8 @@ export type Session = {
   title: string;
   /** the session is working (a gray dot) or waiting on you (amber) or done (blue) */
   dot?: "working" | "waiting" | "done";
+  /** what it's waiting on you for, or what it finished: the line its attention bar's tooltip shows */
+  note?: string;
   /** worktree branches spun off it */
   branches?: number;
   /** sessions it started, drawn indented under it */
@@ -35,6 +37,8 @@ export const GROUPS: Group[] = [
       {
         id: "inbox-switching",
         title: "Inbox switching and Gmail token persistence",
+        dot: "waiting",
+        note: "Wants to know whether tokens should survive a sign-out",
       },
       { id: "railway-token", title: "Railway API token config and merge" },
     ],
@@ -54,24 +58,28 @@ export const GROUPS: Group[] = [
             title: "Add multiple instances of a Claude agent",
             branches: 2,
             dot: "waiting",
+            note: "Asking to run the migration on the staging database",
           },
           {
             id: "teach-flow",
             title: "Fix the console's teach flow gaps",
             branches: 0,
             dot: "done",
+            note: "Closed 3 gaps in the teach flow, with tests",
           },
           {
             id: "favicon-og",
             title: "Favicon and OG metadata overhaul",
             branches: 0,
             dot: "done",
+            note: "New favicons and OG images for 14 routes",
           },
           {
             id: "agent-card",
             title: "Ship the Agent card skill/playbook",
             branches: 0,
             dot: "done",
+            note: "Playbook written and the skill published",
           },
         ],
       },
@@ -81,6 +89,13 @@ export const GROUPS: Group[] = [
 ];
 
 export const ACTIVE_SESSION = "claude-code-desktop";
+
+/** Every session, its subsessions with it, alongside the project it's in. */
+export const EVERY_SESSION = GROUPS.flatMap((g) => {
+  const project = g.label.split(" · ")[0];
+  const walk = (s: Session): { session: Session; project: string }[] => [{ session: s, project }, ...(s.children ?? []).flatMap(walk)];
+  return g.sessions.flatMap(walk);
+});
 
 export const COMPOSER = {
   placeholder: "⏎ to send, ⌘⏎ to queue for later",

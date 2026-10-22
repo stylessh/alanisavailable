@@ -7,6 +7,7 @@ import { ComposerSettingsProvider } from "./menus";
 import { Sidebar } from "./sidebar";
 import { SidebarProvider, useSidebar, WindowControls } from "./sidebar-state";
 import { ViewerProvider } from "./viewer";
+import { PopoverLayer } from "./popover";
 
 /**
  * The window's size (pt). The reference was captured at 1332 × 814; this
@@ -68,11 +69,13 @@ export function ClaudeWindow() {
       <ComposerSettingsProvider>
         <ViewerProvider>
           <SidebarProvider>
-            <div className="cc-dimmable flex size-full">
-              <Sidebar />
-              <Main />
-            </div>
-            <HiddenSidebarControls />
+            <PopoverLayer>
+              <div className="cc-dimmable flex size-full">
+                <Sidebar />
+                <Main />
+              </div>
+              <HiddenSidebarControls />
+            </PopoverLayer>
           </SidebarProvider>
         </ViewerProvider>
       </ComposerSettingsProvider>

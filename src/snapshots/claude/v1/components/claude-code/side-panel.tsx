@@ -1,6 +1,6 @@
 "use client";
 
-import type { CSSProperties, ReactNode } from "react";
+import { type CSSProperties, type ReactNode, useEffect, useRef, useState } from "react";
 import { Icon, type IconName } from "./icon";
 
 // The side panels the header's Terminal, Diff, Browser and Files buttons open
@@ -163,4 +163,49 @@ export function FileMark({ name }: { name: string }) {
       {mark}
     </span>
   );
+}
+
+/** how far scrolled content fades out at an edge it continues past (pt) */
+const FADE = 20;
+
+/**
+ * Edge fades for something that scrolls: an edge with more beyond it fades
+ * out instead of cutting off, and only while there is something past it.
+ * Returns the ref for the scroller and the mask to put on it. It keeps up
+ * with scrolling, with the scroller resizing, and with its content changing.
+ */
+export function useEdgeFade<T extends HTMLElement>(axis: "x" | "y", fade = FADE) {
+  const ref = useRef<T>(null);
+  const [more, setMore] = useState({ start: false, end: false });
+  useEffect(() => {
+    const node = ref.current;
+    if (!node) return;
+    const check = () => {
+      const at = axis === "x" ? node.scrollLeft : node.scrollTop;
+      const view = axis === "x" ? node.clientWidth : node.clientHeight;
+      const full = axis === "x" ? node.scrollWidth : node.scrollHeight;
+      const start = at > 1;
+      const end = at + view < full - 1;
+      setMore((m) => (m.start === start && m.end === end ? m : { start, end }));
+    };
+    const sizes = new ResizeObserver(check);
+    const watch = () => {
+      sizes.disconnect();
+      sizes.observe(node);
+      for (const child of node.children) sizes.observe(child);
+      check();
+    };
+    // what's inside changes (a tab, a section folding): watch its new pieces too
+    const children = new MutationObserver(watch);
+    children.observe(node, { childList: true });
+    watch();
+    node.addEventListener("scroll", check, { passive: true });
+    return () => {
+      node.removeEventListener("scroll", check);
+      sizes.disconnect();
+      children.disconnect();
+    };
+  }, [axis]);
+  const mask = `linear-gradient(to ${axis === "x" ? "right" : "bottom"}, ${more.start ? "transparent" : "#000"}, #000 ${fade}px, #000 calc(100% - ${fade}px), ${more.end ? "transparent" : "#000"})`;
+  return [ref, { maskImage: mask, WebkitMaskImage: mask }] as const;
 }

@@ -7,8 +7,8 @@ import type { BakedNote } from "./scratchpad";
 // group, a Bash card or a diff; images that open in a viewer; the task
 // list; turn footers; and the turn still in progress at the bottom.
 
-/** Inline runs of a paragraph or list item. */
-export type Run = string | { code: string } | { strong: string } | { link: string } | { session: string };
+/** Inline runs of a paragraph or list item; `pr` is a pull request this session opened (its number), which opens the PR panel. */
+export type Run = string | { code: string } | { strong: string } | { link: string } | { session: string } | { pr: number };
 
 export type Task = { label: string; status: "pending" | "in_progress" | "completed" };
 
@@ -307,6 +307,7 @@ export const TRANSCRIPT: Block[] = [
       ".",
     ],
   },
+  { kind: "text", runs: ["Committed and opened ", { pr: 6 }, " for review, and the panel work as ", { pr: 7 }, "."] },
   { kind: "footer", time: "12 minutes ago" },
 
   {

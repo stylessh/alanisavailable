@@ -28,7 +28,7 @@
   --cc-tile-border-w: 1px;
   /* the Chat / Code switch's track (the search field's fill, in dark) */
   --cc-switch-track: #1d1d1d;
-  /* the open session's row, "Relaunch to update" */
+  /* the open session's row */
   --cc-row-active: #232323;
   /* rows and icon buttons under the pointer: no reference yet, a step
      between the sidebar and the open session's row */
@@ -81,6 +81,10 @@
   --cc-card: #151515;
   --cc-card-rim: #282828;
   --cc-added: #4ade80;
+  /* the pull requests' green, both themes: GitHub's merge button, and every passing check, open mark and ready state with it */
+  --cc-merge: #238636;
+  /* a merged pull request's purple (GitHub's own, darker than Ultracode's in dark mode) */
+  --cc-merged: #8957e5;
   --cc-removed: #f05a5a;
 
   /* The transcript's tool calls and links (from the second recording) */
@@ -212,6 +216,10 @@
   --cc-card: #fcfcf9;
   --cc-card-rim: #e3e3e0;
   --cc-added: #19953b;
+  /* the pull requests' green, both themes: GitHub's merge button, and every passing check, open mark and ready state with it */
+  --cc-merge: #238636;
+  /* a merged pull request's purple (GitHub's own, darker than Ultracode's in dark mode) */
+  --cc-merged: #7c4dd6;
   --cc-removed: #cd2456;
 
   --cc-code-band: #f1f1ef;
@@ -276,6 +284,23 @@
 /* The image viewer is open: the window's content dims to 32% (as if under
    68% black) and its own fill turns black, so the rounded edge darkens with
    everything else, with no light fill left to show through it. */
+/* Keyboard focus, as the app shows it: a soft ring in its own blue, set a little off the control
+   and following its corners. Pointer clicks don't show it. A group that reads as one control
+   (data-focus-group: the merge button and its chevron) rings as one, around both halves. Text
+   fields keep their own focus look, as does anything that turns its outline off. */
+.claude :focus-visible:not(input, textarea, [contenteditable], .outline-none) {
+  outline: 2px solid color-mix(in srgb, var(--cc-accent) 55%, transparent);
+  outline-offset: 2px;
+}
+.claude [data-focus-group] :focus-visible {
+  outline: none;
+}
+.claude [data-focus-group]:has(:focus-visible) {
+  outline: 2px solid color-mix(in srgb, var(--cc-accent) 55%, transparent);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
 .claude .cc-dimmable {
   transition: filter 0.22s ease-out;
 }

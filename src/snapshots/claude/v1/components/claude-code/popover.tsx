@@ -1,7 +1,8 @@
 "use client";
 
 import { AnimatePresence, motion } from "motion/react";
-import { createContext, type CSSProperties, type ReactNode, useContext, useEffect, useRef, useState } from "react";
+import { createContext, type CSSProperties, type ReactNode, useContext, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Icon, type IconName } from "./icon";
 
 // Claude's menus and popovers (pt, from the screen recording at 2x): a
@@ -21,6 +22,23 @@ export type Placement = "top-start" | "top-end" | "bottom-start" | "bottom-end" 
 const PopoverContext = createContext<{ close: () => void } | null>(null);
 /** Closes the popover the caller is in (a menu item that ran its action). */
 export const useClosePopover = () => useContext(PopoverContext)?.close ?? (() => {});
+
+const LayerContext = createContext<HTMLElement | null>(null);
+
+/**
+ * A layer over the whole window that popovers can open in (`portal`), so a
+ * menu opened from something that clips (the sidebar, which clips itself to
+ * slide open and closed, or its scrolling list) still shows in full.
+ */
+export function PopoverLayer({ children }: { children: ReactNode }) {
+  const [layer, setLayer] = useState<HTMLElement | null>(null);
+  return (
+    <LayerContext.Provider value={layer}>
+      {children}
+      <div ref={setLayer} className="pointer-events-none absolute inset-0 z-50" />
+    </LayerContext.Provider>
+  );
+}
 
 function placementStyle(placement: Placement, offset: number, align: number): CSSProperties {
   const [side, edge] = placement.split("-") as ["top" | "bottom" | "right", "start" | "end"];
@@ -58,6 +76,7 @@ export function Popover({
   align = 0,
   className = "",
   style,
+  portal,
 }: {
   trigger: (state: { open: boolean; toggle: () => void }) => ReactNode;
   children: ReactNode;
@@ -66,48 +85,88 @@ export function Popover({
   align?: number;
   className?: string;
   style?: CSSProperties;
+  /** open in the window's PopoverLayer, clear of anything around the trigger that clips */
+  portal?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLDivElement>(null);
+  // in the layer, the surface is placed against a stand-in for the trigger, laid over it
+  const anchor = useRef<HTMLDivElement>(null);
+  const layer = useContext(LayerContext);
+  const inLayer = portal && layer;
+
+  useLayoutEffect(() => {
+    const stand = anchor.current;
+    const box = root.current;
+    if (!open || !stand || !box) return;
+    // the window may be drawn scaled: pixels back into its points
+    const scale = box.getBoundingClientRect().width / box.offsetWidth || 1;
+    const at = box.getBoundingClientRect();
+    const base = stand.parentElement!.getBoundingClientRect();
+    Object.assign(stand.style, {
+      left: `${(at.left - base.left) / scale}px`,
+      top: `${(at.top - base.top) / scale}px`,
+      width: `${box.offsetWidth}px`,
+      height: `${box.offsetHeight}px`,
+    });
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
     const onDown = (e: PointerEvent) => {
-      if (!root.current?.contains(e.target as Node)) setOpen(false);
+      const t = e.target as Node;
+      if (!root.current?.contains(t) && !anchor.current?.contains(t)) setOpen(false);
     };
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setOpen(false);
     };
+    // in the layer, it's placed once: what it opened from scrolling away closes it
+    const onScroll = (e: Event) => {
+      if (e.target instanceof Node && e.target.contains(root.current)) setOpen(false);
+    };
     document.addEventListener("pointerdown", onDown, true);
     document.addEventListener("keydown", onKey);
+    if (anchor.current) document.addEventListener("scroll", onScroll, true);
     return () => {
       document.removeEventListener("pointerdown", onDown, true);
       document.removeEventListener("keydown", onKey);
+      document.removeEventListener("scroll", onScroll, true);
     };
   }, [open]);
+
+  const menu = (
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          className="pointer-events-auto absolute z-50"
+          style={{
+            ...placementStyle(placement, offset, align),
+            transformOrigin: ORIGIN[placement],
+          }}
+          initial={{ opacity: 0, scale: 0.97 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.97, transition: { duration: 0.08 } }}
+          transition={{ duration: 0.12, ease: [0.2, 0, 0, 1] }}
+        >
+          {children}
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
 
   return (
     <PopoverContext.Provider value={{ close: () => setOpen(false) }}>
       {/* the root anchors the surface; a caller that positions it absolutely keeps that */}
       <div ref={root} data-no-drag className={`${/\babsolute\b/.test(className) ? "" : "relative "}${className}`} style={style}>
         {trigger({ open, toggle: () => setOpen((o) => !o) })}
-        <AnimatePresence>
-          {open && (
-            <motion.div
-              className="absolute z-50"
-              style={{
-                ...placementStyle(placement, offset, align),
-                transformOrigin: ORIGIN[placement],
-              }}
-              initial={{ opacity: 0, scale: 0.97 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.97, transition: { duration: 0.08 } }}
-              transition={{ duration: 0.12, ease: [0.2, 0, 0, 1] }}
-            >
-              {children}
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {inLayer
+          ? createPortal(
+              <div ref={anchor} data-no-drag className="absolute">
+                {menu}
+              </div>,
+              layer,
+            )
+          : menu}
       </div>
     </PopoverContext.Provider>
   );

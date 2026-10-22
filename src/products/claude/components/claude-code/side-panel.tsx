@@ -1,6 +1,6 @@
 "use client";
 
-import type { CSSProperties, ReactNode } from "react";
+import { createContext, type CSSProperties, type ReactNode, useContext, useEffect, useRef, useState } from "react";
 import { Icon, type IconName } from "./icon";
 
 // The side panels the header's Terminal, Diff, Browser and Files buttons open
@@ -8,12 +8,25 @@ import { Icon, type IconName } from "./icon";
 // right and bottom edges, r 12 corners and a 1pt #262626 rim. Its first row
 // is 34pt tall and holds the panel's tabs or title on the left and its
 // actions on the right, 26.5pt apart, ending with expand and close. Each
-// panel takes a share of the main pane, as in the recording.
-export type PanelKind = "terminal" | "diff" | "browser" | "files";
+// panel takes a share of the main pane, as in the recording. The PR panel
+// opens from its header button (shown when the session has a pull request)
+// or from the pull request's link in the conversation.
+export type PanelKind = "terminal" | "diff" | "browser" | "files" | "pr";
 
-export const PANEL_SHARE: Record<PanelKind, number> = { terminal: 0.374, browser: 0.427, diff: 0.506, files: 0.586 };
+export const PANEL_SHARE: Record<PanelKind, number> = { terminal: 0.374, browser: 0.427, diff: 0.506, files: 0.586, pr: 0.46 };
+
+/** Opens a side panel from anywhere in the session (a link in the conversation opening the PR panel on its pull request). */
+const OpenPanelContext = createContext<(panel: PanelKind, pr?: number) => void>(() => {});
+export const OpenPanelProvider = OpenPanelContext.Provider;
+export const useOpenPanel = () => useContext(OpenPanelContext);
 export const PANEL_EDGE = 8;
 export const PANEL_BAR = 34;
+/** The card's corner radius, and what sits in its bar: 24pt tabs and buttons, 5pt in from the card's
+    edges on every side, so their corners are the card's less that gap and the two curves run parallel */
+const PANEL_RADIUS = 12;
+const BAR_ITEM = 24;
+const BAR_INSET = (PANEL_BAR - BAR_ITEM) / 2;
+const BAR_ITEM_RADIUS = PANEL_RADIUS - BAR_INSET;
 
 /** A 24pt icon button in a panel's bar (or the Browser's address row). */
 export function BarButton({
@@ -40,8 +53,9 @@ export function BarButton({
       aria-label={label}
       aria-pressed={active}
       onClick={onClick}
-      className="flex size-[24px] flex-none items-center justify-center rounded-[6px] hover:bg-(--cc-button-hover)"
+      className="flex size-[24px] flex-none items-center justify-center hover:bg-(--cc-button-hover)"
       style={{
+        borderRadius: BAR_ITEM_RADIUS,
         background: active ? (tone === "blue" ? "var(--cc-active-bg)" : "var(--cc-chip-hover)") : undefined,
         color: active && tone === "blue" ? "var(--cc-active)" : "var(--cc-icon)",
         ...style,
@@ -49,6 +63,69 @@ export function BarButton({
     >
       <Icon name={icon} size={size} />
     </button>
+  );
+}
+
+/** how far scrolled content fades out at an edge it continues past (pt) */
+const FADE = 20;
+
+/**
+ * Edge fades for something that scrolls: an edge with more beyond it fades
+ * out instead of cutting off, and only while there is something past it.
+ * Returns the ref for the scroller and the mask to put on it. It keeps up
+ * with scrolling, with the scroller resizing, and with its content changing.
+ */
+export function useEdgeFade<T extends HTMLElement>(axis: "x" | "y", fade = FADE) {
+  const ref = useRef<T>(null);
+  const [more, setMore] = useState({ start: false, end: false });
+  useEffect(() => {
+    const node = ref.current;
+    if (!node) return;
+    const check = () => {
+      const at = axis === "x" ? node.scrollLeft : node.scrollTop;
+      const view = axis === "x" ? node.clientWidth : node.clientHeight;
+      const full = axis === "x" ? node.scrollWidth : node.scrollHeight;
+      const start = at > 1;
+      const end = at + view < full - 1;
+      setMore((m) => (m.start === start && m.end === end ? m : { start, end }));
+    };
+    const sizes = new ResizeObserver(check);
+    const watch = () => {
+      sizes.disconnect();
+      sizes.observe(node);
+      for (const child of node.children) sizes.observe(child);
+      check();
+    };
+    // what's inside changes (a tab, a section folding): watch its new pieces too
+    const children = new MutationObserver(watch);
+    children.observe(node, { childList: true });
+    watch();
+    node.addEventListener("scroll", check, { passive: true });
+    return () => {
+      node.removeEventListener("scroll", check);
+      sizes.disconnect();
+      children.disconnect();
+    };
+  }, [axis]);
+  const mask = `linear-gradient(to ${axis === "x" ? "right" : "bottom"}, ${more.start ? "transparent" : "#000"}, #000 ${fade}px, #000 calc(100% - ${fade}px), ${more.end ? "transparent" : "#000"})`;
+  return [ref, { maskImage: mask, WebkitMaskImage: mask }] as const;
+}
+
+/** The bar's title (its tabs, branch or name) when there's more of it than room: it scrolls sideways, fading at an edge with more past it. */
+function TitleScroller({ children }: { children: ReactNode }) {
+  const [el, fade] = useEdgeFade<HTMLDivElement>("x");
+  return (
+    <div
+      ref={el}
+      className="min-w-0 flex-1 overflow-x-auto overflow-y-hidden"
+      style={{ scrollbarWidth: "none", ...fade }}
+      // a vertical wheel scrolls the row sideways, as a mouse can't otherwise
+      onWheel={(e) => {
+        if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) e.currentTarget.scrollLeft += e.deltaY;
+      }}
+    >
+      <div className="flex w-max min-w-full items-center">{children}</div>
+    </div>
   );
 }
 
@@ -71,17 +148,20 @@ export function PanelFrame({
   children: ReactNode;
 }) {
   return (
-    <div
-      className="flex size-full flex-col overflow-hidden rounded-[12px] text-[13px]"
-      style={{ background, boxShadow: "inset 0 0 0 1px var(--cc-panel-rim)" }}
-    >
-      <div className="flex flex-none items-center gap-[2.5px]" style={{ height: PANEL_BAR, paddingLeft: 4, paddingRight: 5 }}>
-        <div className="flex min-w-0 flex-1 items-center">{title}</div>
-        {actions}
-        <BarButton icon="expand" label={expanded ? "Restore panel" : "Expand panel"} active={expanded} onClick={onExpand} />
-        <BarButton icon="close" label="Close panel" onClick={onClose} />
+    <div className="relative isolate flex size-full flex-col overflow-hidden text-[13px]" style={{ background, borderRadius: PANEL_RADIUS }}>
+      <div className="flex flex-none items-center gap-[2.5px]" style={{ height: PANEL_BAR, paddingLeft: BAR_INSET, paddingRight: BAR_INSET }}>
+        <TitleScroller>{title}</TitleScroller>
+        {/* the actions sit on the panel's own fill, so a crowded title never shows through them */}
+        <div className="relative z-[1] flex flex-none items-center gap-[2.5px] pl-[4px]" style={{ background }}>
+          {actions}
+          <BarButton icon="expand" label={expanded ? "Restore panel" : "Expand panel"} active={expanded} onClick={onExpand} />
+          <BarButton icon="close" label="Close panel" onClick={onClose} />
+        </div>
       </div>
       <div className="relative min-h-0 flex-1">{children}</div>
+      {/* The rim is drawn over the content, not under it: an inset shadow on the card itself sits below
+          its children, so anything with a fill (a diff's file heading, a changed line) hid it at the edges */}
+      <div aria-hidden className="pointer-events-none absolute inset-0 z-20" style={{ borderRadius: "inherit", boxShadow: "inset 0 0 0 1px var(--cc-panel-rim)" }} />
     </div>
   );
 }
@@ -107,8 +187,9 @@ export function PanelTab({
       role="tab"
       aria-selected={active}
       onClick={onSelect}
-      className="group flex h-[24px] flex-none cursor-default items-center gap-[6px] rounded-[6px] pr-[5px] pl-[9px] hover:bg-(--cc-button-hover)"
-      style={{ background: active ? "var(--cc-tab)" : undefined, color: active ? "var(--cc-text-strong)" : "var(--cc-text-muted)" }}
+      // the right side is tighter only to make room for the close mark; a tab without one is even
+      className={`group flex h-[24px] flex-none cursor-default items-center gap-[6px] pl-[9px] hover:bg-(--cc-button-hover) ${onClose ? "pr-[5px]" : "pr-[9px]"}`}
+      style={{ borderRadius: BAR_ITEM_RADIUS, background: active ? "var(--cc-tab)" : undefined, color: active ? "var(--cc-text-strong)" : "var(--cc-text-muted)" }}
     >
       {icon}
       <span className={`whitespace-nowrap ${italic ? "italic" : ""}`}>{label}</span>

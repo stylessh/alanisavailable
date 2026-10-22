@@ -15,16 +15,19 @@ import { BarButton, FileMark, PanelFrame } from "./side-panel";
 /** the changed-files column takes the share of the panel it did in the recording (320 of 568pt) */
 const LIST_SHARE = 0.56;
 
-function Stats({ added, removed }: { added: number; removed: number }) {
+export function Stats({ added, removed }: { added: number; removed: number }) {
   return (
     <span className="flex-none whitespace-nowrap">
       <span style={{ color: "var(--cc-added)" }}>+{added}</span>
-      <span style={{ color: "var(--cc-removed)" }}>−{removed}</span>
+      {/* a little apart, so the two counts don't run together */}
+      <span className="ml-[4px]" style={{ color: "var(--cc-removed)" }}>
+        −{removed}
+      </span>
     </span>
   );
 }
 
-function FileDiff({ file }: { file: DiffFile }) {
+export function FileDiff({ file }: { file: DiffFile }) {
   const [open, setOpen] = useState(!!file.hunks);
   return (
     <section style={{ borderBottom: "1px solid var(--cc-rule)" }}>

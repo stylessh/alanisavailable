@@ -4,6 +4,9 @@ import { useRef, useState } from "react";
 import type { Block, Run, SentImage, Task } from "./conversation";
 import { Icon, type IconName } from "./icon";
 import { LIGHT_INKS } from "./scratchpad";
+import { PULL_REQUESTS } from "./panel-content";
+import { PrMark } from "./pr-panel";
+import { useOpenPanel } from "./side-panel";
 import { Strong, ToolSummary } from "./tool-calls";
 import { sourcesIn, useOpenViewer } from "./viewer";
 
@@ -52,6 +55,30 @@ function SessionLink({ children }: { children: string }) {
   );
 }
 
+/**
+ * A pull request this session opened: its repo and number, then its title,
+ * on the session link's chip with GitHub's green mark. It opens the PR panel
+ * beside the conversation rather than a browser tab.
+ */
+function PrLink({ number }: { number: number }) {
+  const openPanel = useOpenPanel();
+  const pr = PULL_REQUESTS.find((p) => p.number === number) ?? PULL_REQUESTS[0];
+  return (
+    <button
+      type="button"
+      onClick={() => openPanel("pr", number)}
+      className="inline-flex max-w-[min(440px,100%)] cursor-default items-center gap-[5px] rounded-[6px] px-[6px] py-[1px] align-bottom hover:brightness-125"
+      style={{ color: "var(--cc-session-link)", background: "var(--cc-session-link-bg)" }}
+    >
+      <PrMark size={13} color="var(--cc-merge)" />
+      <span className="flex-none">
+        {pr.repo}#{number}
+      </span>
+      <span className="min-w-0 truncate">· {pr.title}</span>
+    </button>
+  );
+}
+
 export function Runs({ runs }: { runs: Run[] }) {
   return runs.map((r, i) =>
     typeof r === "string" ? (
@@ -62,6 +89,8 @@ export function Runs({ runs }: { runs: Run[] }) {
       <FileLink key={i}>{r.link}</FileLink>
     ) : "session" in r ? (
       <SessionLink key={i}>{r.session}</SessionLink>
+    ) : "pr" in r ? (
+      <PrLink key={i} number={r.pr} />
     ) : (
       <Strong key={i}>{r.strong}</Strong>
     ),

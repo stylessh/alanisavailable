@@ -1,19 +1,23 @@
 "use client";
 
 import { animate, AnimatePresence, motion, useMotionValue, useMotionValueEvent } from "motion/react";
-import { useEffect, useRef } from "react";
-import { DRAG_REGION } from "../../os/macos";
+import { type ReactNode, useEffect, useRef, useState } from "react";
+import { DRAG_REGION } from "@/os/macos";
 import { ACCOUNT, ACTIVE_SESSION, GROUPS, PINNED, type Session } from "./content";
 import { Icon, type IconName } from "./icon";
 import { AccountMenu, NavMoreMenu } from "./menus";
 import { Popover } from "./popover";
+import { useEdgeFade } from "./side-panel";
 import { useSidebar, WindowControls } from "./sidebar-state";
 
 // Sidebar geometry (window-relative pt, from the reference): 284.5pt wide
 // plus a 1-device-px divider. A session row's highlight runs 8..276.5pt
-// (as wide as "Relaunch to update"); icons sit in a 15pt square 8.5pt into
+// (16pt in from either edge); icons sit in a 15pt square 8.5pt into
 // the row, labels start at 42pt, session titles at 18pt.
 export const SIDEBAR_W = 285;
+/** how narrow and wide its edge can drag it (pt): at its narrowest, the mode switch still clears the forward button by 6pt */
+const MIN_W = 240;
+const MAX_W = 420;
 /** Floating over the session (the sidebar hidden, the pointer on its toggle) it is narrower and lighter, flush to the window's left edge. */
 const FLOATING_W = 263;
 const SLIDE = { type: "spring", stiffness: 520, damping: 46 } as const;
@@ -215,21 +219,30 @@ function SessionRow({ session, depth = 0, first, last }: { session: Session; dep
 /** The Code tab's sidebar: window controls, search, navigation, pinned and grouped sessions, and the account. */
 export function Sidebar() {
   const { shown, peeking, hover, docking, docked } = useSidebar();
+  // how wide its edge has been dragged
+  const [full, setFull] = useState(SIDEBAR_W);
   // The docked width, live: it animates open and closed, and the window
   // publishes it as --cc-dock-w so the session's title can ride along with it.
   const dock = useRef<HTMLDivElement>(null);
-  const width = useMotionValue(shown ? SIDEBAR_W : 0);
+  const width = useMotionValue(shown ? full : 0);
   useMotionValueEvent(width, "change", (w) => dock.current?.closest<HTMLElement>(".cc-window")?.style.setProperty("--cc-dock-w", `${w}px`));
   useEffect(() => {
-    const a = animate(width, shown ? SIDEBAR_W : 0, SLIDE);
+    // (a drag sets the width directly, so this only animates opening and closing)
+    const a = animate(width, shown ? full : 0, SLIDE);
     a.then(() => shown && docked());
     return () => a.stop();
-  }, [shown, width, docked]);
+  }, [shown, full, width, docked]);
+  const resize = (w: number) => {
+    const next = Math.round(Math.min(MAX_W, Math.max(MIN_W, w)));
+    width.jump(next);
+    setFull(next);
+  };
   return (
     <>
       {/* docked: shown, it takes its width from the session; hidden, that width animates away */}
-      <motion.div ref={dock} className="h-full flex-none overflow-hidden" inert={!shown} style={{ width }}>
-        <SidebarBody width={SIDEBAR_W} />
+      <motion.div ref={dock} className="relative h-full flex-none overflow-hidden" inert={!shown} style={{ width }}>
+        <SidebarBody width={full} />
+        {shown && <EdgeHandle width={full} onResize={resize} />}
       </motion.div>
       {/* floating: it appears in place over the session (a quick fade, no slide); nothing moves.
           Docked from here, it stays put and settles into the docked width and colors, in step
@@ -239,19 +252,67 @@ export function Sidebar() {
           <motion.div
             key="floating"
             className="absolute inset-y-0 left-0 z-30 overflow-hidden transition-shadow duration-300 ease-out"
-            style={{ boxShadow: docking ? "none" : "var(--cc-sidebar-floating-shadow)" }}
+            style={{
+              boxShadow: docking ? "none" : "var(--cc-sidebar-floating-shadow)",
+            }}
             initial={{ opacity: 0, width: FLOATING_W }}
-            animate={{ opacity: 1, width: docking ? SIDEBAR_W : FLOATING_W }}
+            animate={{ opacity: 1, width: docking ? full : FLOATING_W }}
             exit={docking ? { opacity: 1, transition: { duration: 0 } } : { opacity: 0 }}
-            transition={{ opacity: { duration: 0.12, ease: "easeOut" }, width: SLIDE }}
+            transition={{
+              opacity: { duration: 0.12, ease: "easeOut" },
+              width: SLIDE,
+            }}
             onPointerEnter={() => hover(true)}
             onPointerLeave={() => hover(false)}
           >
-            <SidebarBody width={SIDEBAR_W} floating={!docking} fill />
+            <SidebarBody width={full} floating={!docking} fill />
           </motion.div>
         )}
       </AnimatePresence>
     </>
+  );
+}
+
+/**
+ * The sidebar's right edge drags to resize it, between MIN_W and MAX_W; a
+ * double-click puts it back to its usual width.
+ */
+function EdgeHandle({ width, onResize }: { width: number; onResize: (w: number) => void }) {
+  const from = useRef<{ x: number; w: number; scale: number } | null>(null);
+  const move = (x: number) => {
+    const f = from.current;
+    if (f) onResize(f.w + (x - f.x) / f.scale);
+  };
+  return (
+    <div
+      role="separator"
+      aria-orientation="vertical"
+      aria-label="Resize sidebar"
+      aria-valuenow={width}
+      aria-valuemin={MIN_W}
+      aria-valuemax={MAX_W}
+      className="absolute inset-y-0 right-0 z-10 w-[5px] cursor-col-resize"
+      style={{ touchAction: "none" }}
+      onPointerDown={(e) => {
+        if (e.button !== 0) return;
+        e.preventDefault();
+        e.currentTarget.setPointerCapture(e.pointerId);
+        // the window may be drawn scaled: pointer distances are turned back into its points
+        const box = e.currentTarget.parentElement!;
+        const scale = box.getBoundingClientRect().width / box.offsetWidth || 1;
+        from.current = { x: e.clientX, w: width, scale };
+      }}
+      onPointerMove={(e) => move(e.clientX)}
+      // the drag ends where the pointer lifts, whatever the last move was
+      onPointerUp={(e) => {
+        move(e.clientX);
+        from.current = null;
+      }}
+      onPointerCancel={() => {
+        from.current = null;
+      }}
+      onDoubleClick={() => onResize(SIDEBAR_W)}
+    />
   );
 }
 
@@ -288,13 +349,18 @@ function SidebarBody({ width, floating, fill }: { width: number; floating?: bool
         </span>
       </label>
 
+      {/* only New stays put, with what's above it; the rest of the navigation scrolls away with the sessions */}
       <nav className="mt-[8.25px] flex-none">
         <NavRow icon="plus" label="New" primary />
+      </nav>
+
+      <SidebarScroller>
         <NavRow icon="projects" label="Projects" badge="Beta" />
         <NavRow icon="artifacts" label="Artifacts" iconSize={16} />
         <NavRow icon="customize" label="Customize" iconSize={16} />
         {/* More opens a small menu just past the row's highlight, its top level with the row */}
         <Popover
+          portal
           placement="right-start"
           offset={-2.5}
           align={-1}
@@ -302,9 +368,7 @@ function SidebarBody({ width, floating, fill }: { width: number; floating?: bool
         >
           <NavMoreMenu />
         </Popover>
-      </nav>
-
-      <div className="mt-[17.25px] min-h-0 flex-1 overflow-y-auto" style={{ scrollbarWidth: "none" }}>
+        <div aria-hidden className="h-[17.25px]" />
         <SectionLabel label="Pinned" />
         {PINNED.map((p) => (
           <button type="button" key={p.id} className="group relative flex w-full items-center text-left text-[13px]" style={{ height: 27 }}>
@@ -331,23 +395,12 @@ function SidebarBody({ width, floating, fill }: { width: number; floating?: bool
             ))}
           </div>
         ))}
-      </div>
+        <div aria-hidden className="h-[8px]" />
+      </SidebarScroller>
 
       <div className="flex-none" style={{ borderTop: "0.5px solid var(--cc-divider)" }}>
-        <button
-          type="button"
-          className="relative mx-[8px] mt-[9.5px] flex h-[28px] w-[calc(100%-16.5px)] items-center rounded-[8px] text-[13px] font-medium tracking-normal"
-          style={{
-            background: "var(--cc-raised)",
-            color: "var(--cc-text-strong)",
-          }}
-        >
-          <span className="absolute" style={{ left: 9.75 }}>
-            Relaunch to update
-          </span>
-          <Icon name="arrowRight" size={12} className="absolute" style={{ right: 9, color: "var(--cc-text-muted)" }} />
-        </button>
         <Popover
+          portal
           placement="top-start"
           offset={0.75}
           align={7}
@@ -378,6 +431,16 @@ function SidebarBody({ width, floating, fill }: { width: number; floating?: bool
         </Popover>
       </div>
     </aside>
+  );
+}
+
+/** The navigation and sessions under New: they scroll, fading out at an edge with more past it instead of cutting off. */
+function SidebarScroller({ children }: { children: ReactNode }) {
+  const [el, fade] = useEdgeFade<HTMLDivElement>("y", 24);
+  return (
+    <div ref={el} className="min-h-0 flex-1 overflow-y-auto" style={{ scrollbarWidth: "none", ...fade }}>
+      {children}
+    </div>
   );
 }
 

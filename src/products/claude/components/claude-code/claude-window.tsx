@@ -8,6 +8,8 @@ import { Sidebar } from "./sidebar";
 import { SidebarProvider, useSidebar, WindowControls } from "./sidebar-state";
 import { ViewerProvider } from "./viewer";
 import { AttachmentsProvider } from "./attachments";
+import { AttentionBars } from "./attention-bars";
+import { PopoverLayer } from "./popover";
 
 /**
  * The window's size (pt). The reference was captured at 1332 × 814; this
@@ -70,11 +72,14 @@ export function ClaudeWindow() {
         <AttachmentsProvider>
           <ViewerProvider>
             <SidebarProvider>
-              <div className="cc-dimmable flex size-full">
-                <Sidebar />
-                <Main />
-              </div>
-              <HiddenSidebarControls />
+              <PopoverLayer>
+                <div className="cc-dimmable flex size-full">
+                  <Sidebar />
+                  <Main />
+                </div>
+                <HiddenSidebarControls />
+                <AttentionBars />
+              </PopoverLayer>
             </SidebarProvider>
           </ViewerProvider>
         </AttachmentsProvider>
