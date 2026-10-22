@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { SHELL } from "./panel-content";
+import { useWorkspace, type Workspace } from "./workspace";
 import { Menu, MenuItem, Popover } from "./popover";
 import { BarButton, PanelFrame, PanelTab } from "./side-panel";
 
@@ -16,10 +16,10 @@ type Term = { id: number; lines: Line[] };
 const CURSOR_STYLES = ["Block", "Underline", "Bar"] as const;
 const SCROLLBACK = ["1,000 lines", "10,000 lines", "100,000 lines"];
 
-function reply(cmd: string): string | null {
+function reply(cmd: string, shell: Workspace["shell"]): string | null {
   if (cmd === "") return null;
   if (cmd.startsWith("echo ")) return cmd.slice(5);
-  return SHELL.replies[cmd] ?? `zsh: command not found: ${cmd.split(" ")[0]}`;
+  return shell.replies[cmd] ?? `zsh: command not found: ${cmd.split(" ")[0]}`;
 }
 
 function Settings({
@@ -74,6 +74,7 @@ function Settings({
 
 /** A terminal that answers a few commands, with tabs for more of them. */
 export function TerminalPanel({ expanded, onExpand, onClose }: { expanded: boolean; onExpand: () => void; onClose: () => void }) {
+  const { shell } = useWorkspace();
   const [terms, setTerms] = useState<Term[]>([{ id: 1, lines: [] }]);
   const [active, setActive] = useState(1);
   const [input, setInput] = useState("");
@@ -93,7 +94,7 @@ export function TerminalPanel({ expanded, onExpand, onClose }: { expanded: boole
       ts.map((t) => {
         if (t.id !== term.id) return t;
         if (cmd === "clear") return { ...t, lines: [] };
-        const out = reply(cmd);
+        const out = reply(cmd, shell);
         return { ...t, lines: [...t.lines, { prompt: true, text: input }, ...(out === null ? [] : out.split("\n").map((text) => ({ text })))] };
       }),
     );
@@ -158,11 +159,11 @@ export function TerminalPanel({ expanded, onExpand, onClose }: { expanded: boole
       >
         {term.lines.map((l, i) => (
           <div key={i} className="whitespace-pre-wrap">
-            {l.prompt ? `${SHELL.prompt} ${l.text}` : l.text}
+            {l.prompt ? `${shell.prompt} ${l.text}` : l.text}
           </div>
         ))}
         <label className="relative flex items-center whitespace-pre">
-          {SHELL.prompt} <span>{input}</span>
+          {shell.prompt} <span>{input}</span>
           <span aria-hidden className={`inline-block flex-none ${blink ? "cc-cursor-blink" : ""}`} style={cursorStyle} />
           <input
             ref={field}

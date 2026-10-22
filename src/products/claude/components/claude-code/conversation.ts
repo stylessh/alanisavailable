@@ -1,3 +1,5 @@
+import type { BakedNote } from "./scratchpad";
+
 // The open session's transcript. It follows the real session that built
 // this replica (the recordings it was measured from scroll through it), so
 // every component the Code tab draws shows up somewhere: prose with lists,
@@ -5,8 +7,8 @@
 // group, a Bash card or a diff; images that open in a viewer; the task
 // list; turn footers; and the turn still in progress at the bottom.
 
-/** Inline runs of a paragraph or list item. */
-export type Run = string | { code: string } | { strong: string } | { link: string } | { session: string };
+/** Inline runs of a paragraph or list item; `pr` is a pull request this session opened (its number), which opens the PR panel. */
+export type Run = string | { code: string } | { strong: string } | { link: string } | { session: string } | { pr: number };
 
 export type Task = { label: string; status: "pending" | "in_progress" | "completed" };
 
@@ -18,8 +20,11 @@ export type ToolCall =
   | { kind: "edit"; file: string; path: string; added: number; removed: number; lines: DiffLine[] }
   | { kind: "read"; file: string; image?: string };
 
+/** An image sent with a message: the picture as sent, and the notes pinned to it in the scratchpad, by the numbers on its dots. */
+export type SentImage = { src: string; notes: BakedNote[] };
+
 export type Block =
-  | { kind: "user"; text: string }
+  | { kind: "user"; text: string; images?: SentImage[] }
   | { kind: "text"; runs: Run[] }
   | { kind: "list"; items: Run[][] }
   /** a collapsed group of tool calls: its summary, the +/- it made, thumbnails of images it read, and the calls it opens into */
@@ -94,7 +99,7 @@ export const TRANSCRIPT: Block[] = [
     runs: [
       "The macOS shell and Rex live in ",
       { code: "/Users/alan/Dev/alanisavailable" },
-      ", not this Redakt worktree — I’ll work there. Let me check its state and the Claude app on this Mac.",
+      ", not in this worktree — I’ll work there. Let me check its state and the Claude app on this Mac.",
     ],
   },
   {
@@ -302,6 +307,7 @@ export const TRANSCRIPT: Block[] = [
       ".",
     ],
   },
+  { kind: "text", runs: ["Committed and opened ", { pr: 6 }, " for review, and the panel work as ", { pr: 7 }, "."] },
   { kind: "footer", time: "12 minutes ago" },
 
   {

@@ -1,7 +1,8 @@
 "use client";
 
 import { AnimatePresence, motion } from "motion/react";
-import { createContext, type CSSProperties, type ReactNode, useContext, useEffect, useRef, useState } from "react";
+import { createContext, type CSSProperties, type ReactNode, useContext, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Icon, type IconName } from "./icon";
 
 // Claude's menus and popovers (pt, from the screen recording at 2x): a
@@ -22,6 +23,23 @@ const PopoverContext = createContext<{ close: () => void } | null>(null);
 /** Closes the popover the caller is in (a menu item that ran its action). */
 export const useClosePopover = () => useContext(PopoverContext)?.close ?? (() => {});
 
+const LayerContext = createContext<HTMLElement | null>(null);
+
+/**
+ * A layer over the whole window that popovers can open in (`portal`), so a
+ * menu opened from something that clips (the sidebar, which clips itself to
+ * slide open and closed, or its scrolling list) still shows in full.
+ */
+export function PopoverLayer({ children }: { children: ReactNode }) {
+  const [layer, setLayer] = useState<HTMLElement | null>(null);
+  return (
+    <LayerContext.Provider value={layer}>
+      {children}
+      <div ref={setLayer} className="pointer-events-none absolute inset-0 z-50" />
+    </LayerContext.Provider>
+  );
+}
+
 function placementStyle(placement: Placement, offset: number, align: number): CSSProperties {
   const [side, edge] = placement.split("-") as ["top" | "bottom" | "right", "start" | "end"];
   if (side === "right")
@@ -33,6 +51,68 @@ function placementStyle(placement: Placement, offset: number, align: number): CS
     ...(side === "top" ? { bottom: `calc(100% + ${offset}px)` } : { top: `calc(100% + ${offset}px)` }),
     ...(edge === "start" ? { left: align } : { right: align }),
   };
+}
+
+type Box = { left: number; top: number; right: number; bottom: number };
+
+/** What a popover opened from `el` can show in: the window, cut down by every ancestor that clips. */
+function clipOf(el: HTMLElement): Box {
+  let box: Box = {
+    left: 0,
+    top: 0,
+    right: window.innerWidth,
+    bottom: window.innerHeight,
+  };
+  for (let a = el.parentElement; a; a = a.parentElement) {
+    const cs = getComputedStyle(a);
+    if (cs.overflowX === "visible" && cs.overflowY === "visible") continue;
+    const r = a.getBoundingClientRect();
+    box = {
+      left: Math.max(box.left, r.left),
+      top: Math.max(box.top, r.top),
+      right: Math.min(box.right, r.right),
+      bottom: Math.min(box.bottom, r.bottom),
+    };
+  }
+  return box;
+}
+
+/**
+ * Where the surface goes: the placement asked for, its other side, the other
+ * way up, then both, the first that fits. When none does, the one that spills
+ * over least, slid sideways (`dx`, pixels) until it's inside.
+ */
+function fitting(placement: Placement, trigger: DOMRect, w: number, h: number, offset: number, align: number, clip: Box): { placement: Placement; dx: number } {
+  const [side, edge] = placement.split("-") as ["top" | "bottom" | "right", "start" | "end"];
+  // submenus open beside their row; they're placed by their menu
+  if (side === "right") return { placement, dx: 0 };
+  const flip = {
+    top: "bottom",
+    bottom: "top",
+    start: "end",
+    end: "start",
+  } as const;
+  const tries: Placement[] = [
+    placement,
+    `${side}-${flip[edge]}` as Placement,
+    `${flip[side]}-${edge}` as Placement,
+    `${flip[side]}-${flip[edge]}` as Placement,
+  ];
+  const at = (p: Placement) => {
+    const [s, e] = p.split("-");
+    return {
+      top: s === "bottom" ? trigger.bottom + offset : trigger.top - offset - h,
+      left: e === "start" ? trigger.left + align : trigger.right - align - w,
+    };
+  };
+  const spill = (p: Placement) => {
+    const { top, left } = at(p);
+    return Math.max(0, clip.left - left) + Math.max(0, left + w - clip.right) + Math.max(0, clip.top - top) + Math.max(0, top + h - clip.bottom);
+  };
+  const best = tries.reduce((a, b) => (spill(b) < spill(a) ? b : a));
+  const { left } = at(best);
+  const slid = Math.min(Math.max(left, clip.left), Math.max(clip.left, clip.right - w));
+  return { placement: best, dx: slid - left };
 }
 
 const ORIGIN: Record<Placement, string> = {
@@ -58,6 +138,7 @@ export function Popover({
   align = 0,
   className = "",
   style,
+  portal,
 }: {
   trigger: (state: { open: boolean; toggle: () => void }) => ReactNode;
   children: ReactNode;
@@ -66,48 +147,110 @@ export function Popover({
   align?: number;
   className?: string;
   style?: CSSProperties;
+  /** open in the window's PopoverLayer, clear of anything around the trigger that clips */
+  portal?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLDivElement>(null);
+  const surface = useRef<HTMLDivElement>(null);
+  // in the layer, the surface is placed against a stand-in for the trigger, laid over it
+  const anchor = useRef<HTMLDivElement>(null);
+  const layer = useContext(LayerContext);
+  const inLayer = portal && layer;
+
+  // Opened, the surface checks it fits where it was asked to go, and moves to the other side
+  // (or the other way up), or slides over, if it doesn't: written straight to its style, no second render.
+  useLayoutEffect(() => {
+    const el = surface.current;
+    const box = root.current;
+    if (!open || !el || !box) return;
+    // the window may be drawn scaled: points in, pixels out
+    const scale = box.getBoundingClientRect().width / box.offsetWidth || 1;
+    const stand = anchor.current;
+    if (stand) {
+      const at = box.getBoundingClientRect();
+      const base = stand.parentElement!.getBoundingClientRect();
+      Object.assign(stand.style, {
+        left: `${(at.left - base.left) / scale}px`,
+        top: `${(at.top - base.top) / scale}px`,
+        width: `${box.offsetWidth}px`,
+        height: `${box.offsetHeight}px`,
+      });
+    }
+    const { placement: chosen, dx } = fitting(
+      placement,
+      box.getBoundingClientRect(),
+      el.offsetWidth * scale,
+      el.offsetHeight * scale,
+      offset * scale,
+      align * scale,
+      clipOf(stand ?? box),
+    );
+    // a slide sideways sits on `translate`, apart from the transform the opening animates
+    el.style.translate = dx ? `${dx / scale}px 0` : "";
+    if (chosen === placement) return;
+    for (const k of ["left", "right", "top", "bottom"] as const) el.style[k] = "";
+    for (const [k, v] of Object.entries(placementStyle(chosen, offset, align))) el.style.setProperty(k, typeof v === "number" ? `${v}px` : String(v));
+    el.style.transformOrigin = ORIGIN[chosen];
+  }, [open, placement, offset, align]);
 
   useEffect(() => {
     if (!open) return;
     const onDown = (e: PointerEvent) => {
-      if (!root.current?.contains(e.target as Node)) setOpen(false);
+      const t = e.target as Node;
+      if (!root.current?.contains(t) && !anchor.current?.contains(t)) setOpen(false);
     };
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setOpen(false);
     };
+    // in the layer, it's placed once: what it opened from scrolling away closes it
+    const onScroll = (e: Event) => {
+      if (e.target instanceof Node && e.target.contains(root.current)) setOpen(false);
+    };
     document.addEventListener("pointerdown", onDown, true);
     document.addEventListener("keydown", onKey);
+    if (anchor.current) document.addEventListener("scroll", onScroll, true);
     return () => {
       document.removeEventListener("pointerdown", onDown, true);
       document.removeEventListener("keydown", onKey);
+      document.removeEventListener("scroll", onScroll, true);
     };
   }, [open]);
+
+  const menu = (
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          ref={surface}
+          className="pointer-events-auto absolute z-50"
+          style={{
+            ...placementStyle(placement, offset, align),
+            transformOrigin: ORIGIN[placement],
+          }}
+          initial={{ opacity: 0, scale: 0.97 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.97, transition: { duration: 0.08 } }}
+          transition={{ duration: 0.12, ease: [0.2, 0, 0, 1] }}
+        >
+          {children}
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
 
   return (
     <PopoverContext.Provider value={{ close: () => setOpen(false) }}>
       {/* the root anchors the surface; a caller that positions it absolutely keeps that */}
       <div ref={root} data-no-drag className={`${/\babsolute\b/.test(className) ? "" : "relative "}${className}`} style={style}>
         {trigger({ open, toggle: () => setOpen((o) => !o) })}
-        <AnimatePresence>
-          {open && (
-            <motion.div
-              className="absolute z-50"
-              style={{
-                ...placementStyle(placement, offset, align),
-                transformOrigin: ORIGIN[placement],
-              }}
-              initial={{ opacity: 0, scale: 0.97 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.97, transition: { duration: 0.08 } }}
-              transition={{ duration: 0.12, ease: [0.2, 0, 0, 1] }}
-            >
-              {children}
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {inLayer
+          ? createPortal(
+              <div ref={anchor} data-no-drag className="absolute">
+                {menu}
+              </div>,
+              layer,
+            )
+          : menu}
       </div>
     </PopoverContext.Provider>
   );
@@ -132,7 +275,11 @@ export function Surface({
     <div
       role="menu"
       className={`cc-surface rounded-[10px] text-[13px] tracking-[-0.004em] ${className}`}
-      style={{ ...(fit ? { minWidth: width, width: "max-content" } : { width }), padding: `${PAD_Y}px ${PAD_X}px`, ...style }}
+      style={{
+        ...(fit ? { minWidth: width, width: "max-content" } : { width }),
+        padding: `${PAD_Y}px ${PAD_X}px`,
+        ...style,
+      }}
     >
       {children}
     </div>
@@ -264,7 +411,10 @@ export function MenuItem({
         // a value or a tag sits level with the label; a toggle or a tag beside two lines centers on both
         <span
           className={`ml-[12px] flex flex-none items-center gap-[10px] ${description && (toggle || typeof hint === "object") ? "self-center" : "self-start"}`}
-          style={{ height: description && !(toggle || typeof hint === "object") ? 18 : ROW_H, color: "var(--cc-text-muted)" }}
+          style={{
+            height: description && !(toggle || typeof hint === "object") ? 18 : ROW_H,
+            color: "var(--cc-text-muted)",
+          }}
         >
           {checked && <Icon name="check" size={14} style={{ color: "var(--cc-check)" }} />}
           {hint !== undefined && <span className="text-[12.5px]">{hint}</span>}

@@ -2,6 +2,7 @@
 
 import { useMacWindow } from "@/os/macos";
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { ACTIVE_SESSION, type Session } from "./content";
 import { Icon, type IconName } from "./icon";
 
 // The sidebar's state: shown (docked, pushing the session over) or hidden.
@@ -37,7 +38,24 @@ type SidebarState = {
   docking: boolean;
   /** the docked sidebar has finished opening */
   docked: () => void;
+  /**
+   * What it lists: everything, or the inbox, only the sessions you're
+   * actually in the middle of (waiting on you, running, or done and ready
+   * for a look), with the rest of the navigation put away.
+   */
+  view: SidebarView;
+  setView: (view: SidebarView) => void;
+  /** the session that's open */
+  active: string;
+  /** open a session; one that was done is now looked at, so it no longer asks for you */
+  openSession: (id: string) => void;
+  /** whether a session wants you: it's waiting on you, or it's done and you haven't opened it since (never the open one) */
+  wants: (session: Session) => boolean;
+  /** its dot as things stand: a done session you've opened since has none */
+  dotOf: (session: Session) => Session["dot"];
 };
+
+export type SidebarView = "all" | "inbox";
 
 const Ctx = createContext<SidebarState | null>(null);
 
@@ -51,6 +69,15 @@ export function SidebarProvider({ children }: { children: ReactNode }) {
   const [shown, setShown] = useState(true);
   const [peeking, setPeeking] = useState(false);
   const [docking, setDocking] = useState(false);
+  const [view, setView] = useState<SidebarView>("all");
+  const [active, setActive] = useState(ACTIVE_SESSION);
+  const [seen, setSeen] = useState<ReadonlySet<string>>(() => new Set());
+  const openSession = useCallback((id: string) => {
+    setActive(id);
+    setSeen((s) => (s.has(id) ? s : new Set(s).add(id)));
+  }, []);
+  const dotOf = useCallback((s: Session) => (s.dot === "done" && seen.has(s.id) ? undefined : s.dot), [seen]);
+  const wants = useCallback((s: Session) => s.id !== active && (s.dot === "waiting" || dotOf(s) === "done"), [active, dotOf]);
   const leave = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const toggle = useCallback(() => {
@@ -84,7 +111,10 @@ export function SidebarProvider({ children }: { children: ReactNode }) {
   }, [toggle]);
   useEffect(() => () => clearTimeout(leave.current), []);
 
-  const value = useMemo(() => ({ shown, toggle, peeking: peeking && !shown, hover, docking, docked }), [shown, toggle, peeking, hover, docking, docked]);
+  const value = useMemo(
+    () => ({ shown, toggle, peeking: peeking && !shown, hover, docking, docked, view, setView, active, openSession, wants, dotOf }),
+    [shown, toggle, peeking, hover, docking, docked, view, active, openSession, wants, dotOf],
+  );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 

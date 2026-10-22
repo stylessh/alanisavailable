@@ -300,6 +300,17 @@ export function MoreMenu() {
 // --- Sidebar --------------------------------------------------------------
 
 /** The sidebar's More row. */
+/** What the sidebar lists: every session, or the inbox. */
+export function SidebarViewMenu({ view, onChange }: { view: "all" | "inbox"; onChange: (view: "all" | "inbox") => void }) {
+  return (
+    <Menu width={232}>
+      <MenuLabel>Show</MenuLabel>
+      <MenuItem inset={false} label="All sessions" description="Every project, pinned and session" checked={view === "all"} onSelect={() => onChange("all")} />
+      <MenuItem inset={false} label="Inbox" description="Only what needs you or is running" checked={view === "inbox"} onSelect={() => onChange("inbox")} />
+    </Menu>
+  );
+}
+
 export function NavMoreMenu() {
   return (
     <Menu width={126.5}>
