@@ -1,8 +1,9 @@
 "use client";
 
 import { useRef, useState } from "react";
-import type { Block, Run, Task } from "./conversation";
+import type { Block, Run, SentImage, Task } from "./conversation";
 import { Icon, type IconName } from "./icon";
+import { LIGHT_INKS } from "./scratchpad";
 import { Strong, ToolSummary } from "./tool-calls";
 import { sourcesIn, useOpenViewer } from "./viewer";
 
@@ -67,15 +68,72 @@ export function Runs({ runs }: { runs: Run[] }) {
   );
 }
 
-function UserMessage({ text }: { text: string }) {
+/** A user's message: the images sent with it above the bubble, at the right. */
+function UserMessage({ text, images }: { text: string; images?: SentImage[] }) {
   return (
-    <div className="flex justify-end" style={{ marginBottom: BUBBLE_AFTER }}>
-      <div
-        className="max-w-[85%] rounded-[12px] px-[13px] py-[10px] text-[14px] leading-[20px]"
-        style={{ background: "var(--cc-bubble)", color: "var(--cc-text-strong)" }}
-      >
-        {text}
-      </div>
+    <div className="flex flex-col items-end gap-[8px]" style={{ marginBottom: BUBBLE_AFTER }}>
+      {images && images.length > 0 && <SentImages images={images} />}
+      {text && (
+        <div
+          className="max-w-[85%] rounded-[12px] px-[13px] py-[10px] text-[14px] leading-[20px]"
+          style={{ background: "var(--cc-bubble)", color: "var(--cc-text-strong)" }}
+        >
+          {text}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Images sent with a message, each in a card that opens the viewer. A
+ * picture marked up in the scratchpad lists its notes in a footer inside the
+ * card, by the numbers on its dots and in their ink, so what each mark means
+ * reads right under it.
+ */
+function SentImages({ images }: { images: SentImage[] }) {
+  const openViewer = useOpenViewer();
+  const root = useRef<HTMLDivElement>(null);
+  const srcs = images.map((i) => i.src);
+  return (
+    <div ref={root} className="flex max-w-[85%] flex-wrap justify-end gap-[8px]">
+      {images.map((image, i) => (
+        <figure
+          key={image.src}
+          className="w-[280px] max-w-full overflow-hidden rounded-[12px]"
+          style={{ background: "var(--cc-bubble)", boxShadow: "0 0 0 1px var(--cc-card-rim)" }}
+        >
+          <button
+            type="button"
+            aria-label="View image"
+            data-cc-image={image.src}
+            onClick={() => openViewer(srcs, i, "Image", sourcesIn(root.current, srcs))}
+            className="block w-full cursor-default hover:brightness-110"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img alt="" src={image.src} className="block h-auto w-full" draggable={false} />
+          </button>
+          {image.notes.length > 0 && (
+            <figcaption
+              className="flex flex-col gap-[6px] px-[12px] py-[10px] text-[13px] leading-[18px]"
+              style={{ color: "var(--cc-text-strong)", boxShadow: "inset 0 1px 0 var(--cc-card-rim)" }}
+            >
+              {image.notes.map((n) => (
+                <span key={n.n} className="flex items-start gap-[8px]">
+                  <span
+                    aria-label={`Note ${n.n}`}
+                    className="mt-[1px] flex size-[16px] flex-none items-center justify-center rounded-full text-[10px] font-semibold tabular-nums"
+                    style={{ background: n.ink, color: LIGHT_INKS.has(n.ink) ? "#151515" : "#fff" }}
+                  >
+                    {n.n}
+                  </span>
+                  <span className="min-w-0 break-words">{n.text}</span>
+                </span>
+              ))}
+            </figcaption>
+          )}
+        </figure>
+      ))}
     </div>
   );
 }
@@ -209,7 +267,7 @@ function TaskList({ items }: { items: Task[] }) {
 export function TranscriptBlock({ block, streaming }: { block: Block; streaming?: boolean }) {
   switch (block.kind) {
     case "user":
-      return <UserMessage text={block.text} />;
+      return <UserMessage text={block.text} images={block.images} />;
     case "text":
       return <Prose runs={block.runs} streaming={streaming} />;
     case "list":

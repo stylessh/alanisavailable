@@ -7,6 +7,7 @@ import { ComposerSettingsProvider } from "./menus";
 import { Sidebar } from "./sidebar";
 import { SidebarProvider, useSidebar, WindowControls } from "./sidebar-state";
 import { ViewerProvider } from "./viewer";
+import { AttachmentsProvider } from "./attachments";
 
 /**
  * The window's size (pt). The reference was captured at 1332 × 814; this
@@ -66,15 +67,17 @@ export function ClaudeWindow() {
       }}
     >
       <ComposerSettingsProvider>
-        <ViewerProvider>
-          <SidebarProvider>
-            <div className="cc-dimmable flex size-full">
-              <Sidebar />
-              <Main />
-            </div>
-            <HiddenSidebarControls />
-          </SidebarProvider>
-        </ViewerProvider>
+        <AttachmentsProvider>
+          <ViewerProvider>
+            <SidebarProvider>
+              <div className="cc-dimmable flex size-full">
+                <Sidebar />
+                <Main />
+              </div>
+              <HiddenSidebarControls />
+            </SidebarProvider>
+          </ViewerProvider>
+        </AttachmentsProvider>
       </ComposerSettingsProvider>
       <WindowRim />
       {/* Electron's 14pt lights, 23pt apart, 17pt in; the OS draws them above everything in the window */}

@@ -3,7 +3,7 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import { Composer } from "./composer";
 import { Icon } from "./icon";
-import { TRANSCRIPT } from "./conversation";
+import { type Block, TRANSCRIPT } from "./conversation";
 import { useTurnStream } from "./stream";
 import { BrowserPanel } from "./browser-panel";
 import { DiffPanel } from "./diff-panel";
@@ -38,6 +38,8 @@ export function Main() {
   const [atBottom, setAtBottom] = useState(true);
   // the latest turn is still running: it plays in from page load
   const { blocks, writingIndex, working } = useTurnStream(TRANSCRIPT, 142_600);
+  // what's sent from the composer, after the transcript
+  const [sent, setSent] = useState<Block[]>([]);
   const side = panel && panel !== "details" ? panel : null;
   const SidePanel = side ? SIDE_PANELS[side] : null;
   // what the transcript and composer leave free on the right, and where the header's icons end
@@ -101,6 +103,9 @@ export function Main() {
           {blocks.map((b, i) => (
             <TranscriptBlock key={i} block={b} streaming={i === writingIndex} />
           ))}
+          {sent.map((b, i) => (
+            <TranscriptBlock key={`sent-${i}`} block={b} />
+          ))}
           <Working {...working} />
         </div>
       </div>
@@ -122,7 +127,13 @@ export function Main() {
           >
             <Icon name="arrowDown" size={14} style={{ color: "var(--cc-text-strong)" }} />
           </button>
-          <Composer />
+          <Composer
+            onSend={({ text, images }) => {
+              setSent((s) => [...s, { kind: "user", text, images }]);
+              // sending brings the conversation back to its newest message
+              requestAnimationFrame(() => scroller.current?.scrollTo({ top: scroller.current.scrollHeight, behavior: "smooth" }));
+            }}
+          />
         </div>
       </div>
     </section>

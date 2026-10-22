@@ -285,6 +285,10 @@
 .claude .cc-window[data-viewing] .cc-dimmable {
   filter: brightness(0.32);
 }
+/* the scratchpad dims it further, so the picture being marked up is all there is */
+.claude .cc-window[data-viewing][data-scratching] .cc-dimmable {
+  filter: brightness(0.12);
+}
 @media (prefers-reduced-motion: reduce) {
   .claude .cc-dimmable {
     transition: none;

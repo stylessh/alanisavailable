@@ -1,3 +1,5 @@
+import type { BakedNote } from "./scratchpad";
+
 // The open session's transcript. It follows the real session that built
 // this replica (the recordings it was measured from scroll through it), so
 // every component the Code tab draws shows up somewhere: prose with lists,
@@ -18,8 +20,11 @@ export type ToolCall =
   | { kind: "edit"; file: string; path: string; added: number; removed: number; lines: DiffLine[] }
   | { kind: "read"; file: string; image?: string };
 
+/** An image sent with a message: the picture as sent, and the notes pinned to it in the scratchpad, by the numbers on its dots. */
+export type SentImage = { src: string; notes: BakedNote[] };
+
 export type Block =
-  | { kind: "user"; text: string }
+  | { kind: "user"; text: string; images?: SentImage[] }
   | { kind: "text"; runs: Run[] }
   | { kind: "list"; items: Run[][] }
   /** a collapsed group of tool calls: its summary, the +/- it made, thumbnails of images it read, and the calls it opens into */

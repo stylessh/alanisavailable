@@ -6,6 +6,12 @@
 import type { Snapshot } from "@/lib/snapshots";
 
 export const VERSIONS: Record<string, { live: string; snapshots: Snapshot[] }> = {
+  "claude": {
+    live: "Scratchpad",
+    snapshots: [
+      {"id":"v1","name":"Original","date":"2026-10-21","commit":"60f8a66"},
+    ],
+  },
   "superlogical": {
     live: "iOS app",
     snapshots: [
