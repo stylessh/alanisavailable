@@ -3,7 +3,8 @@
 import { useMemo, useState } from "react";
 import { CodeView } from "./code-view";
 import { Icon } from "./icon";
-import { FILE_TREE, FILES, OPEN_FILE, type TreeNode } from "./panel-content";
+import type { TreeNode } from "./panel-content";
+import { useWorkspace } from "./workspace";
 import { Menu, MenuItem, MenuSeparator, Popover } from "./popover";
 import { BarButton, FileMark, PanelFrame, PanelTab } from "./side-panel";
 
@@ -117,8 +118,9 @@ function EditorMenu({ settings, set }: { settings: Record<string, boolean>; set:
 
 /** The project's files: a tree to pick from and tabs of what's open. */
 export function FilesPanel({ expanded, onExpand, onClose }: { expanded: boolean; onExpand: () => void; onClose: () => void }) {
-  const [tabs, setTabs] = useState<Tab[]>([{ path: OPEN_FILE, preview: true }]);
-  const [active, setActive] = useState<string | null>(OPEN_FILE);
+  const { tree, files, openFile: firstFile } = useWorkspace();
+  const [tabs, setTabs] = useState<Tab[]>([{ path: firstFile, preview: true }]);
+  const [active, setActive] = useState<string | null>(firstFile);
   const [open, setOpen] = useState<Set<string>>(new Set(["src", "src/app"]));
   const [filter, setFilter] = useState("");
   const [settings, setSettings] = useState<Record<string, boolean>>({
@@ -131,7 +133,7 @@ export function FilesPanel({ expanded, onExpand, onClose }: { expanded: boolean;
     whitespace: false,
     pastEnd: false,
   });
-  const source = active ? FILES[active] : undefined;
+  const source = active ? files[active] : undefined;
   const crumbs = useMemo(() => active?.split("/") ?? [], [active]);
 
   const openFile = (path: string, pin: boolean) => {
@@ -257,7 +259,7 @@ export function FilesPanel({ expanded, onExpand, onClose }: { expanded: boolean;
             </label>
             <div role="tree" className="min-h-0 flex-1 overflow-y-auto pb-[8px]" style={{ scrollbarWidth: "none" }}>
               <TreeRows
-                nodes={FILE_TREE}
+                nodes={tree}
                 depth={0}
                 dir=""
                 open={open}

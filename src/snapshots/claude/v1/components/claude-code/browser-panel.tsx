@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Icon } from "./icon";
-import { BROWSER } from "./panel-content";
+import { useWorkspace } from "./workspace";
 import { BarButton, PanelFrame, PanelTab } from "./side-panel";
 
 // The Browser panel (pt, from the recording): a tab row, then a 34pt address
@@ -19,6 +19,7 @@ const TOOLS = [
 
 /** A small browser showing this site. */
 export function BrowserPanel({ expanded, onExpand, onClose }: { expanded: boolean; onExpand: () => void; onClose: () => void }) {
+  const { browser } = useWorkspace();
   const [reloads, setReloads] = useState(0);
   const [tool, setTool] = useState<string | null>(null);
   const [toolbar, setToolbar] = useState(true);
@@ -32,7 +33,7 @@ export function BrowserPanel({ expanded, onExpand, onClose }: { expanded: boolea
         <div className="flex items-center gap-[4px]">
           <PanelTab
             active
-            label={BROWSER.title}
+            label={browser.title}
             icon={
               // eslint-disable-next-line @next/next/no-img-element
               <img alt="" src="/snapshots/claude/v1/dock-icon.png" className="size-[13px] max-w-none rounded-[3px]" />
@@ -60,13 +61,13 @@ export function BrowserPanel({ expanded, onExpand, onClose }: { expanded: boolea
             style={{ background: "var(--cc-field)", boxShadow: "inset 0 0 0 1px var(--cc-field-border)" }}
           >
             <span className="truncate" style={{ color: "var(--cc-text-strong)" }}>
-              {BROWSER.url}
+              {browser.url}
             </span>
           </div>
           <BarButton icon="pointer" label="Pick an element" />
         </div>
         <div className="relative min-h-0 flex-1 overflow-hidden" style={{ background: "var(--cc-code-pane)", borderTop: "1px solid var(--cc-rule)" }}>
-          <iframe key={reloads} title={BROWSER.title} src={BROWSER.src} className="absolute inset-0 size-full border-0" />
+          <iframe key={reloads} title={browser.title} src={browser.src} srcDoc={browser.srcDoc} className="absolute inset-0 size-full border-0" />
           {toolbar && (
             <div
               role="toolbar"

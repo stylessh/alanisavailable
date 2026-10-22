@@ -13,9 +13,12 @@ import { PANEL_INSET, PANEL_W, SessionPanel } from "./session-panel";
 import { MAX_PANELS, PanelStack, usePanelLayout } from "./panel-stack";
 import { OpenPanelProvider, type PanelKind } from "./side-panel";
 import { PrPanel, PrStoreProvider, usePrStore } from "./pr-panel";
-import { PULL_REQUESTS } from "./panel-content";
+import { prsOf } from "./session-prs";
 import { TerminalPanel } from "./terminal-panel";
 import { TranscriptBlock, Working } from "./transcript";
+import { ACTIVE_SESSION } from "./content";
+import { CONVERSATIONS } from "./sessions";
+import { useSidebar } from "./sidebar-state";
 
 const SIDE_PANELS = { terminal: TerminalPanel, diff: DiffPanel, browser: BrowserPanel, files: FilesPanel, pr: PrPanel } satisfies Record<PanelKind, unknown>;
 /** a side panel's icons sit this far left of its card, as in the recording */
@@ -41,15 +44,20 @@ export function Main() {
   const content = useRef<HTMLDivElement>(null);
   // the session details card, or the side panels open beside the conversation, oldest first
   const [details, setDetails] = useState(false);
-  const [open, setOpen] = useState<PanelKind[]>([]);
+  const [opened, setOpen] = useState<PanelKind[]>([]);
+  const { active } = useSidebar();
+  // a session that hasn't opened a pull request has no PR panel
+  const open = prsOf(active).length ? opened : opened.filter((p) => p !== "pr");
   const [expanded, setExpanded] = useState<PanelKind | null>(null);
   const [size, setSize] = useState({ w: 0, h: 0 });
   const layout = usePanelLayout(open, size.w, size.h);
   const [atBottom, setAtBottom] = useState(true);
   // the latest turn is still running: it plays in from page load
   const { blocks, writingIndex, working } = useTurnStream(TRANSCRIPT, 142_600);
-  // what's sent from the composer, after the transcript
-  const [sent, setSent] = useState<Block[]>([]);
+  // another session's conversation, when one is open instead of this one (which keeps running behind it)
+  const other = active === ACTIVE_SESSION ? null : (CONVERSATIONS[active] ?? []);
+  // what's sent from the composer, after each session's transcript
+  const [sent, setSent] = useState<Record<string, Block[]>>({});
   // what the transcript and composer leave free on the right, and where the header's icons end
   const stacked = open.length > 0;
   // (past the conversation's narrowest, the panels float over it and it stays where it is)
@@ -90,6 +98,18 @@ export function Main() {
     observer.observe(el);
     return () => observer.disconnect();
   }, []);
+  // opening another session shows its latest turn, all at once: what's already there doesn't fade in as if it just arrived
+  const shownSession = useRef(active);
+  useLayoutEffect(() => {
+    const el = scroller.current;
+    if (el) el.scrollTop = el.scrollHeight;
+    const box = content.current;
+    if (!box || shownSession.current === active) return;
+    shownSession.current = active;
+    box.dataset.quiet = "";
+    const t = setTimeout(() => delete box.dataset.quiet, 400);
+    return () => clearTimeout(t);
+  }, [active]);
   // A session opens scrolled to its latest turn and stays pinned there as
   // the transcript grows (or reflows when its fonts load), unless the
   // reader has scrolled up.
@@ -118,9 +138,10 @@ export function Main() {
     <OpenPanelProvider value={openPanel}>
       <PrStoreProvider value={prs}>
         <section ref={pane} className="relative flex min-w-0 flex-1 flex-col" style={{ background: "var(--cc-main)" }}>
-          <Header open={details ? ["details"] : open} onToggle={toggle} iconsRight={iconsRight} prs={PULL_REQUESTS.map((pr) => prs.statuses[pr.number])} />
-          {details && <SessionPanel />}
+          <Header open={details ? ["details"] : open} onToggle={toggle} iconsRight={iconsRight} prs={prsOf(active).map((pr) => prs.statuses[pr.number])} />
+          {details && <SessionPanel key={active} />}
           <PanelStack
+            key={active}
             open={open}
             layout={layout}
             panels={SIDE_PANELS}
@@ -140,13 +161,13 @@ export function Main() {
             }}
           >
             <div ref={content} className="mx-auto flex flex-col gap-[14px] pt-[60px] pb-[49.5px] tracking-[-0.007em]" style={column}>
-              {blocks.map((b, i) => (
-                <TranscriptBlock key={i} block={b} streaming={i === writingIndex} />
+              {(other ?? blocks).map((b, i) => (
+                <TranscriptBlock key={`${active}-${i}`} block={b} streaming={!other && i === writingIndex} />
               ))}
-              {sent.map((b, i) => (
+              {(sent[active] ?? []).map((b, i) => (
                 <TranscriptBlock key={`sent-${i}`} block={b} />
               ))}
-              <Working {...working} />
+              {!other && <Working {...working} />}
             </div>
           </div>
           <div className="flex-none" style={{ marginRight: reserved }}>
@@ -169,7 +190,7 @@ export function Main() {
               </button>
               <Composer
                 onSend={({ text, images }) => {
-                  setSent((s) => [...s, { kind: "user", text, images }]);
+                  setSent((s) => ({ ...s, [active]: [...(s[active] ?? []), { kind: "user", text, images }] }));
                   // sending brings the conversation back to its newest message
                   requestAnimationFrame(() => scroller.current?.scrollTo({ top: scroller.current.scrollHeight, behavior: "smooth" }));
                 }}

@@ -5,7 +5,9 @@ import { createContext, type ReactNode, useCallback, useContext, useEffect, useR
 import { FileDiff, Stats } from "./diff-panel";
 import { highlightTsx } from "./highlight";
 import { Icon } from "./icon";
-import { type PrBody, type PrCheck, type PullRequest, PULL_REQUESTS } from "./panel-content";
+import { type PrBody, type PrCheck, type PullRequest } from "./panel-content";
+import { ALL_PRS, prsOf } from "./session-prs";
+import { useSidebar } from "./sidebar-state";
 import { Menu, MenuItem, Popover } from "./popover";
 import { BarButton, PanelFrame, PanelTab, useEdgeFade } from "./side-panel";
 
@@ -948,9 +950,7 @@ const startingStatus = (pr: PullRequest): PrStatus => {
 /** The session's pull requests' store: which one the panel shows, and where each stands. Main keeps it. */
 export function usePrStore(): PrStore {
   const [focus, setFocus] = useState<number | null>(null);
-  const [statuses, setStatuses] = useState<Readonly<Record<number, PrStatus>>>(() =>
-    Object.fromEntries(PULL_REQUESTS.map((pr) => [pr.number, startingStatus(pr)])),
-  );
+  const [statuses, setStatuses] = useState<Readonly<Record<number, PrStatus>>>(() => Object.fromEntries(ALL_PRS.map((pr) => [pr.number, startingStatus(pr)])));
   const report = useCallback(
     (n: number, st: PrStatus) =>
       setStatuses((all) => {
@@ -963,9 +963,9 @@ export function usePrStore(): PrStore {
 }
 
 /** The pull request a stacked one builds on: the one whose branch is its base. */
-const parentOf = (pr: PullRequest) => PULL_REQUESTS.find((p) => p.head === pr.base);
+const parentOf = (pr: PullRequest) => ALL_PRS.find((p) => p.head === pr.base);
 /** The pull request stacked on this one, if any. */
-const childOf = (pr: PullRequest) => PULL_REQUESTS.find((p) => p.base === pr.head);
+const childOf = (pr: PullRequest) => ALL_PRS.find((p) => p.base === pr.head);
 /** A pull request's whole stack, from the one on its base branch up to the top; just itself if it's not stacked. */
 function stackOf(pr: PullRequest) {
   let root = pr;
@@ -1090,9 +1090,12 @@ const STEP_BACK = 8;
 const CARD_SPRING = { type: "spring", stiffness: 460, damping: 42 } as const;
 
 export function PrPanel({ expanded, onExpand, onClose }: { expanded: boolean; onExpand: () => void; onClose: () => void }) {
-  const { focus, setFocus, statuses, report: onStatus } = useContext(PrStoreContext);
-  const many = PULL_REQUESTS.length > 1;
-  const shown = focus ?? (many ? null : PULL_REQUESTS[0].number);
+  const { focus: asked, setFocus, statuses, report: onStatus } = useContext(PrStoreContext);
+  // the open session's pull requests; one asked for in another session doesn't carry over
+  const mine = prsOf(useSidebar().active);
+  const focus = asked !== null && mine.some((pr) => pr.number === asked) ? asked : null;
+  const many = mine.length > 1;
+  const shown = focus ?? (many ? null : mine[0].number);
   const [list, listFade] = useEdgeFade<HTMLDivElement>("y", 24);
   // the card keeps showing the last pull request while it slides away
   const [last, setLast] = useState(shown);
@@ -1100,7 +1103,7 @@ export function PrPanel({ expanded, onExpand, onClose }: { expanded: boolean; on
   const front = shown !== null;
   const card = shown ?? last;
 
-  const details = PULL_REQUESTS.map((pr) => (
+  const details = mine.map((pr) => (
     // every pull request's page stays mounted, so its checks and merge carry on while another is open
     <div key={pr.number} className="size-full" hidden={pr.number !== card}>
       <PrDetail
@@ -1139,14 +1142,15 @@ export function PrPanel({ expanded, onExpand, onClose }: { expanded: boolean; on
                 className="rounded-full px-[6px] text-[11px] leading-[16px] tabular-nums"
                 style={{ background: "var(--cc-tab)", color: "var(--cc-text-muted)" }}
               >
-                {PULL_REQUESTS.length}
+                {mine.length}
               </span>
             </span>
           }
         >
           <div ref={list} className="absolute inset-0 overflow-y-auto" style={{ scrollbarWidth: "thin", ...listFade }}>
             <ul>
-              {PULL_REQUESTS.filter((pr) => !parentOf(pr))
+              {mine
+                .filter((pr) => !parentOf(pr))
                 .reverse()
                 .flatMap((root) => stackOf(root).map((pr, i, stack) => ({ pr, i, size: stack.length })))
                 .map(({ pr, i, size }) => (

@@ -94,7 +94,7 @@ export const TRANSCRIPT: Block[] = [
     runs: [
       "The macOS shell and Rex live in ",
       { code: "/Users/alan/Dev/alanisavailable" },
-      ", not this Redakt worktree — I’ll work there. Let me check its state and the Claude app on this Mac.",
+      ", not in this worktree — I’ll work there. Let me check its state and the Claude app on this Mac.",
     ],
   },
   {

@@ -13,6 +13,9 @@ import { PANEL_INSET, PANEL_W, SessionPanel } from "./session-panel";
 import { PANEL_EDGE, PANEL_SHARE, type PanelKind } from "./side-panel";
 import { TerminalPanel } from "./terminal-panel";
 import { TranscriptBlock, Working } from "./transcript";
+import { ACTIVE_SESSION } from "./content";
+import { CONVERSATIONS } from "./sessions";
+import { useSidebar } from "./sidebar-state";
 
 const SIDE_PANELS = { terminal: TerminalPanel, diff: DiffPanel, browser: BrowserPanel, files: FilesPanel } satisfies Record<PanelKind, unknown>;
 /** a side panel's icons sit this far left of its card, as in the recording */
@@ -40,6 +43,9 @@ export function Main() {
   const [atBottom, setAtBottom] = useState(true);
   // the latest turn is still running: it plays in from page load
   const { blocks, writingIndex, working } = useTurnStream(TRANSCRIPT, 142_600);
+  // another session's conversation, when one is open instead of this one (which keeps running behind it)
+  const { active } = useSidebar();
+  const other = active === ACTIVE_SESSION ? null : (CONVERSATIONS[active] ?? []);
   const side = panel && panel !== "details" ? panel : null;
   const SidePanel = side ? SIDE_PANELS[side] : null;
   // what the transcript and composer leave free on the right, and where the header's icons end
@@ -49,6 +55,18 @@ export function Main() {
     setExpanded(false);
     setPanel((cur) => (cur === p ? null : p));
   };
+  // opening another session shows its latest turn, all at once: what's already there doesn't fade in as if it just arrived
+  const shownSession = useRef(active);
+  useLayoutEffect(() => {
+    const el = scroller.current;
+    if (el) el.scrollTop = el.scrollHeight;
+    const box = content.current;
+    if (!box || shownSession.current === active) return;
+    shownSession.current = active;
+    box.dataset.quiet = "";
+    const t = setTimeout(() => delete box.dataset.quiet, 400);
+    return () => clearTimeout(t);
+  }, [active]);
   // A session opens scrolled to its latest turn and stays pinned there as
   // the transcript grows (or reflows when its fonts load), unless the
   // reader has scrolled up.
@@ -76,7 +94,7 @@ export function Main() {
   return (
     <section className="relative flex min-w-0 flex-1 flex-col" style={{ background: "var(--cc-main)" }}>
       <Header panel={panel} onToggle={toggle} iconsRight={iconsRight} />
-      {panel === "details" && <SessionPanel />}
+      {panel === "details" && <SessionPanel key={active} />}
       {SidePanel && side && (
         <div
           className="absolute z-20 transition-[width] duration-200"
@@ -87,7 +105,7 @@ export function Main() {
             width: expanded ? `calc(100% - ${2 * PANEL_EDGE}px)` : `${PANEL_SHARE[side] * 100}%`,
           }}
         >
-          <SidePanel expanded={expanded} onExpand={() => setExpanded((e) => !e)} onClose={() => setPanel(null)} />
+          <SidePanel key={active} expanded={expanded} onExpand={() => setExpanded((e) => !e)} onClose={() => setPanel(null)} />
         </div>
       )}
       {/* with the panel open, the transcript and composer center in what's left of the pane */}
@@ -102,10 +120,10 @@ export function Main() {
         }}
       >
         <div ref={content} className="mx-auto flex flex-col gap-[14px] pt-[60px] pb-[49.5px] tracking-[-0.007em]" style={column}>
-          {blocks.map((b, i) => (
-            <TranscriptBlock key={i} block={b} streaming={i === writingIndex} />
+          {(other ?? blocks).map((b, i) => (
+            <TranscriptBlock key={`${active}-${i}`} block={b} streaming={!other && i === writingIndex} />
           ))}
-          <Working {...working} />
+          {!other && <Working {...working} />}
         </div>
       </div>
       <div className="flex-none" style={{ marginRight: reserved }}>

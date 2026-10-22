@@ -2,7 +2,9 @@
 
 import { useRef, useState } from "react";
 import type { Block, Run, SentImage, Task } from "./conversation";
+import { EVERY_SESSION } from "./content";
 import { Icon, type IconName } from "./icon";
+import { useSidebar } from "./sidebar-state";
 import { LIGHT_INKS } from "./scratchpad";
 import { Strong, ToolSummary } from "./tool-calls";
 import { sourcesIn, useOpenViewer } from "./viewer";
@@ -38,12 +40,17 @@ function FileLink({ children }: { children: string }) {
   );
 }
 
-/** A link to another session: its title on a dark blue chip. */
+/** A link to another session: its title on a dark blue chip. Clicking it opens that session. */
 function SessionLink({ children }: { children: string }) {
+  const { openSession } = useSidebar();
+  const to = EVERY_SESSION.find((e) => e.session.title === children)?.session.id;
   return (
     <a
       href="#"
-      onClick={(e) => e.preventDefault()}
+      onClick={(e) => {
+        e.preventDefault();
+        if (to) openSession(to);
+      }}
       className="rounded-[6px] px-[6px] py-[1px] hover:brightness-125"
       style={{ color: "var(--cc-session-link)", background: "var(--cc-session-link-bg)" }}
     >

@@ -1,7 +1,7 @@
 "use client";
 
 import { DRAG_REGION } from "../../os/macos";
-import { ACTIVE_SESSION, GROUPS } from "./content";
+import { EVERY_SESSION } from "./content";
 import { Icon, type IconName } from "./icon";
 import { MoreMenu, SessionMenu } from "./menus";
 import { Popover } from "./popover";
@@ -12,8 +12,6 @@ import type { PanelKind } from "./side-panel";
 // to 42pt, transparent by 60pt (pt, from the reference).
 export const HEADER_H = 42;
 const FADE_H = 18;
-
-const activeTitle = GROUPS.flatMap((g) => g.sessions).find((s) => s.id === ACTIVE_SESSION)?.title ?? "";
 
 /** A header icon button. A panel's button turns blue while its panel is open; others get a gray chip. */
 function HeaderButton({
@@ -63,7 +61,8 @@ export function Header({
   iconsRight?: string;
 }) {
   // with the sidebar hidden, the title clears the window controls (full screen: 100pt, else 174)
-  const { shown } = useSidebar();
+  const { shown, active } = useSidebar();
+  const activeTitle = EVERY_SESSION.find((e) => e.session.id === active)?.session.title ?? "";
   const { end } = useControlsInset();
   // it stays clear of the window controls while the sidebar opens or closes: in the
   // window it sits at max(sidebar + 16.5, controls + 18), so it rides along with the sidebar's width

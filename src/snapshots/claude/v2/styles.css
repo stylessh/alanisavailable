@@ -399,6 +399,10 @@
 .claude .cc-settle {
   animation: cc-settle 0.28s cubic-bezier(0.2, 0, 0, 1);
 }
+/* …but not when a whole conversation appears at once (another session opened) */
+.claude [data-quiet] .cc-settle {
+  animation: none;
+}
 
 /* The working spinner: Claude's dots pulsing in turn */
 @keyframes cc-blink {

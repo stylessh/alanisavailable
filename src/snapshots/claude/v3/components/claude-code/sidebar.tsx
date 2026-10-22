@@ -3,7 +3,7 @@
 import { animate, AnimatePresence, motion, useMotionValue, useMotionValueEvent } from "motion/react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { DRAG_REGION } from "@/os/macos";
-import { ACCOUNT, ACTIVE_SESSION, GROUPS, PINNED, type Session } from "./content";
+import { ACCOUNT, GROUPS, PINNED, type Session } from "./content";
 import { Icon, type IconName } from "./icon";
 import { AccountMenu, NavMoreMenu } from "./menus";
 import { Popover } from "./popover";
@@ -162,12 +162,17 @@ function SectionLabel({ label, add }: { label: string; add?: boolean }) {
 const TREE_TOP = 4;
 
 function SessionRow({ session, depth = 0, first, last }: { session: Session; depth?: number; first?: boolean; last?: boolean }) {
-  const active = session.id === ACTIVE_SESSION;
+  const { active: open, openSession } = useSidebar();
+  const active = session.id === open;
   const left = depth ? 38 : 18;
   return (
     <>
       <div
-        className={`relative mb-[2px] flex items-center rounded-[8px] text-[13px] ${active ? "" : "hover:bg-(--cc-row-hover)"}`}
+        role="button"
+        tabIndex={0}
+        aria-current={active || undefined}
+        onClick={() => openSession(session.id)}
+        className={`relative mb-[2px] flex cursor-default items-center rounded-[8px] text-[13px] ${active ? "" : "hover:bg-(--cc-row-hover)"}`}
         style={{
           marginInline: ROW_INSET,
           height: SESSION_ROW - 2,

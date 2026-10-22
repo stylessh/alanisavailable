@@ -2,6 +2,7 @@
 
 import { useMacWindow } from "../../os/macos";
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { ACTIVE_SESSION } from "./content";
 import { Icon, type IconName } from "./icon";
 
 // The sidebar's state: shown (docked, pushing the session over) or hidden.
@@ -37,6 +38,9 @@ type SidebarState = {
   docking: boolean;
   /** the docked sidebar has finished opening */
   docked: () => void;
+  /** the session that's open */
+  active: string;
+  openSession: (id: string) => void;
 };
 
 const Ctx = createContext<SidebarState | null>(null);
@@ -51,6 +55,7 @@ export function SidebarProvider({ children }: { children: ReactNode }) {
   const [shown, setShown] = useState(true);
   const [peeking, setPeeking] = useState(false);
   const [docking, setDocking] = useState(false);
+  const [active, openSession] = useState(ACTIVE_SESSION);
   const leave = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const toggle = useCallback(() => {
@@ -84,7 +89,10 @@ export function SidebarProvider({ children }: { children: ReactNode }) {
   }, [toggle]);
   useEffect(() => () => clearTimeout(leave.current), []);
 
-  const value = useMemo(() => ({ shown, toggle, peeking: peeking && !shown, hover, docking, docked }), [shown, toggle, peeking, hover, docking, docked]);
+  const value = useMemo(
+    () => ({ shown, toggle, peeking: peeking && !shown, hover, docking, docked, active, openSession }),
+    [shown, toggle, peeking, hover, docking, docked, active],
+  );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 
