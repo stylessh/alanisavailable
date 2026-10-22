@@ -182,12 +182,15 @@ export function TrafficLights({
   const anchor = useRef<HTMLSpanElement>(null);
   const [at, setAt] = useState<{ x: number; y: number } | null>(null);
   const lifted = !!win?.chrome && !floating;
+  // in full screen the lights leave the title bar (the floating row has its own copy)
+  const away = win?.mode === "fullscreen" && !floating;
 
   // where the anchor sits in the window, in the window's own (unscaled) points
   useLayoutEffect(() => {
     const chrome = win?.chrome;
     const el = anchor.current;
-    if (!lifted || !chrome || !el) return;
+    // Away, the anchor unmounts; coming back, a new one mounts and is measured afresh.
+    if (!lifted || away || !chrome || !el) return;
     const measure = () => {
       const c = chrome.getBoundingClientRect();
       const s = c.width / chrome.offsetWidth || 1;
@@ -200,9 +203,9 @@ export function TrafficLights({
     ro.observe(chrome);
     if (el.parentElement) ro.observe(el.parentElement);
     return () => ro.disconnect();
-  }, [lifted, win?.chrome]);
+  }, [lifted, away, win?.chrome]);
 
-  if (win?.mode === "fullscreen" && !floating) return null;
+  if (away) return null;
   const pos = lifted ? at : { x: left, y: top };
   const unfocused = !!win && !win.focused;
   const lights = (
