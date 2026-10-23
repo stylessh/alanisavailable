@@ -17,6 +17,8 @@ export function versionKey(e: KeyboardEvent): VersionKey | null {
 export const VERSION_KEY_MESSAGE = "versions-canvas:key";
 /** A version in a frame asking the canvas to open another version: { type, id }. */
 export const VERSION_GO_MESSAGE = "versions-canvas:go";
+/** A variant in a frame asking the canvas to show another variant of its version: { type, href }. */
+export const VARIANT_MESSAGE = "versions-canvas:variant";
 
 /**
  * The switcher on a product page opened on its own. Its versions open in the
@@ -128,7 +130,7 @@ export function VersionBar({
       aria-label="Versions"
       aria-hidden={hidden || undefined}
       inert={hidden}
-      className={`fixed bottom-3 z-[5000] font-sans text-[12.5px] font-medium ${left ? "left-3" : "right-3"} ${tone.bar} transition-[opacity,translate] duration-300 ease-out data-[hidden]:pointer-events-none data-[hidden]:translate-y-1 data-[hidden]:opacity-0`}
+      className={`fixed z-[5000] font-sans text-[12.5px] font-medium ${left ? "left-3" : "right-3"} ${tone.bar} transition-[opacity,translate] duration-300 ease-out data-[hidden]:pointer-events-none data-[hidden]:translate-y-1 data-[hidden]:opacity-0`}
       data-hidden={hidden || undefined}
     >
       <div className="hidden items-center gap-0.5 min-[1200px]:flex">
@@ -199,12 +201,13 @@ const ITEM = "grid h-[26px] min-w-[26px] place-items-center rounded-md tabular-n
 
 const TONES = {
   wallpaper: {
-    bar: "text-white/60 [text-shadow:0_1px_2px_rgb(0_0_0/0.4)]",
+    bar: "bottom-3 text-white/60 [text-shadow:0_1px_2px_rgb(0_0_0/0.4)]",
     item: `${ITEM} hover:text-white focus-visible:ring-2 focus-visible:ring-white/50 aria-[current=page]:bg-white/15 aria-[current=page]:text-white`,
     expanded: "aria-expanded:bg-white/15 aria-expanded:text-white",
   },
+  // centred in the 36px strip an app leaves under its window (Linear's), clear of the card above
   app: {
-    bar: "text-neutral-500 dark:text-neutral-400",
+    bar: "bottom-[5px] text-neutral-500 dark:text-neutral-400",
     item: `${ITEM} hover:text-neutral-900 focus-visible:ring-2 focus-visible:ring-neutral-400/50 aria-[current=page]:bg-black/[0.06] aria-[current=page]:text-neutral-900 dark:hover:text-white dark:aria-[current=page]:bg-white/10 dark:aria-[current=page]:text-white`,
     expanded: "aria-expanded:bg-black/[0.06] aria-expanded:text-neutral-900 dark:aria-expanded:bg-white/10 dark:aria-expanded:text-white",
   },
@@ -239,8 +242,9 @@ function StackIcon() {
  * The second switcher a version that tried an idea several ways gets: its
  * variants, bottom centre, and then the version the idea became, a step
  * apart. Variants are separate frozen copies (whose styles must never meet),
- * so each is a full page load; inside the canvas the frame moves between
- * them, and the last item asks the canvas to open the next version.
+ * so each is a full page load; inside the canvas, the canvas loads the next
+ * variant behind the one showing and swaps them, and the last item asks it
+ * to open the next version.
  */
 export function VariantBar({
   slug,
@@ -261,11 +265,22 @@ export function VariantBar({
   return (
     <nav
       aria-label="Variants"
-      className={`fixed bottom-3 left-1/2 z-[5000] flex -translate-x-1/2 items-center gap-0.5 font-sans text-[12.5px] font-medium whitespace-nowrap ${tone.bar}`}
+      className={`fixed left-1/2 z-[5000] flex -translate-x-1/2 items-center gap-0.5 font-sans text-[12.5px] font-medium whitespace-nowrap ${tone.bar}`}
     >
       <span className="px-1.5 opacity-60">Variants</span>
       {variants.map((v) => (
-        <a key={v.id} href={v.href} aria-current={v.id === current ? "page" : undefined} className={`${tone.item} px-2.5`}>
+        <a
+          key={v.id}
+          href={v.href}
+          aria-current={v.id === current ? "page" : undefined}
+          // in the canvas, the canvas swaps frames once the variant has loaded, so the wallpaper never shows between them
+          onClick={(e) => {
+            if (!framed || v.id === current) return;
+            e.preventDefault();
+            window.parent.postMessage({ type: VARIANT_MESSAGE, href: v.href }, window.location.origin);
+          }}
+          className={`${tone.item} px-2.5`}
+        >
           {v.name}
         </a>
       ))}
