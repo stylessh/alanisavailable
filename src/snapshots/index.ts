@@ -14,6 +14,14 @@ export const VERSIONS: Record<string, { live: string; snapshots: Snapshot[] }> =
       {"id":"v3","name":"Pull requests","date":"2026-10-22","commit":"9ac0282"},
     ],
   },
+  "linear": {
+    live: "Linear Code",
+    snapshots: [
+      {"id":"v1","name":"Original","group":"Trying surfaces","date":"2026-10-22","commit":"60f8a66"},
+      {"id":"v2","name":"Workspace section","group":"Trying surfaces","date":"2026-10-22","commit":"60f8a66"},
+      {"id":"v3","name":"Team tab","group":"Trying surfaces","date":"2026-10-22","commit":"60f8a66"},
+    ],
+  },
   "superlogical": {
     live: "iOS app",
     snapshots: [

@@ -18,6 +18,9 @@
 // registry in src/snapshots/index.ts is then rebuilt from the snapshot folders.
 //
 // To rename a version, edit its snapshot.json (or live.json) and run with --index.
+// Snapshots that were variants of one idea can share a "group" in their
+// snapshot.json: the switcher then shows them as one version under that name,
+// with the variants a step down (see src/lib/snapshots.ts).
 import { execSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
@@ -111,8 +114,8 @@ function writeIndex() {
       .sort((a, b) => Number(a.slice(1)) - Number(b.slice(1)));
     const items = ids.map((v) => {
       writeRoute(s, v);
-      const { name, date, commit } = JSON.parse(fs.readFileSync(path.join(SNAPSHOTS, s, v, "snapshot.json"), "utf8"));
-      return `      ${JSON.stringify({ id: v, name, date, commit })},`;
+      const { name, group, date, commit } = JSON.parse(fs.readFileSync(path.join(SNAPSHOTS, s, v, "snapshot.json"), "utf8"));
+      return `      ${JSON.stringify({ id: v, name, ...(group && { group }), date, commit })},`;
     });
     const live = JSON.parse(fs.readFileSync(path.join(SNAPSHOTS, s, "live.json"), "utf8")).name;
     return `  ${JSON.stringify(s)}: {\n    live: ${JSON.stringify(live)},\n    snapshots: [${items.length ? `\n${items.join("\n")}\n    ` : ""}],\n  },`;

@@ -32,5 +32,13 @@ async function Versions({ params }: Pick<PageProps<"/[slug]/versions">, "params"
   preloadWallpaper("high");
   // Versioned products are desktop apps on the macOS shell, so each frame
   // shows the wallpaper until its version has loaded on top of it.
-  return <VersionsCanvas slug={slug} title={metadata.company} versions={versions} backdrop={WALLPAPER} />;
+  return (
+    <VersionsCanvas
+      slug={slug}
+      title={metadata.company}
+      versions={versions}
+      backdrop={WALLPAPER}
+      placement={metadata.versionBar}
+    />
+  );
 }

@@ -1,0 +1,163 @@
+/* Linear style guide. Geometry, type and the dark appearance come from the
+   live web app (linear.app, 1512x945, read from the DOM's computed styles);
+   the light appearance is calibrated against the reference screenshot,
+   whose light theme is a step lighter and more neutral than today's (live
+   light Linear tints every gray toward blue, lch hue 282). Surfaces sit on
+   the sidebar's color; the main pane floats over it as an inset card. */
+
+.linear {
+  --ln-sans: var(--font-linear-sans), "SF Pro Display", -apple-system, system-ui, "Segoe UI", Roboto, sans-serif;
+
+  /* Surfaces */
+  --ln-sidebar: #f3f3f3;
+  --ln-main: #fdfdfd;
+  --ln-main-border: lch(89.84 0 282);
+  --ln-main-shadow: lch(0 0 0 / 0.02) 0 3px 6px -2px, lch(0 0 0 / 0.04) 0 1px 1px 0;
+  /* the hairline under the header's first row */
+  --ln-header-rule: #ececec;
+  --ln-group: #f6f6f6;
+  /* a hovered row takes the group header's fill, as in the live app */
+  --ln-row-hover: var(--ln-group);
+  --ln-checkbox: lch(52.04 0 282);
+  --ln-nav-hover: #eaeaea;
+  --ln-nav-selected: #e5e5e5;
+
+  /* Pill buttons (view tabs, toolbar, compose): a fill, a 0.5px ring and a
+     two-layer drop, drawn on ::after in the live app */
+  --ln-button: #fdfdfd;
+  --ln-button-hover: #f6f6f6;
+  --ln-button-ring:
+    lch(0 0 0 / 0.09) 0 0 0 0.5px, lch(0 0 0 / 0.02) 0 3px 6px -2px, lch(0 0 0 / 0.04) 0 1px 1px 0;
+  --ln-tab-selected: #f1f1f1;
+  --ln-tab-selected-ring: lch(0 0 0 / 0.09) 0 0 0 0.5px;
+  --ln-ghost-hover: lch(0 0 0 / 0.05);
+
+  /* Label, project and date chips in a row */
+  --ln-chip: var(--ln-main);
+  --ln-chip-border: lch(84.44 0 282);
+
+  /* Text: neutral grays, set from the reference's glyph cores */
+  --ln-text: #2e2e2e;
+  --ln-text-strong: #404040;
+  --ln-text-header: #4a4a4a;
+  --ln-text-muted: #6a6a6a;
+  --ln-text-nav: #686868;
+  --ln-text-nav-selected: #2e2e2e;
+  --ln-icon-faint: lch(64.64 1.25 282);
+  --ln-project-icon: lch(67.969 3.577 260.65);
+
+  /* Group headers take their status's hue: the fill fades in from the left,
+     and the caret, count and + are tinted (see .ln-group) */
+  --ln-group-tint-l: 96.4;
+  --ln-group-caret-l: 80.94%;
+  --ln-group-caret-c: 12;
+  --ln-group-ink-l: 41%;
+  --ln-group-ink-c: 5;
+
+  /* the sidebar as a drawer, below 800px (not sampled: no reference yet) */
+  --ln-drawer-shadow: lch(0 0 0 / 0.12) 0 0 0 0.5px, lch(0 0 0 / 0.12) 0 8px 24px;
+  --ln-scrim: lch(0 0 0 / 0.2);
+
+  --ln-focus: #5e69d1;
+
+  color-scheme: light;
+  font-family: var(--ln-sans);
+  color: var(--ln-text);
+  background: var(--ln-sidebar);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Dark, from the live app with the system in dark mode */
+@media (prefers-color-scheme: dark) {
+  .linear {
+    --ln-sidebar: lch(2.595 0.4 272);
+    --ln-main: lch(5.52 0.4 272);
+    --ln-main-border: lch(13.08 1.48 272);
+    --ln-main-shadow: lch(0 0 0 / 0.3) 0 0.5px 1px 1px;
+    --ln-header-rule: lch(10.8 1.2 272);
+    --ln-group: lch(9.232 0.85 272);
+    --ln-checkbox: lch(38 1 272);
+    --ln-nav-hover: lch(9.5 1 272);
+    --ln-nav-selected: lch(13.845 1.3 272);
+
+    --ln-button: lch(10.149 0.689 272);
+    --ln-button-hover: lch(13 0.8 272);
+    --ln-button-ring:
+      lch(100 0 0 / 0.137) 0 0 0 0.5px, lch(0 0 0 / 0.3) 0 0.5px 1px 1px;
+    --ln-tab-selected: lch(16.706 0.979 272);
+    --ln-tab-selected-ring: lch(100 0 0 / 0.137) 0 0 0 0.5px;
+    --ln-ghost-hover: lch(100 0 0 / 0.06);
+
+    --ln-chip-border: lch(16.32 1.48 272);
+
+    --ln-text: lch(100 0 272);
+    --ln-text-strong: lch(90.826 1.425 272);
+    --ln-text-header: lch(90.451 1.2 272);
+    --ln-text-muted: lch(61.803 1.2 272);
+    --ln-text-nav: lch(60.621 1.2 272);
+    --ln-text-nav-selected: lch(100 0 272);
+    --ln-icon-faint: lch(36.975 1.2 272);
+    --ln-project-icon: #bec2c8;
+
+    --ln-group-tint-l: 10.756;
+    --ln-group-caret-l: 20.032%;
+    --ln-group-caret-c: 7;
+    --ln-group-ink-l: 63.304%;
+    --ln-group-ink-c: 7;
+
+    --ln-drawer-shadow: lch(100 0 0 / 0.1) 0 0 0 0.5px, lch(0 0 0 / 0.5) 0 8px 24px;
+    --ln-scrim: lch(0 0 0 / 0.45);
+
+    color-scheme: dark;
+  }
+}
+
+/* Issue identifiers use tabular figures, as in the live app */
+.linear .ln-tnum {
+  font-feature-settings: "calt", "cpsp", "tnum";
+}
+
+/* A group header, given its status's hue and edge chroma per theme
+   (--hue-light/--hue-dark, --tint-light/--tint-dark) inline */
+.linear .ln-group {
+  --h: var(--hue-light);
+  --t: var(--tint-light);
+  --group-caret: lch(var(--ln-group-caret-l) var(--ln-group-caret-c) var(--h));
+  --group-ink: lch(var(--ln-group-ink-l) var(--ln-group-ink-c) var(--h));
+  background: linear-gradient(90deg, lch(var(--ln-group-tint-l) var(--t) var(--h)) 0%, var(--ln-group) 100%);
+}
+@media (prefers-color-scheme: dark) {
+  .linear .ln-group {
+    --h: var(--hue-dark);
+    --t: var(--tint-dark);
+  }
+}
+
+/* The pill buttons' ring lives on ::after so it sits over the fill */
+.linear .ln-pill {
+  position: relative;
+  background: var(--ln-button);
+}
+.linear .ln-pill::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: var(--ln-button-ring);
+  pointer-events: none;
+}
+.linear .ln-pill:hover {
+  background: var(--ln-button-hover);
+}
+.linear .ln-pill[aria-current="page"] {
+  background: var(--ln-tab-selected);
+}
+.linear .ln-pill[aria-current="page"]::after {
+  box-shadow: var(--ln-tab-selected-ring);
+}
+
+.linear :focus-visible {
+  outline: 1px solid var(--ln-focus);
+  outline-offset: -1px;
+}

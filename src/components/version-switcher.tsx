@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { PrefetchPages } from "@/lib/prefetch";
-import type { Version } from "@/lib/snapshots";
+import { pagesOf, type Variant, type Version } from "@/lib/snapshots";
 
 const subscribeNothing = () => () => {};
 
@@ -15,13 +15,27 @@ export function versionKey(e: KeyboardEvent): VersionKey | null {
   return e.key === "ArrowLeft" || e.key === "ArrowRight" || e.key === "ArrowUp" ? e.key : null;
 }
 export const VERSION_KEY_MESSAGE = "versions-canvas:key";
+/** A version in a frame asking the canvas to open another version: { type, id }. */
+export const VERSION_GO_MESSAGE = "versions-canvas:go";
+/** A variant in a frame asking the canvas to show another variant of its version: { type, href }. */
+export const VARIANT_MESSAGE = "versions-canvas:variant";
 
 /**
  * The switcher on a product page opened on its own. Its versions open in the
  * versions canvas, which plays them without reloading; inside the canvas the
  * page is in a frame, so it passes its shortcuts up to the canvas instead.
  */
-export function VersionSwitcher({ slug, versions, current }: { slug: string; versions: Version[]; current: string }) {
+export function VersionSwitcher({
+  slug,
+  versions,
+  current,
+  placement,
+}: {
+  slug: string;
+  versions: Version[];
+  current: string;
+  placement?: VersionBarPlacement;
+}) {
   const router = useRouter();
   const framed = useSyncExternalStore(subscribeNothing, () => window.self !== window.top, () => true);
   const canvas = `/${slug}/versions`;
@@ -52,13 +66,21 @@ export function VersionSwitcher({ slug, versions, current }: { slug: string; ver
       <VersionBar
         versions={versions}
         current={current}
+        placement={placement}
         render={(id, props) => <Link href={hrefOf(id)} {...props} />}
       />
       {/* the canvas loads every version in a frame; have them cached by then */}
-      <PrefetchPages hrefs={versions.filter((v) => v.id !== current).map((v) => v.href)} />
+      <PrefetchPages hrefs={versions.filter((v) => v.id !== current).flatMap(pagesOf)} />
     </>
   );
 }
+
+/**
+ * Where the bar sits and what it sits on. By default it's in the bottom-right
+ * corner over a wallpaper (white text with a shadow); a product whose own UI
+ * fills that corner can move it left and draw it in the app's grays.
+ */
+export type VersionBarPlacement = { side?: "left" | "right"; tone?: "wallpaper" | "app" };
 
 type ItemProps = { className: string; title: string; "aria-label"?: string; "aria-current"?: "page"; children: React.ReactNode };
 
@@ -75,12 +97,16 @@ export function VersionBar({
   current,
   render,
   hidden = false,
+  placement = {},
 }: {
   versions: Version[];
   current: string | null;
   render: (id: string | null, props: ItemProps) => React.ReactNode;
   hidden?: boolean;
+  placement?: VersionBarPlacement;
 }) {
+  const left = placement.side === "left";
+  const tone = TONES[placement.tone ?? "wallpaper"];
   const [open, setOpen] = useState(false);
   const menu = useRef<HTMLDivElement>(null);
   const shown = open && !hidden;
@@ -104,15 +130,15 @@ export function VersionBar({
       aria-label="Versions"
       aria-hidden={hidden || undefined}
       inert={hidden}
-      className="fixed right-3 bottom-3 z-[5000] font-sans text-[12.5px] font-medium text-white/60 [text-shadow:0_1px_2px_rgb(0_0_0/0.4)] transition-[opacity,translate] duration-300 ease-out data-[hidden]:pointer-events-none data-[hidden]:translate-y-1 data-[hidden]:opacity-0"
+      className={`fixed z-[5000] font-sans text-[12.5px] font-medium ${left ? "left-3" : "right-3"} ${tone.bar} transition-[opacity,translate] duration-300 ease-out data-[hidden]:pointer-events-none data-[hidden]:translate-y-1 data-[hidden]:opacity-0`}
       data-hidden={hidden || undefined}
     >
       <div className="hidden items-center gap-0.5 min-[1200px]:flex">
-        {render(null, { className: ITEM, title: "All versions (⌃⌥↑)", "aria-label": "All versions", children: <GridIcon /> })}
+        {render(null, { className: tone.item, title: "All versions (⌃⌥↑)", "aria-label": "All versions", children: <GridIcon /> })}
         {versions.map((v) => (
           <span key={v.id} className="contents">
             {render(v.id, {
-              className: `${ITEM} px-2.5`,
+              className: `${tone.item} px-2.5`,
               title: titleOf(v),
               "aria-current": v.id === current ? "page" : undefined,
               children: v.name,
@@ -126,7 +152,7 @@ export function VersionBar({
           // picking an item closes the menu; the item itself navigates
           <div
             onClick={() => setOpen(false)}
-            className="absolute right-0 bottom-full mb-1.5 flex min-w-44 flex-col gap-px rounded-xl bg-neutral-900/85 p-1 text-white/70 shadow-lg ring-1 ring-white/10 backdrop-blur-xl [text-shadow:none]"
+            className={`absolute ${left ? "left-0" : "right-0"} bottom-full mb-1.5 flex min-w-44 flex-col gap-px rounded-xl bg-neutral-900/85 p-1 text-white/70 shadow-lg ring-1 ring-white/10 backdrop-blur-xl [text-shadow:none]`}
           >
             {render(null, {
               className: MENU_ITEM,
@@ -162,7 +188,7 @@ export function VersionBar({
           aria-label="Versions"
           title="Versions"
           onClick={() => setOpen((o) => !o)}
-          className={`${ITEM} aria-expanded:bg-white/15 aria-expanded:text-white`}
+          className={`${tone.item} ${tone.expanded}`}
         >
           <StackIcon />
         </button>
@@ -171,8 +197,21 @@ export function VersionBar({
   );
 }
 
-const ITEM =
-  "grid h-[26px] min-w-[26px] place-items-center rounded-md tabular-nums outline-none transition-colors duration-150 hover:text-white focus-visible:ring-2 focus-visible:ring-white/50 aria-[current=page]:bg-white/15 aria-[current=page]:text-white";
+const ITEM = "grid h-[26px] min-w-[26px] place-items-center rounded-md tabular-nums outline-none transition-colors duration-150";
+
+const TONES = {
+  wallpaper: {
+    bar: "bottom-3 text-white/60 [text-shadow:0_1px_2px_rgb(0_0_0/0.4)]",
+    item: `${ITEM} hover:text-white focus-visible:ring-2 focus-visible:ring-white/50 aria-[current=page]:bg-white/15 aria-[current=page]:text-white`,
+    expanded: "aria-expanded:bg-white/15 aria-expanded:text-white",
+  },
+  // centred in the 36px strip an app leaves under its window (Linear's), clear of the card above
+  app: {
+    bar: "bottom-[5px] text-neutral-500 dark:text-neutral-400",
+    item: `${ITEM} hover:text-neutral-900 focus-visible:ring-2 focus-visible:ring-neutral-400/50 aria-[current=page]:bg-black/[0.06] aria-[current=page]:text-neutral-900 dark:hover:text-white dark:aria-[current=page]:bg-white/10 dark:aria-[current=page]:text-white`,
+    expanded: "aria-expanded:bg-black/[0.06] aria-expanded:text-neutral-900 dark:aria-expanded:bg-white/10 dark:aria-expanded:text-white",
+  },
+};
 
 const MENU_ITEM =
   "flex h-8 items-center gap-2 rounded-lg px-2.5 outline-none transition-colors duration-150 hover:bg-white/10 hover:text-white focus-visible:bg-white/10 focus-visible:text-white aria-[current=page]:bg-white/15 aria-[current=page]:text-white";
@@ -196,6 +235,78 @@ function StackIcon() {
       <path d="M1.5 7 7 9.75 12.5 7" />
       <path d="M1.5 9.75 7 12.5 12.5 9.75" />
     </svg>
+  );
+}
+
+/**
+ * The second switcher a version that tried an idea several ways gets: its
+ * variants, bottom centre, and then the version the idea became, a step
+ * apart. Variants are separate frozen copies (whose styles must never meet),
+ * so each is a full page load; inside the canvas, the canvas loads the next
+ * variant behind the one showing and swaps them, and the last item asks it
+ * to open the next version.
+ */
+export function VariantBar({
+  slug,
+  variants,
+  current,
+  next,
+  placement = {},
+}: {
+  slug: string;
+  variants: Variant[];
+  current: string;
+  /** the version that came out of them */
+  next?: { id: string; name: string };
+  placement?: VersionBarPlacement;
+}) {
+  const framed = useSyncExternalStore(subscribeNothing, () => window.self !== window.top, () => true);
+  const tone = TONES[placement.tone ?? "wallpaper"];
+  return (
+    <nav
+      aria-label="Variants"
+      className={`fixed left-1/2 z-[5000] flex -translate-x-1/2 items-center gap-0.5 font-sans text-[12.5px] font-medium whitespace-nowrap ${tone.bar}`}
+    >
+      <span className="px-1.5 opacity-60">Variants</span>
+      {variants.map((v) => (
+        <a
+          key={v.id}
+          href={v.href}
+          aria-current={v.id === current ? "page" : undefined}
+          // in the canvas, the canvas swaps frames once the variant has loaded, so the wallpaper never shows between them
+          onClick={(e) => {
+            if (!framed || v.id === current) return;
+            e.preventDefault();
+            window.parent.postMessage({ type: VARIANT_MESSAGE, href: v.href }, window.location.origin);
+          }}
+          className={`${tone.item} px-2.5`}
+        >
+          {v.name}
+        </a>
+      ))}
+      {next && (
+        <>
+          <span aria-hidden className="mx-1.5 h-3.5 w-px bg-current opacity-30" />
+          <a
+            href={`/${slug}/versions?v=${next.id}`}
+            title={`${next.name}, the version this became (⌃⌥→)`}
+            onClick={(e) => {
+              if (!framed) return;
+              e.preventDefault();
+              window.parent.postMessage({ type: VERSION_GO_MESSAGE, id: next.id }, window.location.origin);
+            }}
+            className={`${tone.item} px-2.5`}
+          >
+            <span className="flex items-center gap-1.5">
+              {next.name}
+              <svg aria-hidden width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M2 6h8M6.75 2.75 10 6l-3.25 3.25" />
+              </svg>
+            </span>
+          </a>
+        </>
+      )}
+    </nav>
   );
 }
 

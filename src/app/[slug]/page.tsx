@@ -47,7 +47,7 @@ async function Product({ params }: Pick<PageProps<"/[slug]">, "params">) {
     return (
       <>
         <Content />
-        <VersionSwitcher slug={slug} versions={getVersions(slug)} current={CURRENT} />
+        <VersionSwitcher slug={slug} versions={getVersions(slug)} current={CURRENT} placement={metadata.versionBar} />
       </>
     );
   }

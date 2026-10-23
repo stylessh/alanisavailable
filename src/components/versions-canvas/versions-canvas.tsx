@@ -2,9 +2,18 @@
 
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
-import { formatDate, VERSION_KEY_MESSAGE, type VersionKey, VersionBar, versionKey } from "@/components/version-switcher";
+import {
+  formatDate,
+  VARIANT_MESSAGE,
+  VERSION_GO_MESSAGE,
+  VERSION_KEY_MESSAGE,
+  type VersionBarPlacement,
+  type VersionKey,
+  VersionBar,
+  versionKey,
+} from "@/components/version-switcher";
 import { PrefetchPages } from "@/lib/prefetch";
-import type { Version } from "@/lib/snapshots";
+import { pagesOf, type Version } from "@/lib/snapshots";
 import { type Camera, fit, lerp, loadCamera, type Rect, sane, saveCamera, zoomAt } from "./camera";
 
 const PAD = 64; // screen pixels around everything when fitting it all
@@ -47,11 +56,14 @@ export function VersionsCanvas({
   title,
   versions,
   backdrop,
+  placement,
 }: {
   slug: string;
   title: string;
   versions: Version[];
   backdrop?: { src: string; srcSet?: string };
+  /** where the version bar sits over an open version (see VersionBarPlacement) */
+  placement?: VersionBarPlacement;
 }) {
   const viewport = useRef<HTMLDivElement>(null);
   const world = useRef<HTMLDivElement>(null);
@@ -91,6 +103,13 @@ export function VersionsCanvas({
     const due = versions.filter((v) => !open || v.id === open || loaded.size > 0).map((v) => v.id);
     if (due.some((id) => !started.has(id))) setStarted(new Set([...started, ...due]));
   }
+
+  // A version with variants shows one at a time. Switching loads the next one
+  // in a frame behind the one showing, and swaps them once it's up, so the
+  // backdrop never shows in between.
+  const [showing, setShowing] = useState<Readonly<Record<string, string>>>({});
+  const [pending, setPending] = useState<Readonly<Record<string, string>>>({});
+  const pageOf = (v: Version) => showing[v.id] ?? v.href;
 
   const gap = size ? Math.round(size.w * 0.12) : 0;
   const rectOf = useCallback(
@@ -164,7 +183,8 @@ export function VersionsCanvas({
 
   const home = useCallback(() => loadCamera(storageKey) ?? fitAll(), [storageKey, fitAll]);
 
-  const frameOf = (i: number) => world.current?.querySelectorAll("iframe")[i];
+  const frameOf = (i: number) =>
+    world.current?.querySelector<HTMLIFrameElement>(`iframe[data-version="${versions[i]?.id}"]:not([data-pending])`);
 
   // Moving between versions only changes the URL; the effect below moves the camera.
   const go = useCallback(
@@ -248,7 +268,15 @@ export function VersionsCanvas({
       step(key);
     };
     const message = (e: MessageEvent) => {
-      if (e.origin === window.location.origin && e.data?.type === VERSION_KEY_MESSAGE) step(e.data.key);
+      if (e.origin !== window.location.origin) return;
+      if (e.data?.type === VERSION_KEY_MESSAGE) step(e.data.key);
+      // a variant's "next version" link, from inside its frame
+      if (e.data?.type === VERSION_GO_MESSAGE && versions.some((v) => v.id === e.data.id)) go(e.data.id);
+      // a variant asking for its sibling: load it behind, swap when it's up
+      if (e.data?.type === VARIANT_MESSAGE) {
+        const v = versions.find((x) => x.variants?.some((y) => y.href === e.data.href));
+        if (v) setPending((p) => ({ ...p, [v.id]: e.data.href }));
+      }
     };
     window.addEventListener("keydown", keydown);
     window.addEventListener("message", message);
@@ -512,16 +540,40 @@ export function VersionsCanvas({
                     />
                   )}
                   {/* a frame that hasn't started (or was let go) isn't there at all, so its page is freed */}
-                  {started.has(v.id) && (
-                    <iframe
-                      src={v.href}
-                      title={v.name}
-                      tabIndex={isOpen ? 0 : -1}
-                      aria-hidden={!isOpen}
-                      onLoad={() => setLoaded((s) => (s.has(v.id) ? s : new Set(s).add(v.id)))}
-                      className={`relative size-full border-0 transition-opacity duration-200 ${loaded.has(v.id) ? "" : "opacity-0"} ${isOpen ? "" : "pointer-events-none"}`}
-                    />
-                  )}
+                  {/* one keyed list, so the variant on its way in (loading under the one showing) keeps
+                      its element and its place in the DOM when it takes over: moving a frame reloads it */}
+                  {started.has(v.id) &&
+                    [pageOf(v), ...(pending[v.id] && pending[v.id] !== pageOf(v) ? [pending[v.id]] : [])].map((href) =>
+                      href === pageOf(v) ? (
+                        <iframe
+                          key={href}
+                          src={href}
+                          title={v.name}
+                          data-version={v.id}
+                          tabIndex={isOpen ? 0 : -1}
+                          aria-hidden={!isOpen}
+                          onLoad={() => setLoaded((s) => (s.has(v.id) ? s : new Set(s).add(v.id)))}
+                          className={`relative z-[1] size-full border-0 transition-opacity duration-200 ${loaded.has(v.id) ? "" : "opacity-0"} ${isOpen ? "" : "pointer-events-none"}`}
+                        />
+                      ) : (
+                        <iframe
+                          key={href}
+                          src={href}
+                          title={v.name}
+                          data-version={v.id}
+                          data-pending=""
+                          tabIndex={-1}
+                          aria-hidden
+                          onLoad={(e) => {
+                            setShowing((s) => ({ ...s, [v.id]: href }));
+                            setPending((p) => Object.fromEntries(Object.entries(p).filter(([id]) => id !== v.id)));
+                            // the frame that loaded is the one that stays, so it takes the keyboard
+                            if (isOpen) e.currentTarget.contentWindow?.focus();
+                          }}
+                          className="pointer-events-none absolute inset-0 size-full border-0"
+                        />
+                      ),
+                    )}
                 </span>
                 {/* hover and keyboard focus outline, kept the same width at any zoom; none while zooming in or out */}
                 <span
@@ -537,12 +589,13 @@ export function VersionsCanvas({
           })}
       </div>
 
-      {single && <PrefetchPages hrefs={versions.filter((v) => v.id !== live).map((v) => v.href)} />}
+      {single && <PrefetchPages hrefs={versions.filter((v) => v.id !== live).flatMap(pagesOf)} />}
 
       <VersionBar
         versions={versions}
         current={open}
         hidden={!open || !settled}
+        placement={placement}
         render={(id, props) => <a href={hrefOf(id)} onClick={(e) => select(e, id)} {...props} />}
       />
     </div>

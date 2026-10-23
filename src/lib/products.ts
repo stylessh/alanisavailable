@@ -1,3 +1,4 @@
+import type { VersionBarPlacement } from "@/components/version-switcher";
 import { PRODUCTS } from "@/products";
 
 // Each product is a folder in src/products whose index.mdx exports
@@ -27,6 +28,8 @@ export type ProductMeta = {
   status?: "researching" | "applied" | "interviewing" | "closed";
   /** Leave the card off the homepage; the page stays reachable by URL. */
   hidden?: boolean;
+  /** Where the version switcher sits, for apps whose UI fills its usual corner. */
+  versionBar?: VersionBarPlacement;
 };
 
 type Slug = keyof typeof PRODUCTS;
