@@ -21,7 +21,17 @@ export const VERSION_KEY_MESSAGE = "versions-canvas:key";
  * versions canvas, which plays them without reloading; inside the canvas the
  * page is in a frame, so it passes its shortcuts up to the canvas instead.
  */
-export function VersionSwitcher({ slug, versions, current }: { slug: string; versions: Version[]; current: string }) {
+export function VersionSwitcher({
+  slug,
+  versions,
+  current,
+  placement,
+}: {
+  slug: string;
+  versions: Version[];
+  current: string;
+  placement?: VersionBarPlacement;
+}) {
   const router = useRouter();
   const framed = useSyncExternalStore(subscribeNothing, () => window.self !== window.top, () => true);
   const canvas = `/${slug}/versions`;
@@ -52,6 +62,7 @@ export function VersionSwitcher({ slug, versions, current }: { slug: string; ver
       <VersionBar
         versions={versions}
         current={current}
+        placement={placement}
         render={(id, props) => <Link href={hrefOf(id)} {...props} />}
       />
       {/* the canvas loads every version in a frame; have them cached by then */}
@@ -59,6 +70,13 @@ export function VersionSwitcher({ slug, versions, current }: { slug: string; ver
     </>
   );
 }
+
+/**
+ * Where the bar sits and what it sits on. By default it's in the bottom-right
+ * corner over a wallpaper (white text with a shadow); a product whose own UI
+ * fills that corner can move it left and draw it in the app's grays.
+ */
+export type VersionBarPlacement = { side?: "left" | "right"; tone?: "wallpaper" | "app" };
 
 type ItemProps = { className: string; title: string; "aria-label"?: string; "aria-current"?: "page"; children: React.ReactNode };
 
@@ -75,12 +93,16 @@ export function VersionBar({
   current,
   render,
   hidden = false,
+  placement = {},
 }: {
   versions: Version[];
   current: string | null;
   render: (id: string | null, props: ItemProps) => React.ReactNode;
   hidden?: boolean;
+  placement?: VersionBarPlacement;
 }) {
+  const left = placement.side === "left";
+  const tone = TONES[placement.tone ?? "wallpaper"];
   const [open, setOpen] = useState(false);
   const menu = useRef<HTMLDivElement>(null);
   const shown = open && !hidden;
@@ -104,15 +126,15 @@ export function VersionBar({
       aria-label="Versions"
       aria-hidden={hidden || undefined}
       inert={hidden}
-      className="fixed right-3 bottom-3 z-[5000] font-sans text-[12.5px] font-medium text-white/60 [text-shadow:0_1px_2px_rgb(0_0_0/0.4)] transition-[opacity,translate] duration-300 ease-out data-[hidden]:pointer-events-none data-[hidden]:translate-y-1 data-[hidden]:opacity-0"
+      className={`fixed bottom-3 z-[5000] font-sans text-[12.5px] font-medium ${left ? "left-3" : "right-3"} ${tone.bar} transition-[opacity,translate] duration-300 ease-out data-[hidden]:pointer-events-none data-[hidden]:translate-y-1 data-[hidden]:opacity-0`}
       data-hidden={hidden || undefined}
     >
       <div className="hidden items-center gap-0.5 min-[1200px]:flex">
-        {render(null, { className: ITEM, title: "All versions (⌃⌥↑)", "aria-label": "All versions", children: <GridIcon /> })}
+        {render(null, { className: tone.item, title: "All versions (⌃⌥↑)", "aria-label": "All versions", children: <GridIcon /> })}
         {versions.map((v) => (
           <span key={v.id} className="contents">
             {render(v.id, {
-              className: `${ITEM} px-2.5`,
+              className: `${tone.item} px-2.5`,
               title: titleOf(v),
               "aria-current": v.id === current ? "page" : undefined,
               children: v.name,
@@ -126,7 +148,7 @@ export function VersionBar({
           // picking an item closes the menu; the item itself navigates
           <div
             onClick={() => setOpen(false)}
-            className="absolute right-0 bottom-full mb-1.5 flex min-w-44 flex-col gap-px rounded-xl bg-neutral-900/85 p-1 text-white/70 shadow-lg ring-1 ring-white/10 backdrop-blur-xl [text-shadow:none]"
+            className={`absolute ${left ? "left-0" : "right-0"} bottom-full mb-1.5 flex min-w-44 flex-col gap-px rounded-xl bg-neutral-900/85 p-1 text-white/70 shadow-lg ring-1 ring-white/10 backdrop-blur-xl [text-shadow:none]`}
           >
             {render(null, {
               className: MENU_ITEM,
@@ -162,7 +184,7 @@ export function VersionBar({
           aria-label="Versions"
           title="Versions"
           onClick={() => setOpen((o) => !o)}
-          className={`${ITEM} aria-expanded:bg-white/15 aria-expanded:text-white`}
+          className={`${tone.item} ${tone.expanded}`}
         >
           <StackIcon />
         </button>
@@ -171,8 +193,20 @@ export function VersionBar({
   );
 }
 
-const ITEM =
-  "grid h-[26px] min-w-[26px] place-items-center rounded-md tabular-nums outline-none transition-colors duration-150 hover:text-white focus-visible:ring-2 focus-visible:ring-white/50 aria-[current=page]:bg-white/15 aria-[current=page]:text-white";
+const ITEM = "grid h-[26px] min-w-[26px] place-items-center rounded-md tabular-nums outline-none transition-colors duration-150";
+
+const TONES = {
+  wallpaper: {
+    bar: "text-white/60 [text-shadow:0_1px_2px_rgb(0_0_0/0.4)]",
+    item: `${ITEM} hover:text-white focus-visible:ring-2 focus-visible:ring-white/50 aria-[current=page]:bg-white/15 aria-[current=page]:text-white`,
+    expanded: "aria-expanded:bg-white/15 aria-expanded:text-white",
+  },
+  app: {
+    bar: "text-neutral-500 dark:text-neutral-400",
+    item: `${ITEM} hover:text-neutral-900 focus-visible:ring-2 focus-visible:ring-neutral-400/50 aria-[current=page]:bg-black/[0.06] aria-[current=page]:text-neutral-900 dark:hover:text-white dark:aria-[current=page]:bg-white/10 dark:aria-[current=page]:text-white`,
+    expanded: "aria-expanded:bg-black/[0.06] aria-expanded:text-neutral-900 dark:aria-expanded:bg-white/10 dark:aria-expanded:text-white",
+  },
+};
 
 const MENU_ITEM =
   "flex h-8 items-center gap-2 rounded-lg px-2.5 outline-none transition-colors duration-150 hover:bg-white/10 hover:text-white focus-visible:bg-white/10 focus-visible:text-white aria-[current=page]:bg-white/15 aria-[current=page]:text-white";

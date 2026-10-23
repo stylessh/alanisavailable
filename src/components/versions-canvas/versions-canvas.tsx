@@ -2,7 +2,14 @@
 
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
-import { formatDate, VERSION_KEY_MESSAGE, type VersionKey, VersionBar, versionKey } from "@/components/version-switcher";
+import {
+  formatDate,
+  VERSION_KEY_MESSAGE,
+  type VersionBarPlacement,
+  type VersionKey,
+  VersionBar,
+  versionKey,
+} from "@/components/version-switcher";
 import { PrefetchPages } from "@/lib/prefetch";
 import type { Version } from "@/lib/snapshots";
 import { type Camera, fit, lerp, loadCamera, type Rect, sane, saveCamera, zoomAt } from "./camera";
@@ -47,11 +54,14 @@ export function VersionsCanvas({
   title,
   versions,
   backdrop,
+  placement,
 }: {
   slug: string;
   title: string;
   versions: Version[];
   backdrop?: { src: string; srcSet?: string };
+  /** where the version bar sits over an open version (see VersionBarPlacement) */
+  placement?: VersionBarPlacement;
 }) {
   const viewport = useRef<HTMLDivElement>(null);
   const world = useRef<HTMLDivElement>(null);
@@ -525,6 +535,7 @@ export function VersionsCanvas({
         versions={versions}
         current={open}
         hidden={!open || !settled}
+        placement={placement}
         render={(id, props) => <a href={hrefOf(id)} onClick={(e) => select(e, id)} {...props} />}
       />
     </div>
