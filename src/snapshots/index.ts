@@ -17,9 +17,9 @@ export const VERSIONS: Record<string, { live: string; snapshots: Snapshot[] }> =
   "linear": {
     live: "App switcher",
     snapshots: [
-      {"id":"v1","name":"Original","date":"2026-10-22","commit":"60f8a66"},
-      {"id":"v2","name":"Workspace section","date":"2026-10-22","commit":"60f8a66"},
-      {"id":"v3","name":"Team tab","date":"2026-10-22","commit":"60f8a66"},
+      {"id":"v1","name":"Original","group":"Trying surfaces","date":"2026-10-22","commit":"60f8a66"},
+      {"id":"v2","name":"Workspace section","group":"Trying surfaces","date":"2026-10-22","commit":"60f8a66"},
+      {"id":"v3","name":"Team tab","group":"Trying surfaces","date":"2026-10-22","commit":"60f8a66"},
     ],
   },
   "superlogical": {

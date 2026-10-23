@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { PrefetchPages } from "@/lib/prefetch";
-import type { Version } from "@/lib/snapshots";
+import { pagesOf, type Variant, type Version } from "@/lib/snapshots";
 
 const subscribeNothing = () => () => {};
 
@@ -15,6 +15,8 @@ export function versionKey(e: KeyboardEvent): VersionKey | null {
   return e.key === "ArrowLeft" || e.key === "ArrowRight" || e.key === "ArrowUp" ? e.key : null;
 }
 export const VERSION_KEY_MESSAGE = "versions-canvas:key";
+/** A version in a frame asking the canvas to open another version: { type, id }. */
+export const VERSION_GO_MESSAGE = "versions-canvas:go";
 
 /**
  * The switcher on a product page opened on its own. Its versions open in the
@@ -66,7 +68,7 @@ export function VersionSwitcher({
         render={(id, props) => <Link href={hrefOf(id)} {...props} />}
       />
       {/* the canvas loads every version in a frame; have them cached by then */}
-      <PrefetchPages hrefs={versions.filter((v) => v.id !== current).map((v) => v.href)} />
+      <PrefetchPages hrefs={versions.filter((v) => v.id !== current).flatMap(pagesOf)} />
     </>
   );
 }
@@ -230,6 +232,66 @@ function StackIcon() {
       <path d="M1.5 7 7 9.75 12.5 7" />
       <path d="M1.5 9.75 7 12.5 12.5 9.75" />
     </svg>
+  );
+}
+
+/**
+ * The second switcher a version that tried an idea several ways gets: its
+ * variants, bottom centre, and then the version the idea became, a step
+ * apart. Variants are separate frozen copies (whose styles must never meet),
+ * so each is a full page load; inside the canvas the frame moves between
+ * them, and the last item asks the canvas to open the next version.
+ */
+export function VariantBar({
+  slug,
+  variants,
+  current,
+  next,
+  placement = {},
+}: {
+  slug: string;
+  variants: Variant[];
+  current: string;
+  /** the version that came out of them */
+  next?: { id: string; name: string };
+  placement?: VersionBarPlacement;
+}) {
+  const framed = useSyncExternalStore(subscribeNothing, () => window.self !== window.top, () => true);
+  const tone = TONES[placement.tone ?? "wallpaper"];
+  return (
+    <nav
+      aria-label="Variants"
+      className={`fixed bottom-3 left-1/2 z-[5000] flex -translate-x-1/2 items-center gap-0.5 font-sans text-[12.5px] font-medium whitespace-nowrap ${tone.bar}`}
+    >
+      <span className="px-1.5 opacity-60">Variants</span>
+      {variants.map((v) => (
+        <a key={v.id} href={v.href} aria-current={v.id === current ? "page" : undefined} className={`${tone.item} px-2.5`}>
+          {v.name}
+        </a>
+      ))}
+      {next && (
+        <>
+          <span aria-hidden className="mx-1.5 h-3.5 w-px bg-current opacity-30" />
+          <a
+            href={`/${slug}/versions?v=${next.id}`}
+            title={`${next.name}, the version this became (⌃⌥→)`}
+            onClick={(e) => {
+              if (!framed) return;
+              e.preventDefault();
+              window.parent.postMessage({ type: VERSION_GO_MESSAGE, id: next.id }, window.location.origin);
+            }}
+            className={`${tone.item} px-2.5`}
+          >
+            <span className="flex items-center gap-1.5">
+              {next.name}
+              <svg aria-hidden width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M2 6h8M6.75 2.75 10 6l-3.25 3.25" />
+              </svg>
+            </span>
+          </a>
+        </>
+      )}
+    </nav>
   );
 }
 

@@ -4,6 +4,7 @@ import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import {
   formatDate,
+  VERSION_GO_MESSAGE,
   VERSION_KEY_MESSAGE,
   type VersionBarPlacement,
   type VersionKey,
@@ -11,7 +12,7 @@ import {
   versionKey,
 } from "@/components/version-switcher";
 import { PrefetchPages } from "@/lib/prefetch";
-import type { Version } from "@/lib/snapshots";
+import { pagesOf, type Version } from "@/lib/snapshots";
 import { type Camera, fit, lerp, loadCamera, type Rect, sane, saveCamera, zoomAt } from "./camera";
 
 const PAD = 64; // screen pixels around everything when fitting it all
@@ -258,7 +259,10 @@ export function VersionsCanvas({
       step(key);
     };
     const message = (e: MessageEvent) => {
-      if (e.origin === window.location.origin && e.data?.type === VERSION_KEY_MESSAGE) step(e.data.key);
+      if (e.origin !== window.location.origin) return;
+      if (e.data?.type === VERSION_KEY_MESSAGE) step(e.data.key);
+      // a variant's "next version" link, from inside its frame
+      if (e.data?.type === VERSION_GO_MESSAGE && versions.some((v) => v.id === e.data.id)) go(e.data.id);
     };
     window.addEventListener("keydown", keydown);
     window.addEventListener("message", message);
@@ -547,7 +551,7 @@ export function VersionsCanvas({
           })}
       </div>
 
-      {single && <PrefetchPages hrefs={versions.filter((v) => v.id !== live).map((v) => v.href)} />}
+      {single && <PrefetchPages hrefs={versions.filter((v) => v.id !== live).flatMap(pagesOf)} />}
 
       <VersionBar
         versions={versions}
