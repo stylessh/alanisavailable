@@ -67,6 +67,10 @@ const GLYPHS = {
   square: 0xe0ea,
   text: 0xe14e,
   checkCircle: 0xe03c,
+  pullRequest: 0xe07f,
+  inbox: 0xe0c9,
+  merged: 0xe07c,
+  github: 0xe187,
 } as const;
 
 export type IconName = keyof typeof GLYPHS;

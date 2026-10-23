@@ -7,6 +7,8 @@ export type Session = {
   title: string;
   /** the session is working (a gray dot) or waiting on you (amber) or done (blue) */
   dot?: "working" | "waiting" | "done";
+  /** what it's waiting on you for, or what it finished: the line its attention bar's tooltip shows */
+  note?: string;
   /** worktree branches spun off it */
   branches?: number;
   /** sessions it started, drawn indented under it */
@@ -16,71 +18,93 @@ export type Session = {
 export type Group = { id: string; label: string; sessions: Session[] };
 
 export const PINNED: { id: string; title: string; icon: "eye" | "projects" }[] = [
-  { id: "solvay-redesign", title: "Solvay Redesign", icon: "eye" },
-  { id: "trylle-rebuild", title: "Trylle Rebuild", icon: "projects" },
+  { id: "design-review", title: "Design review notes", icon: "eye" },
+  { id: "launch-checklist", title: "Launch checklist", icon: "projects" },
 ];
 
 export const GROUPS: Group[] = [
   {
-    id: "redakt",
-    label: "redakt · ~/Dev",
+    id: "alanisavailable",
+    label: "alanisavailable · ~/Dev",
     sessions: [
       {
         id: "claude-code-desktop",
         title: "Claude Code desktop app scaffolding",
         dot: "working",
       },
-      { id: "ios-onboarding", title: "iOS onboarding flow redesign" },
-      { id: "native-ios", title: "Native iOS app for Redakt" },
+      { id: "homepage-hero", title: "Homepage hero and case study layout" },
+      { id: "dark-mode", title: "Dark mode contrast pass" },
       {
-        id: "inbox-switching",
-        title: "Inbox switching and Gmail token persistence",
+        id: "contact-form",
+        title: "Contact form and email delivery",
+        dot: "waiting",
+        note: "Wants to know which address replies should come from",
       },
-      { id: "railway-token", title: "Railway API token config and merge" },
+      { id: "og-images", title: "OG images for every product page" },
     ],
   },
   {
-    id: "solvay",
-    label: "solvay",
+    id: "storefront",
+    label: "storefront · ~/Projects",
     sessions: [
       {
-        id: "platform-ui",
-        title: "Platform UI/UX improvements",
+        id: "checkout",
+        title: "Checkout flow and cart persistence",
         branches: 4,
         dot: "working",
         children: [
           {
-            id: "multiple-instances",
-            title: "Add multiple instances of a Claude agent",
+            id: "saved-payments",
+            title: "Add saved payment methods",
             branches: 2,
             dot: "waiting",
+            note: "Asking before it runs the payments migration on staging",
           },
           {
-            id: "teach-flow",
-            title: "Fix the console's teach flow gaps",
+            id: "coupon-rounding",
+            title: "Fix the coupon rounding bug",
             branches: 0,
             dot: "done",
+            note: "Discounts now round to the cent, with tests for 12 cases",
           },
           {
-            id: "favicon-og",
-            title: "Favicon and OG metadata overhaul",
+            id: "lazy-images",
+            title: "Lazy-load product images",
             branches: 0,
             dot: "done",
+            note: "Images below the fold load on scroll; LCP down 0.8s",
           },
           {
-            id: "agent-card",
-            title: "Ship the Agent card skill/playbook",
+            id: "order-emails",
+            title: "Order confirmation emails",
             branches: 0,
             dot: "done",
+            note: "Templates written and checked in three mail clients",
           },
         ],
       },
-      { id: "recent-prs", title: "Recent pull requests overview" },
+      { id: "inventory-sync", title: "Inventory sync with the warehouse API" },
+    ],
+  },
+  {
+    id: "field-notes",
+    label: "field-notes · ~/Projects",
+    sessions: [
+      { id: "offline-sync", title: "Offline sync with conflict resolution" },
+      { id: "markdown-shortcuts", title: "Markdown shortcuts in the editor" },
+      { id: "share-links", title: "Share links that expire" },
     ],
   },
 ];
 
 export const ACTIVE_SESSION = "claude-code-desktop";
+
+/** Every session, its subsessions with it, alongside the project it's in. */
+export const EVERY_SESSION = GROUPS.flatMap((g) => {
+  const project = g.label.split(" · ")[0];
+  const walk = (s: Session): { session: Session; project: string }[] => [{ session: s, project }, ...(s.children ?? []).flatMap(walk)];
+  return g.sessions.flatMap(walk);
+});
 
 export const COMPOSER = {
   placeholder: "⏎ to send, ⌘⏎ to queue for later",

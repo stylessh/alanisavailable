@@ -1,8 +1,14 @@
 "use client";
 
 import { useRef, useState } from "react";
-import type { Block, Run, Task } from "./conversation";
+import type { Block, Run, SentImage, Task } from "./conversation";
+import { EVERY_SESSION } from "./content";
 import { Icon, type IconName } from "./icon";
+import { useSidebar } from "./sidebar-state";
+import { LIGHT_INKS } from "./scratchpad";
+import { ALL_PRS } from "./session-prs";
+import { PrMark } from "./pr-panel";
+import { useOpenPanel } from "./side-panel";
 import { Strong, ToolSummary } from "./tool-calls";
 import { sourcesIn, useOpenViewer } from "./viewer";
 
@@ -37,17 +43,46 @@ function FileLink({ children }: { children: string }) {
   );
 }
 
-/** A link to another session: its title on a dark blue chip. */
+/** A link to another session: its title on a dark blue chip. Clicking it opens that session. */
 function SessionLink({ children }: { children: string }) {
+  const { openSession } = useSidebar();
+  const to = EVERY_SESSION.find((e) => e.session.title === children)?.session.id;
   return (
     <a
       href="#"
-      onClick={(e) => e.preventDefault()}
+      onClick={(e) => {
+        e.preventDefault();
+        if (to) openSession(to);
+      }}
       className="rounded-[6px] px-[6px] py-[1px] hover:brightness-125"
       style={{ color: "var(--cc-session-link)", background: "var(--cc-session-link-bg)" }}
     >
       {children}
     </a>
+  );
+}
+
+/**
+ * A pull request this session opened: its repo and number, then its title,
+ * on the session link's chip with GitHub's green mark. It opens the PR panel
+ * beside the conversation rather than a browser tab.
+ */
+function PrLink({ number }: { number: number }) {
+  const openPanel = useOpenPanel();
+  const pr = ALL_PRS.find((p) => p.number === number) ?? ALL_PRS[0];
+  return (
+    <button
+      type="button"
+      onClick={() => openPanel("pr", number)}
+      className="inline-flex max-w-[min(440px,100%)] cursor-default items-center gap-[5px] rounded-[6px] px-[6px] py-[1px] align-bottom hover:brightness-125"
+      style={{ color: "var(--cc-session-link)", background: "var(--cc-session-link-bg)" }}
+    >
+      <PrMark size={13} color="var(--cc-merge)" />
+      <span className="flex-none">
+        {pr.repo}#{number}
+      </span>
+      <span className="min-w-0 truncate">· {pr.title}</span>
+    </button>
   );
 }
 
@@ -61,21 +96,80 @@ export function Runs({ runs }: { runs: Run[] }) {
       <FileLink key={i}>{r.link}</FileLink>
     ) : "session" in r ? (
       <SessionLink key={i}>{r.session}</SessionLink>
+    ) : "pr" in r ? (
+      <PrLink key={i} number={r.pr} />
     ) : (
       <Strong key={i}>{r.strong}</Strong>
     ),
   );
 }
 
-function UserMessage({ text }: { text: string }) {
+/** A user's message: the images sent with it above the bubble, at the right. */
+function UserMessage({ text, images }: { text: string; images?: SentImage[] }) {
   return (
-    <div className="flex justify-end" style={{ marginBottom: BUBBLE_AFTER }}>
-      <div
-        className="max-w-[85%] rounded-[12px] px-[13px] py-[10px] text-[14px] leading-[20px]"
-        style={{ background: "var(--cc-bubble)", color: "var(--cc-text-strong)" }}
-      >
-        {text}
-      </div>
+    <div className="flex flex-col items-end gap-[8px]" style={{ marginBottom: BUBBLE_AFTER }}>
+      {images && images.length > 0 && <SentImages images={images} />}
+      {text && (
+        <div
+          className="max-w-[85%] rounded-[12px] px-[13px] py-[10px] text-[14px] leading-[20px]"
+          style={{ background: "var(--cc-bubble)", color: "var(--cc-text-strong)" }}
+        >
+          {text}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Images sent with a message, each in a card that opens the viewer. A
+ * picture marked up in the scratchpad lists its notes in a footer inside the
+ * card, by the numbers on its dots and in their ink, so what each mark means
+ * reads right under it.
+ */
+function SentImages({ images }: { images: SentImage[] }) {
+  const openViewer = useOpenViewer();
+  const root = useRef<HTMLDivElement>(null);
+  const srcs = images.map((i) => i.src);
+  return (
+    <div ref={root} className="flex max-w-[85%] flex-wrap justify-end gap-[8px]">
+      {images.map((image, i) => (
+        <figure
+          key={image.src}
+          className="w-[280px] max-w-full overflow-hidden rounded-[12px]"
+          style={{ background: "var(--cc-bubble)", boxShadow: "0 0 0 1px var(--cc-card-rim)" }}
+        >
+          <button
+            type="button"
+            aria-label="View image"
+            data-cc-image={image.src}
+            onClick={() => openViewer(srcs, i, "Image", sourcesIn(root.current, srcs))}
+            className="block w-full cursor-default hover:brightness-110"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img alt="" src={image.src} className="block h-auto w-full" draggable={false} />
+          </button>
+          {image.notes.length > 0 && (
+            <figcaption
+              className="flex flex-col gap-[6px] px-[12px] py-[10px] text-[13px] leading-[18px]"
+              style={{ color: "var(--cc-text-strong)", boxShadow: "inset 0 1px 0 var(--cc-card-rim)" }}
+            >
+              {image.notes.map((n) => (
+                <span key={n.n} className="flex items-start gap-[8px]">
+                  <span
+                    aria-label={`Note ${n.n}`}
+                    className="mt-[1px] flex size-[16px] flex-none items-center justify-center rounded-full text-[10px] font-semibold tabular-nums"
+                    style={{ background: n.ink, color: LIGHT_INKS.has(n.ink) ? "#151515" : "#fff" }}
+                  >
+                    {n.n}
+                  </span>
+                  <span className="min-w-0 break-words">{n.text}</span>
+                </span>
+              ))}
+            </figcaption>
+          )}
+        </figure>
+      ))}
     </div>
   );
 }
@@ -209,7 +303,7 @@ function TaskList({ items }: { items: Task[] }) {
 export function TranscriptBlock({ block, streaming }: { block: Block; streaming?: boolean }) {
   switch (block.kind) {
     case "user":
-      return <UserMessage text={block.text} />;
+      return <UserMessage text={block.text} images={block.images} />;
     case "text":
       return <Prose runs={block.runs} streaming={streaming} />;
     case "list":

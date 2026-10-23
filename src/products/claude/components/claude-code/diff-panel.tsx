@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { CODE_LINE, CodeLine } from "./code-view";
 import { Icon } from "./icon";
-import { BRANCH, DIFF, type DiffFile } from "./panel-content";
+import type { DiffFile } from "./panel-content";
+import { useWorkspace } from "./workspace";
 import { BarButton, FileMark, PanelFrame } from "./side-panel";
 
 // The Diff panel (pt, from the recording): a #0a0a0a card. Its bar shows the
@@ -15,16 +16,19 @@ import { BarButton, FileMark, PanelFrame } from "./side-panel";
 /** the changed-files column takes the share of the panel it did in the recording (320 of 568pt) */
 const LIST_SHARE = 0.56;
 
-function Stats({ added, removed }: { added: number; removed: number }) {
+export function Stats({ added, removed }: { added: number; removed: number }) {
   return (
     <span className="flex-none whitespace-nowrap">
       <span style={{ color: "var(--cc-added)" }}>+{added}</span>
-      <span style={{ color: "var(--cc-removed)" }}>−{removed}</span>
+      {/* a little apart, so the two counts don't run together */}
+      <span className="ml-[4px]" style={{ color: "var(--cc-removed)" }}>
+        −{removed}
+      </span>
     </span>
   );
 }
 
-function FileDiff({ file }: { file: DiffFile }) {
+export function FileDiff({ file }: { file: DiffFile }) {
   const [open, setOpen] = useState(!!file.hunks);
   return (
     <section style={{ borderBottom: "1px solid var(--cc-rule)" }}>
@@ -91,6 +95,7 @@ function FileDiff({ file }: { file: DiffFile }) {
 
 /** The working branch's changes. */
 export function DiffPanel({ expanded, onExpand, onClose }: { expanded: boolean; onExpand: () => void; onClose: () => void }) {
+  const { branch, diff } = useWorkspace();
   const [list, setList] = useState(true);
   return (
     <PanelFrame
@@ -104,9 +109,9 @@ export function DiffPanel({ expanded, onExpand, onClose }: { expanded: boolean; 
           className="flex items-center gap-[6px] rounded-[6px] px-[12px] hover:bg-(--cc-button-hover)"
           style={{ height: 24, color: "var(--cc-text)" }}
         >
-          {BRANCH.base}
+          {branch.base}
           <Icon name="arrowRight" size={11} style={{ color: "var(--cc-text-muted)" }} />
-          {BRANCH.head}
+          {branch.head}
           <Icon name="chevronDown" size={11} style={{ color: "var(--cc-text-muted)" }} />
         </button>
       }
@@ -120,7 +125,12 @@ export function DiffPanel({ expanded, onExpand, onClose }: { expanded: boolean; 
     >
       <div className="absolute inset-0 flex">
         <div className="min-w-0 flex-1 overflow-y-auto" style={{ scrollbarWidth: "thin" }}>
-          {DIFF.map((f) => (
+          {diff.length === 0 && (
+            <p className="px-[17px] py-[14px]" style={{ color: "var(--cc-text-muted)" }}>
+              No changes on this branch yet.
+            </p>
+          )}
+          {diff.map((f) => (
             <FileDiff key={f.dir + f.name} file={f} />
           ))}
           <div style={{ height: CODE_LINE }} />
@@ -130,7 +140,7 @@ export function DiffPanel({ expanded, onExpand, onClose }: { expanded: boolean; 
             className="flex-none overflow-y-auto pt-[3px]"
             style={{ width: `${LIST_SHARE * 100}%`, borderLeft: "1px solid var(--cc-rule)", scrollbarWidth: "none" }}
           >
-            {DIFF.map((f) => (
+            {diff.map((f) => (
               <li key={f.dir + f.name} className="flex h-[24px] cursor-default items-center gap-[6px] pr-[13px] pl-[17px] hover:bg-(--cc-button-hover)">
                 <FileMark name={f.name} />
                 <span className="flex-none" style={{ color: "var(--cc-text-strong)" }}>

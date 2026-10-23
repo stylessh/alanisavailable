@@ -1,7 +1,7 @@
 "use client";
 
 import { type ReactNode, useState } from "react";
-import { SESSION_DETAILS } from "./content";
+import { useWorkspace } from "./workspace";
 import { Icon, type IconName } from "./icon";
 import { Toggle } from "./popover";
 
@@ -75,7 +75,7 @@ function Section({ label, children }: { label: string; children: ReactNode }) {
 
 /** The session's environment, context, connectors, outputs and changes. */
 export function SessionPanel() {
-  const d = SESSION_DETAILS;
+  const d = useWorkspace().details;
   const [remote, setRemote] = useState(true);
   return (
     <aside
@@ -137,23 +137,25 @@ export function SessionPanel() {
       <Card>
         <Heading label="Connectors" link detail={<span style={{ color: "var(--cc-text-muted)" }}>{d.connectorsToReconnect} to reconnect</span>} />
       </Card>
-      <Section label="Outputs">
-        {d.outputs.map((o) => (
-          <Row key={o} icon={o.endsWith(".png") ? "image" : "file"}>
-            {o}
-          </Row>
-        ))}
-        <div
-          className="flex items-center"
-          style={{
-            height: ROW,
-            paddingLeft: 15.5,
-            color: "var(--cc-text-muted)",
-          }}
-        >
-          Show more
-        </div>
-      </Section>
+      {d.outputs.length > 0 && (
+        <Section label="Outputs">
+          {d.outputs.map((o) => (
+            <Row key={o} icon={o.endsWith(".png") ? "image" : "file"}>
+              {o}
+            </Row>
+          ))}
+          <div
+            className="flex items-center"
+            style={{
+              height: ROW,
+              paddingLeft: 15.5,
+              color: "var(--cc-text-muted)",
+            }}
+          >
+            Show more
+          </div>
+        </Section>
+      )}
       <Section label="Changes">
         <Row
           icon="diff"

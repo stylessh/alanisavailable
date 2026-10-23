@@ -65,7 +65,7 @@ for (const file of walk(dest).filter((f) => CODE.test(f))) {
 }
 
 const commit = execSync("git rev-parse --short HEAD", { cwd: ROOT }).toString().trim();
-const date = new Date().toISOString().slice(0, 10);
+const date = new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD, in local time
 fs.writeFileSync(path.join(dest, "snapshot.json"), `${JSON.stringify({ name, date, commit }, null, 2)}\n`);
 fs.writeFileSync(live, `${JSON.stringify({ name: next }, null, 2)}\n`);
 writeIndex();

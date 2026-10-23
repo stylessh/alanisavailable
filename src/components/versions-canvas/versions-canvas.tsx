@@ -134,6 +134,18 @@ export function VersionsCanvas({
 
   const stop = () => cancelAnimationFrame(animation.current);
 
+  // while the camera zooms into or out of a version, the frame under the
+  // pointer isn't being pointed at, so it shows no hover outline
+  const moving = (on: boolean) => {
+    if (on) world.current?.setAttribute("data-moving", "");
+    else world.current?.removeAttribute("data-moving");
+  };
+  // a gesture that takes the camera over ends the move
+  const interrupt = () => {
+    stop();
+    moving(false);
+  };
+
   const animateTo = useCallback(
     (to: Camera, ms: number, curve = ease, done?: () => void) => {
       stop();
@@ -208,12 +220,18 @@ export function VersionsCanvas({
     }
     const focus = () => frameOf(openIndex)?.contentWindow?.focus();
     if (!open) {
-      animateTo(home(), 650, easeInOut, () => setSettled(false));
+      moving(true);
+      animateTo(home(), 650, easeInOut, () => {
+        setSettled(false);
+        moving(false);
+      });
       viewport.current?.focus({ preventScroll: true });
     } else if (!was) {
       stop();
+      moving(true);
       const arrived = () => {
         setSettled(true);
+        moving(false);
         focus();
       };
       const t = setTimeout(() => animateTo(fitOne(openIndex), 600, easeInOut, arrived), FADE);
@@ -269,7 +287,7 @@ export function VersionsCanvas({
       if (openRef.current) return;
       if (e.button === 1) e.preventDefault(); // no middle-click autoscroll
       if (e.button !== 0 && e.button !== 1) return;
-      stop();
+      interrupt();
       origins.set(e.pointerId, { x: e.clientX, y: e.clientY });
       if (pointers.size === 0) moved = space || e.button === 1;
       pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
@@ -323,7 +341,7 @@ export function VersionsCanvas({
     const wheel = (e: WheelEvent) => {
       e.preventDefault();
       if (openRef.current) return;
-      stop();
+      interrupt();
       const unit = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? window.innerHeight : 1;
       const c = camera.current;
       if (e.ctrlKey || e.metaKey) set(zoomAt(c, Math.exp((-e.deltaY * unit) / 200), e.clientX, e.clientY));
@@ -515,10 +533,10 @@ export function VersionsCanvas({
                     />
                   )}
                 </span>
-                {/* hover and keyboard focus outline, kept the same width at any zoom */}
+                {/* hover and keyboard focus outline, kept the same width at any zoom; none while zooming in or out */}
                 <span
                   aria-hidden
-                  className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100 group-data-[open]/world:opacity-0!"
+                  className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100 group-data-[open]/world:opacity-0! group-data-[moving]/world:opacity-0! group-data-[moving]/world:transition-none"
                   style={{
                     borderRadius: "calc(10px * var(--inv))",
                     boxShadow: "0 0 0 calc(2px * var(--inv)) var(--foreground)",

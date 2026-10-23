@@ -1,19 +1,23 @@
 "use client";
 
 import { animate, AnimatePresence, motion, useMotionValue, useMotionValueEvent } from "motion/react";
-import { useEffect, useRef } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { DRAG_REGION } from "@/os/macos";
-import { ACCOUNT, ACTIVE_SESSION, GROUPS, PINNED, type Session } from "./content";
+import { ACCOUNT, EVERY_SESSION, GROUPS, PINNED, type Session } from "./content";
 import { Icon, type IconName } from "./icon";
-import { AccountMenu, NavMoreMenu } from "./menus";
+import { AccountMenu, NavMoreMenu, SidebarViewMenu } from "./menus";
 import { Popover } from "./popover";
+import { useEdgeFade } from "./side-panel";
 import { useSidebar, WindowControls } from "./sidebar-state";
 
 // Sidebar geometry (window-relative pt, from the reference): 284.5pt wide
 // plus a 1-device-px divider. A session row's highlight runs 8..276.5pt
-// (as wide as "Relaunch to update"); icons sit in a 15pt square 8.5pt into
+// (16pt in from either edge); icons sit in a 15pt square 8.5pt into
 // the row, labels start at 42pt, session titles at 18pt.
 export const SIDEBAR_W = 285;
+/** how narrow and wide its edge can drag it (pt): at its narrowest, the mode switch still clears the forward button by 6pt */
+const MIN_W = 240;
+const MAX_W = 420;
 /** Floating over the session (the sidebar hidden, the pointer on its toggle) it is narrower and lighter, flush to the window's left edge. */
 const FLOATING_W = 263;
 const SLIDE = { type: "spring", stiffness: 520, damping: 46 } as const;
@@ -134,11 +138,12 @@ function NavRow({
   );
 }
 
-function SectionLabel({ label, add }: { label: string; add?: boolean }) {
+function SectionLabel({ label, add, count }: { label: string; add?: boolean; count?: number }) {
   return (
     <div className="relative flex h-[28.5px] items-center text-[12px]" style={{ color: "var(--cc-text-muted)" }}>
-      <span className="absolute" style={{ left: 18 }}>
+      <span className="absolute flex items-center gap-[6px]" style={{ left: 18 }}>
         {label}
+        {count !== undefined && <span className="tabular-nums opacity-70">{count}</span>}
       </span>
       {add && (
         <button
@@ -158,12 +163,18 @@ function SectionLabel({ label, add }: { label: string; add?: boolean }) {
 const TREE_TOP = 4;
 
 function SessionRow({ session, depth = 0, first, last }: { session: Session; depth?: number; first?: boolean; last?: boolean }) {
-  const active = session.id === ACTIVE_SESSION;
+  const { active: open, openSession, dotOf } = useSidebar();
+  const active = session.id === open;
+  const dot = dotOf(session);
   const left = depth ? 38 : 18;
   return (
     <>
       <div
-        className={`relative mb-[2px] flex items-center rounded-[8px] text-[13px] ${active ? "" : "hover:bg-(--cc-row-hover)"}`}
+        role="button"
+        tabIndex={0}
+        aria-current={active || undefined}
+        onClick={() => openSession(session.id)}
+        className={`relative mb-[2px] flex cursor-default items-center rounded-[8px] text-[13px] ${active ? "" : "hover:bg-(--cc-row-hover)"}`}
         style={{
           marginInline: ROW_INSET,
           height: SESSION_ROW - 2,
@@ -203,7 +214,7 @@ function SessionRow({ session, depth = 0, first, last }: { session: Session; dep
             {session.branches > 0 && <span style={{ color: "var(--cc-text-muted)" }}>{session.branches}</span>}
           </span>
         )}
-        {session.dot && <span className="absolute size-[6px] rounded-full" style={{ right: 8.5, background: DOT[session.dot] }} />}
+        {dot && <span className="absolute size-[6px] rounded-full" style={{ right: 8.5, background: DOT[dot] }} />}
       </div>
       {session.children?.map((child, i, all) => (
         <SessionRow key={child.id} session={child} depth={depth + 1} first={i === 0} last={i === all.length - 1} />
@@ -215,21 +226,30 @@ function SessionRow({ session, depth = 0, first, last }: { session: Session; dep
 /** The Code tab's sidebar: window controls, search, navigation, pinned and grouped sessions, and the account. */
 export function Sidebar() {
   const { shown, peeking, hover, docking, docked } = useSidebar();
+  // how wide its edge has been dragged
+  const [full, setFull] = useState(SIDEBAR_W);
   // The docked width, live: it animates open and closed, and the window
   // publishes it as --cc-dock-w so the session's title can ride along with it.
   const dock = useRef<HTMLDivElement>(null);
-  const width = useMotionValue(shown ? SIDEBAR_W : 0);
+  const width = useMotionValue(shown ? full : 0);
   useMotionValueEvent(width, "change", (w) => dock.current?.closest<HTMLElement>(".cc-window")?.style.setProperty("--cc-dock-w", `${w}px`));
   useEffect(() => {
-    const a = animate(width, shown ? SIDEBAR_W : 0, SLIDE);
+    // (a drag sets the width directly, so this only animates opening and closing)
+    const a = animate(width, shown ? full : 0, SLIDE);
     a.then(() => shown && docked());
     return () => a.stop();
-  }, [shown, width, docked]);
+  }, [shown, full, width, docked]);
+  const resize = (w: number) => {
+    const next = Math.round(Math.min(MAX_W, Math.max(MIN_W, w)));
+    width.jump(next);
+    setFull(next);
+  };
   return (
     <>
       {/* docked: shown, it takes its width from the session; hidden, that width animates away */}
-      <motion.div ref={dock} className="h-full flex-none overflow-hidden" inert={!shown} style={{ width }}>
-        <SidebarBody width={SIDEBAR_W} />
+      <motion.div ref={dock} className="relative h-full flex-none overflow-hidden" inert={!shown} style={{ width }}>
+        <SidebarBody width={full} />
+        {shown && <EdgeHandle width={full} onResize={resize} />}
       </motion.div>
       {/* floating: it appears in place over the session (a quick fade, no slide); nothing moves.
           Docked from here, it stays put and settles into the docked width and colors, in step
@@ -239,15 +259,20 @@ export function Sidebar() {
           <motion.div
             key="floating"
             className="absolute inset-y-0 left-0 z-30 overflow-hidden transition-shadow duration-300 ease-out"
-            style={{ boxShadow: docking ? "none" : "var(--cc-sidebar-floating-shadow)" }}
+            style={{
+              boxShadow: docking ? "none" : "var(--cc-sidebar-floating-shadow)",
+            }}
             initial={{ opacity: 0, width: FLOATING_W }}
-            animate={{ opacity: 1, width: docking ? SIDEBAR_W : FLOATING_W }}
+            animate={{ opacity: 1, width: docking ? full : FLOATING_W }}
             exit={docking ? { opacity: 1, transition: { duration: 0 } } : { opacity: 0 }}
-            transition={{ opacity: { duration: 0.12, ease: "easeOut" }, width: SLIDE }}
+            transition={{
+              opacity: { duration: 0.12, ease: "easeOut" },
+              width: SLIDE,
+            }}
             onPointerEnter={() => hover(true)}
             onPointerLeave={() => hover(false)}
           >
-            <SidebarBody width={SIDEBAR_W} floating={!docking} fill />
+            <SidebarBody width={full} floating={!docking} fill />
           </motion.div>
         )}
       </AnimatePresence>
@@ -255,8 +280,52 @@ export function Sidebar() {
   );
 }
 
+/**
+ * The sidebar's right edge drags to resize it, between MIN_W and MAX_W; a
+ * double-click puts it back to its usual width.
+ */
+function EdgeHandle({ width, onResize }: { width: number; onResize: (w: number) => void }) {
+  const from = useRef<{ x: number; w: number; scale: number } | null>(null);
+  const move = (x: number) => {
+    const f = from.current;
+    if (f) onResize(f.w + (x - f.x) / f.scale);
+  };
+  return (
+    <div
+      role="separator"
+      aria-orientation="vertical"
+      aria-label="Resize sidebar"
+      aria-valuenow={width}
+      aria-valuemin={MIN_W}
+      aria-valuemax={MAX_W}
+      className="absolute inset-y-0 right-0 z-10 w-[5px] cursor-col-resize"
+      style={{ touchAction: "none" }}
+      onPointerDown={(e) => {
+        if (e.button !== 0) return;
+        e.preventDefault();
+        e.currentTarget.setPointerCapture(e.pointerId);
+        // the window may be drawn scaled: pointer distances are turned back into its points
+        const box = e.currentTarget.parentElement!;
+        const scale = box.getBoundingClientRect().width / box.offsetWidth || 1;
+        from.current = { x: e.clientX, w: width, scale };
+      }}
+      onPointerMove={(e) => move(e.clientX)}
+      // the drag ends where the pointer lifts, whatever the last move was
+      onPointerUp={(e) => {
+        move(e.clientX);
+        from.current = null;
+      }}
+      onPointerCancel={() => {
+        from.current = null;
+      }}
+      onDoubleClick={() => onResize(SIDEBAR_W)}
+    />
+  );
+}
+
 /** Everything in the sidebar, at a fixed width (the docked one clips it while it animates closed). */
 function SidebarBody({ width, floating, fill }: { width: number; floating?: boolean; fill?: boolean }) {
+  const { view, setView } = useSidebar();
   return (
     <aside
       // `fill`: it takes its container's width (the floating one, whose width animates), down to the narrower floating width
@@ -274,80 +343,63 @@ function SidebarBody({ width, floating, fill }: { width: number; floating?: bool
         <ModeSwitch right={floating ? 10 : 8} />
       </div>
 
-      <label
-        className="relative mx-[10px] mt-[6px] flex h-[26px] flex-none items-center rounded-[8px] text-[13px]"
-        style={{
-          background: "var(--cc-field)",
-          boxShadow: "inset 0 0 0 0.5px var(--cc-field-border)",
-          color: "var(--cc-text-muted)",
-        }}
-      >
-        <Icon name="search" size={15} className="absolute" style={{ left: 8.5 }} />
-        <span className="absolute" style={{ left: 33 }}>
-          Search
-        </span>
-      </label>
-
-      <nav className="mt-[8.25px] flex-none">
-        <NavRow icon="plus" label="New" primary />
-        <NavRow icon="projects" label="Projects" badge="Beta" />
-        <NavRow icon="artifacts" label="Artifacts" iconSize={16} />
-        <NavRow icon="customize" label="Customize" iconSize={16} />
-        {/* More opens a small menu just past the row's highlight, its top level with the row */}
-        <Popover
-          placement="right-start"
-          offset={-2.5}
-          align={-1}
-          trigger={({ open, toggle }) => <NavRow icon="more" label="More" iconSize={16} open={open} onClick={toggle} />}
-        >
-          <NavMoreMenu />
-        </Popover>
-      </nav>
-
-      <div className="mt-[17.25px] min-h-0 flex-1 overflow-y-auto" style={{ scrollbarWidth: "none" }}>
-        <SectionLabel label="Pinned" />
-        {PINNED.map((p) => (
-          <button type="button" key={p.id} className="group relative flex w-full items-center text-left text-[13px]" style={{ height: 27 }}>
-            <RowHover />
-            <Icon
-              name={p.icon}
-              size={15}
-              className="absolute"
-              style={{
-                left: 18.5,
-                color: p.icon === "eye" ? "var(--cc-clay)" : undefined,
-              }}
-            />
-            <span className="absolute" style={{ left: 42 }}>
-              {p.title}
-            </span>
-          </button>
-        ))}
-        {GROUPS.map((g) => (
-          <div key={g.id} className="mt-[9px]">
-            <SectionLabel label={g.label} add />
-            {g.sessions.map((s) => (
-              <SessionRow key={s.id} session={s} />
-            ))}
-          </div>
-        ))}
-      </div>
-
-      <div className="flex-none" style={{ borderTop: "0.5px solid var(--cc-divider)" }}>
-        <button
-          type="button"
-          className="relative mx-[8px] mt-[9.5px] flex h-[28px] w-[calc(100%-16.5px)] items-center rounded-[8px] text-[13px] font-medium tracking-normal"
+      {/* search, and beside it what the sidebar lists: everything, or the inbox */}
+      <div className="mx-[10px] mt-[6px] flex flex-none items-center gap-[4px]">
+        <label
+          className="relative flex h-[26px] min-w-0 flex-1 items-center rounded-[8px] text-[13px]"
           style={{
-            background: "var(--cc-raised)",
-            color: "var(--cc-text-strong)",
+            background: "var(--cc-field)",
+            boxShadow: "inset 0 0 0 0.5px var(--cc-field-border)",
+            color: "var(--cc-text-muted)",
           }}
         >
-          <span className="absolute" style={{ left: 9.75 }}>
-            Relaunch to update
+          <Icon name="search" size={15} className="absolute" style={{ left: 8.5 }} />
+          <span className="absolute" style={{ left: 33 }}>
+            Search
           </span>
-          <Icon name="arrowRight" size={12} className="absolute" style={{ right: 9, color: "var(--cc-text-muted)" }} />
-        </button>
+        </label>
         <Popover
+          portal
+          placement="bottom-end"
+          offset={6}
+          trigger={({ open, toggle }) => (
+            <button
+              type="button"
+              aria-label="Sidebar view"
+              aria-expanded={open}
+              aria-pressed={view === "inbox"}
+              onClick={toggle}
+              className="flex size-[26px] flex-none items-center justify-center rounded-[8px] hover:bg-(--cc-row-hover)"
+              style={{
+                background: view === "inbox" ? "var(--cc-active-bg)" : open ? "var(--cc-row-hover)" : undefined,
+                color: view === "inbox" ? "var(--cc-active)" : "var(--cc-text-muted)",
+              }}
+            >
+              <Icon name="inbox" size={15} />
+            </button>
+          )}
+        >
+          <SidebarViewMenu view={view} onChange={setView} />
+        </Popover>
+      </div>
+
+      {/* only New stays put, with what's above it; the rest of the navigation scrolls away with the sessions */}
+      <nav className="mt-[8.25px] flex-none">
+        <NavRow icon="plus" label="New" primary />
+      </nav>
+
+      <SidebarScroller>
+        {/* switching views swaps the list in place, with a quick fade */}
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.div key={view} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.1, ease: "easeOut" }}>
+            {view === "inbox" ? <Inbox onShowAll={() => setView("all")} /> : <AllSessions />}
+          </motion.div>
+        </AnimatePresence>
+      </SidebarScroller>
+
+      <div className="flex-none" style={{ borderTop: "0.5px solid var(--cc-divider)" }}>
+        <Popover
+          portal
           placement="top-start"
           offset={0.75}
           align={7}
@@ -378,6 +430,150 @@ function SidebarBody({ width, floating, fill }: { width: number; floating?: bool
         </Popover>
       </div>
     </aside>
+  );
+}
+
+/** The usual list: the rest of the navigation, pinned items and every project's sessions. */
+function AllSessions() {
+  return (
+    <>
+      <NavRow icon="projects" label="Projects" badge="Beta" />
+      <NavRow icon="artifacts" label="Artifacts" iconSize={16} />
+      <NavRow icon="customize" label="Customize" iconSize={16} />
+      {/* More opens a small menu just past the row's highlight, its top level with the row */}
+      <Popover
+        portal
+        placement="right-start"
+        offset={-2.5}
+        align={-1}
+        trigger={({ open, toggle }) => <NavRow icon="more" label="More" iconSize={16} open={open} onClick={toggle} />}
+      >
+        <NavMoreMenu />
+      </Popover>
+      <div aria-hidden className="h-[17.25px]" />
+      <SectionLabel label="Pinned" />
+      {PINNED.map((p) => (
+        <button type="button" key={p.id} className="group relative flex w-full items-center text-left text-[13px]" style={{ height: 27 }}>
+          <RowHover />
+          <Icon
+            name={p.icon}
+            size={15}
+            className="absolute"
+            style={{
+              left: 18.5,
+              color: p.icon === "eye" ? "var(--cc-clay)" : undefined,
+            }}
+          />
+          <span className="absolute" style={{ left: 42 }}>
+            {p.title}
+          </span>
+        </button>
+      ))}
+      {GROUPS.map((g) => (
+        <div key={g.id} className="mt-[9px]">
+          <SectionLabel label={g.label} add />
+          {g.sessions.map((s) => (
+            <SessionRow key={s.id} session={s} />
+          ))}
+        </div>
+      ))}
+      <div aria-hidden className="h-[8px]" />
+    </>
+  );
+}
+
+// The inbox: only the sessions you're in the middle of, grouped by what
+// they need from you, most pressing first. Each row says which project it's
+// from, since the projects' own headings are put away.
+const INBOX: { dot: NonNullable<Session["dot"]>; label: string }[] = [
+  { dot: "waiting", label: "Needs input" },
+  { dot: "working", label: "Running" },
+  { dot: "done", label: "Ready for review" },
+];
+
+const ALL_COUNT = EVERY_SESSION.length + PINNED.length;
+
+function Inbox({ onShowAll }: { onShowAll: () => void }) {
+  const { dotOf } = useSidebar();
+  // a done session leaves once you've opened it
+  const sections = INBOX.map((x) => ({ ...x, rows: EVERY_SESSION.filter((e) => dotOf(e.session) === x.dot) })).filter((x) => x.rows.length);
+  const shown = sections.reduce((n, x) => n + x.rows.length, 0);
+  return (
+    <>
+      {sections.length === 0 && (
+        <p className="px-[18px] pt-[12px] text-[12px] leading-[17px]" style={{ color: "var(--cc-text-muted)" }}>
+          Nothing needs you right now, and nothing is running.
+        </p>
+      )}
+      {sections.map((x, i) => (
+        <div key={x.dot} className={i ? "mt-[9px]" : "mt-[4px]"}>
+          <SectionLabel label={x.label} count={x.rows.length} />
+          {x.rows.map(({ session, project }) => (
+            <InboxRow key={session.id} session={session} project={project} />
+          ))}
+        </div>
+      ))}
+      {/* the way back: everything else is still there */}
+      <button
+        type="button"
+        onClick={onShowAll}
+        className="group relative mt-[9px] mb-[8px] flex w-full items-center text-left text-[12px]"
+        style={{ height: NAV_ROW, color: "var(--cc-text-muted)" }}
+      >
+        <RowHover />
+        <span className="absolute" style={{ left: 18 }}>
+          Show all sessions
+        </span>
+        <span className="absolute tabular-nums opacity-70" style={{ right: 18 }}>
+          {ALL_COUNT - shown} more
+        </span>
+      </button>
+    </>
+  );
+}
+
+/** A session in the inbox: its title, the project it's from, and its dot. */
+function InboxRow({ session, project }: { session: Session; project: string }) {
+  const { active: open, openSession, dotOf } = useSidebar();
+  const active = session.id === open;
+  const dot = dotOf(session);
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      aria-current={active || undefined}
+      onClick={() => openSession(session.id)}
+      className={`relative mb-[2px] flex cursor-default items-center gap-[8px] rounded-[8px] text-[13px] ${active ? "" : "hover:bg-(--cc-row-hover)"}`}
+      style={{
+        marginInline: ROW_INSET,
+        height: SESSION_ROW - 2,
+        paddingLeft: 18 - ROW_INSET,
+        paddingRight: 8.5,
+        background: active ? "var(--cc-row-active)" : undefined,
+        color: active ? "var(--cc-text-strong)" : "var(--cc-text)",
+      }}
+    >
+      <span
+        className="min-w-0 flex-1 overflow-hidden whitespace-nowrap tracking-[-0.004em]"
+        style={{ maskImage: "linear-gradient(to left, transparent, black 16px)" }}
+      >
+        {session.title}
+      </span>
+      <span className="flex-none text-[12px]" style={{ color: "var(--cc-text-muted)" }}>
+        {project}
+      </span>
+      {dot && <span className="size-[6px] flex-none rounded-full" style={{ background: DOT[dot] }} />}
+    </div>
+  );
+}
+
+/** The navigation and sessions under New: they scroll, fading out at an edge with more past it instead of cutting off. */
+function SidebarScroller({ children }: { children: ReactNode }) {
+  const [el, fade] = useEdgeFade<HTMLDivElement>("y", 24);
+  return (
+    <div ref={el} className="min-h-0 flex-1 overflow-y-auto" style={{ scrollbarWidth: "none", ...fade }}>
+      {children}
+    </div>
   );
 }
 
