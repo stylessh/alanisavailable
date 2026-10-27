@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { MacWindow } from "@/os/macos";
+import { EmbeddedWindow, MacWindow } from "@/os/macos";
 import { REX_APP } from "./app";
 import { spaceOf, WINDOW } from "./model";
 import { useRex } from "./store";
@@ -48,5 +48,29 @@ export function RexWindow({
     >
       <Workspace />
     </MacWindow>
+  );
+}
+
+/**
+ * The Rex window filling the page, for another site to frame. There is no
+ * desktop behind it to see through, so the glass is the solid full-screen
+ * fill, tinted by the active space like the window.
+ */
+export function RexWindowEmbedded() {
+  const { tint } = spaceOf(useRex().state);
+  const [hue, setHue] = useState(tint ?? "#808080");
+  if (tint && tint !== hue) setHue(tint);
+  return (
+    <EmbeddedWindow
+      id="rex"
+      className="rex-window select-none"
+      style={{
+        background: "var(--rex-solid)",
+        ["--rex-tint" as string]: hue,
+        ["--rex-tint-amount" as string]: tint ? 1 : 0,
+      }}
+    >
+      <Workspace />
+    </EmbeddedWindow>
   );
 }

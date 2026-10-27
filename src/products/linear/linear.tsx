@@ -13,3 +13,6 @@ export function LinearApp() {
     </div>
   );
 }
+
+/** Linear framed by another site: the same app, which already fills the page. */
+export const LinearEmbed = LinearApp;

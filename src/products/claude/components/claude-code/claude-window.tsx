@@ -1,6 +1,6 @@
 "use client";
 
-import { MacWindow, TrafficLights, useMacWindow } from "@/os/macos";
+import { EmbeddedWindow, MacWindow, TrafficLights, useMacWindow } from "@/os/macos";
 import { CLAUDE_APP } from "./app";
 import { Main } from "./main";
 import { ComposerSettingsProvider } from "./menus";
@@ -53,21 +53,10 @@ function HiddenSidebarControls() {
   );
 }
 
-/** The Claude desktop app's window, on its Code tab: sessions on the left, the open session on the right. */
-export function ClaudeWindow() {
+/** Everything inside the window: the app, its rim and its lights. */
+function ClaudeWindowContent() {
   return (
-    <MacWindow
-      id="claude"
-      app={CLAUDE_APP}
-      width={WINDOW.w}
-      height={WINDOW.h}
-      radius={WINDOW.radius}
-      className="cc-window select-none"
-      style={{
-        background: "var(--cc-main)",
-        boxShadow: "var(--cc-window-shadow)",
-      }}
-    >
+    <>
       <ComposerSettingsProvider>
         <AttachmentsProvider>
           <ViewerProvider>
@@ -87,6 +76,26 @@ export function ClaudeWindow() {
       <WindowRim />
       {/* Electron's 14pt lights, 23pt apart, 17pt in; the OS draws them above everything in the window */}
       <TrafficLights left={17} top={17} size={14} pitch={23} />
+    </>
+  );
+}
+
+const SURFACE = { background: "var(--cc-main)", boxShadow: "var(--cc-window-shadow)" } as const;
+
+/** The Claude desktop app's window, on its Code tab: sessions on the left, the open session on the right. */
+export function ClaudeWindow() {
+  return (
+    <MacWindow id="claude" app={CLAUDE_APP} width={WINDOW.w} height={WINDOW.h} radius={WINDOW.radius} className="cc-window select-none" style={SURFACE}>
+      <ClaudeWindowContent />
     </MacWindow>
+  );
+}
+
+/** The same window filling the page, for another site to frame. */
+export function ClaudeWindowEmbedded() {
+  return (
+    <EmbeddedWindow id="claude" className="cc-window select-none" style={SURFACE}>
+      <ClaudeWindowContent />
+    </EmbeddedWindow>
   );
 }
