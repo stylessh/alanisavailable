@@ -51,7 +51,7 @@ export type MacWindowContext = {
   chrome: HTMLElement | null;
 };
 
-const WindowContext = createContext<MacWindowContext | null>(null);
+export const WindowContext = createContext<MacWindowContext | null>(null);
 
 /** The window an app is drawn in: its size, focus and controls. Null outside a MacWindow. */
 export const useMacWindow = () => useContext(WindowContext);

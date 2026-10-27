@@ -53,3 +53,11 @@ gets the same windowing:
 - Inside a window, `useMacWindow()` gives the app its size (reflow to it), its
   focus (only take keys while focused) and the window controls.
 - The product supplies only its app: window content, Dock icon, menus.
+
+## Embeds
+
+`/embed/<slug>` serves a product's app on its own, edge to edge, for another
+site to frame: trypane.app shows them as live windows on its canvas. Desktop
+apps render their window in `EmbeddedWindow` (the same `useMacWindow()`
+context, no desktop around it); Linear already fills the page. Register one
+in `embeds.ts`. `next.config.ts` says who may frame them.

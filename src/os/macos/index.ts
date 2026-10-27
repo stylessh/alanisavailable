@@ -12,6 +12,7 @@
 // Inside a window, useMacWindow() gives the app its size, focus and controls.
 export { MacOS } from "./mac-os";
 export { DRAG_REGION, MacWindow, type MacWindowContext, useMacWindow } from "./window";
+export { EmbeddedWindow } from "./embedded-window";
 export { TrafficLights } from "./traffic-lights";
 export { IPHONE_MIRRORING_APP, IPHONE_SCREEN, IPhoneMirroring, StatusBar } from "./iphone-mirroring";
 export {
