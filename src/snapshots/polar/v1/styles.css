@@ -1,0 +1,268 @@
+/* Polar style guide. Every value here was read from the live dashboard
+   (polar.sh/dashboard, 1440x900, light theme) through the DOM's computed
+   styles, and matched to the tokens in Polar's open-source web client
+   (clients/apps/web/src/styles/globals.css, Apache 2.0): its grays, blues and
+   greens are Tailwind 4's own oklch palette, so they're written that way. */
+
+.polar {
+  --pl-sans: var(--font-polar-sans), "Inter", sans-serif;
+  /* Tailwind's font-mono reads --font-mono, so it picks up Geist Mono here */
+  --font-mono: var(--font-polar-mono), ui-monospace, monospace;
+
+  /* Surfaces: the shell (sidebar) and the white page card floating on it */
+  --pl-shell: oklch(0.967 0.003 264.542); /* gray-100 */
+  --pl-surface: #fff;
+  /* table headers, segmented tracks, avatar fills, settings panels */
+  --pl-subtle: oklch(0.985 0.002 247.839); /* gray-50 */
+  --pl-border: oklch(0.928 0.006 264.531); /* gray-200 */
+  /* the sub-navigation rail and checkbox outlines */
+  --pl-rule: oklch(0.872 0.01 258.338); /* gray-300 */
+
+  /* Text: Polar's foreground is gray-900; active and button text is pure black */
+  --pl-text: oklch(0.21 0.034 264.665); /* gray-900 */
+  --pl-text-input: oklch(0.13 0.028 261.692); /* gray-950 */
+  --pl-text-strong: #000;
+  --pl-text-muted: oklch(0.551 0.027 264.364); /* gray-500 */
+  --pl-text-faint: oklch(0.707 0.022 261.325); /* gray-400 */
+  --pl-text-dim: oklch(0.446 0.03 256.802); /* gray-600 */
+  --pl-text-soft: oklch(0.373 0.034 259.733); /* gray-700 */
+
+  /* Buttons: primary is black, secondary a gray-100 pill with a 4% black hairline */
+  --pl-primary: #000;
+  --pl-primary-hover: oklch(0.21 0.034 264.665);
+  --pl-secondary: oklch(0.967 0.003 264.542);
+  --pl-secondary-hover: oklch(0.928 0.006 264.531);
+  --pl-secondary-border: rgb(0 0 0 / 0.04);
+  /* ghost and outline buttons fill gray-200 on hover */
+  --pl-ghost-hover: oklch(0.928 0.006 264.531);
+  --pl-link: oklch(0.707 0.165 254.624); /* blue-400 */
+  /* Delete Organization */
+  --pl-destructive: oklch(0.637 0.237 25.331); /* red-500 */
+  --pl-destructive-hover: oklch(0.577 0.245 27.325); /* red-600 */
+
+  /* Shadows: shadow-xs on cards and fields, Polar's shadow-lg on a segmented thumb */
+  --pl-shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --pl-shadow-lg: 0 0 20px rgb(0 0 0 / 0.04), 0 0 5px rgb(0 0 0 / 0.06);
+  /* the 10% black ring inside an avatar */
+  --pl-avatar-ring: inset 0 0 0 1px rgb(0 0 0 / 0.1);
+
+  /* Charts (Recharts in Polar): a blue-600 line over a gradient of itself,
+     dashed gray-200 verticals at half strength, #666 tick labels */
+  --pl-chart: #2563eb;
+  --pl-chart-grid: oklch(0.928 0.006 264.531 / 0.5);
+  --pl-chart-tick: #666;
+  /* the legend ring beside each metric's date range */
+  --pl-legend: oklch(0.623 0.214 259.815); /* blue-500 */
+  /* Revenue widget bars: past months gray-400, the current month indigo-400 */
+  --pl-bar: oklch(0.707 0.022 261.325);
+  --pl-bar-current: oklch(0.673 0.182 276.935);
+  --pl-hatch: rgb(0 0 0 / 0.08);
+
+  /* Status chips (orbit Status): a 100 fill under 500 text. Paid is emerald,
+     as measured; the rest follow Status.tsx (yellow, red, indigo, violet). */
+  --pl-success-bg: #d0fae5; /* emerald-100 */
+  --pl-success: #00bb7f; /* emerald-500 */
+  --pl-warning-bg: oklch(0.973 0.071 103.193); /* yellow-100 */
+  --pl-warning: oklch(0.795 0.184 86.047); /* yellow-500 */
+  --pl-danger-bg: oklch(0.936 0.032 17.717); /* red-100 */
+  --pl-danger: oklch(0.637 0.237 25.331); /* red-500 */
+  --pl-info-bg: oklch(0.93 0.034 272.788); /* indigo-100 */
+  --pl-info: oklch(0.585 0.233 277.117); /* indigo-500 */
+  --pl-purple-bg: oklch(0.943 0.029 294.588); /* violet-100 */
+  --pl-purple: oklch(0.606 0.25 292.717); /* violet-500 */
+
+  --pl-focus: oklch(0.623 0.214 259.815);
+
+  /* Accent: Polar's shadcn --primary and --accent are both blue-600. It fills
+     a checked switch, a calendar range and the highlighted row of every
+     select, menu and combobox (with white text). */
+  --pl-accent: oklch(0.546 0.245 262.881); /* blue-600 */
+  --pl-accent-fg: #fff;
+  --pl-accent-soft: oklch(0.546 0.245 262.881 / 0.5); /* a range's outside days */
+  /* Text fields: a blue-300 border inside a 3px blue-100 ring while focused */
+  --pl-field-focus: oklch(0.809 0.105 251.813); /* blue-300 */
+  --pl-field-ring: oklch(0.932 0.032 255.585); /* blue-100 */
+  --pl-error: oklch(0.637 0.237 25.331); /* red-500, labels and messages */
+  /* the destructive button lightens on hover, to red-400 */
+  --pl-destructive-light: oklch(0.704 0.191 22.216);
+
+  /* Overlays: popovers are white with gray-950 text; menus sit on gray-50 */
+  --pl-popover: #fff;
+  --pl-popover-text: oklch(0.13 0.028 261.692); /* gray-950 */
+  --pl-menu: oklch(0.985 0.002 247.839); /* gray-50 */
+  --pl-shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --pl-shadow-md: 0 0 15px rgb(0 0 0 / 0.04), 0 0 2px rgb(0 0 0 / 0.06);
+  --pl-shadow-xl: 0 0 30px rgb(0 0 0 / 0.04), 0 0 10px rgb(0 0 0 / 0.06);
+  /* the dimmers: 70% behind a modal, 50% behind a sheet */
+  --pl-scrim-modal: rgb(0 0 0 / 0.7);
+  --pl-scrim-sheet: rgb(0 0 0 / 0.5);
+  /* the hover line across a chart */
+  --pl-chart-cursor: #e5e7eb;
+
+  /* Pills (orbit Pill): a 100 fill and 600 text, blue at 50 */
+  --pl-pill-blue-bg: oklch(0.97 0.014 254.604);
+  --pl-pill-blue: oklch(0.546 0.245 262.881);
+  --pl-pill-gray-bg: oklch(0.967 0.003 264.542);
+  --pl-pill-gray: oklch(0.446 0.03 256.802);
+  --pl-pill-green-bg: oklch(0.95 0.052 163.051);
+  --pl-pill-green: oklch(0.596 0.145 163.225);
+  --pl-pill-red-bg: oklch(0.936 0.032 17.717);
+  --pl-pill-red: oklch(0.577 0.245 27.325);
+  --pl-pill-yellow-bg: oklch(0.973 0.071 103.193);
+  --pl-pill-yellow: oklch(0.795 0.184 86.047);
+  --pl-pill-purple-bg: oklch(0.946 0.033 307.174);
+  --pl-pill-purple: oklch(0.558 0.288 302.321);
+  /* a neutral status chip is gray-200 */
+  --pl-neutral-bg: oklch(0.928 0.006 264.531);
+
+  /* Motion (orbit durations and easings) */
+  --pl-fast: 120ms;
+  --pl-base: 200ms;
+  --pl-slow: 320ms;
+  --pl-ease: cubic-bezier(0.2, 0, 0, 1);
+  --pl-ease-out: cubic-bezier(0, 0, 0, 1);
+  --pl-ease-in: cubic-bezier(0.3, 0, 1, 1);
+
+  color-scheme: light;
+  font-family: var(--pl-sans);
+  font-size: 16px;
+  font-weight: 450;
+  /* Polar sets 0.015em on body, which every descendant inherits as 0.24px */
+  letter-spacing: 0.24px;
+  color: var(--pl-text);
+  background: var(--pl-shell);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Base rules sit in the base layer, under Tailwind's utilities, so a class
+   like border-transparent still wins over the default border color. */
+@layer base {
+  .polar *,
+  .polar *::before,
+  .polar *::after {
+    border-color: var(--pl-border);
+  }
+
+  .polar ::selection {
+    background: oklch(0.882 0.059 254.128);
+    color: inherit;
+  }
+
+  .polar :focus-visible {
+    outline: 2px solid var(--pl-focus);
+    outline-offset: 2px;
+  }
+
+  .polar input::placeholder {
+    color: var(--pl-text-faint);
+  }
+}
+
+/* the scroll areas inside the page card: thin and quiet, as in Polar on macOS */
+.polar .pl-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: oklch(0.872 0.01 258.338) transparent;
+}
+
+/* Revenue widget: Polar's 2px-on-8px diagonal hatch behind each month's bar */
+.polar .pl-hatch {
+  background: repeating-linear-gradient(-45deg, var(--pl-hatch), var(--pl-hatch) 2px, transparent 2px, transparent 8px);
+}
+
+/* Popovers, menus, selects and tooltips open as Radix + tailwindcss-animate
+   draw them in Polar: 150ms from 0 opacity, 95% scale and 8px toward the
+   trigger. The origin is set by the component (top for menus below it). */
+@keyframes pl-pop {
+  from {
+    opacity: 0;
+    transform: translate(var(--pl-pop-x, 0px), var(--pl-pop-y, -8px)) scale(0.95);
+  }
+}
+
+.polar .pl-pop {
+  animation: pl-pop 150ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+
+/* Modal: 99% scale and transparent to whole in 100ms (orbit Modal) */
+@keyframes pl-modal {
+  from {
+    opacity: 0;
+    transform: scale(0.99);
+  }
+}
+
+.polar .pl-modal {
+  animation: pl-modal 100ms ease-in-out both;
+}
+
+/* Sheet (orbit InlineModal): slides in from the right over 320ms with the
+   decelerate curve while its scrim fades to 50% black */
+@keyframes pl-sheet {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+}
+
+@keyframes pl-scrim {
+  from {
+    background-color: transparent;
+  }
+}
+
+.polar .pl-sheet {
+  animation: pl-sheet var(--pl-slow) var(--pl-ease-out) both;
+}
+
+.polar .pl-scrim {
+  animation: pl-scrim var(--pl-slow) var(--pl-ease-out) both;
+}
+
+/* Spinners turn once a second; skeletons pulse between full and half opacity */
+@keyframes pl-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.polar .pl-spin {
+  animation: pl-spin 1s linear infinite;
+}
+
+@keyframes pl-pulse {
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.polar .pl-pulse {
+  animation: pl-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* A status light that is live: a soft ring breathes out of the dot */
+@keyframes pl-ping {
+  75%,
+  100% {
+    transform: scale(2.2);
+    opacity: 0;
+  }
+}
+
+.polar .pl-ping {
+  animation: pl-ping 1.6s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .polar .pl-pop,
+  .polar .pl-modal,
+  .polar .pl-sheet,
+  .polar .pl-scrim,
+  .polar .pl-ping {
+    animation: none;
+  }
+
+  .polar .pl-spin {
+    animation-duration: 3s;
+  }
+}
