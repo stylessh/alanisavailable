@@ -4,6 +4,7 @@
 // slug. See README.md for what goes in a product folder.
 import * as claude from "./claude/index.mdx";
 import * as linear from "./linear/index.mdx";
+import * as polar from "./polar/index.mdx";
 import * as superlogical from "./superlogical/index.mdx";
 
-export const PRODUCTS = { superlogical, claude, linear };
+export const PRODUCTS = { superlogical, claude, linear, polar };
