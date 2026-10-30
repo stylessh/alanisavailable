@@ -15,7 +15,8 @@ import {
 import { Avatar } from "../ui/avatar";
 import { Button, IconButton } from "../ui/button";
 import { CopyInput, Input } from "../ui/field";
-import { Skeleton } from "../ui/feedback";
+import { Skeleton, Spinner } from "../ui/feedback";
+import { Morph } from "../ui/morph";
 import { Modal } from "../ui/overlay";
 import { Code } from "../ui/status";
 import { Frame, PoweredBy } from "./bits";
@@ -32,7 +33,8 @@ import { SEATS, SELLER, setScenario, type Pricing, type Scenario } from "./scena
  */
 function Centered({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex min-h-full flex-col items-center px-4">
+    // it arrives from the form, so it comes in softly rather than appearing
+    <div className="pl-morph-in flex min-h-full flex-col items-center px-4">
       <span className="flex shrink-0 items-center gap-2 pt-8 text-sm leading-5 text-(--pl-text) @3xl:pt-10">
         <Avatar name={SELLER.name} size={24} />
         {SELLER.name}
@@ -52,7 +54,11 @@ function Centered({ children }: { children: React.ReactNode }) {
  */
 function PolarLoader() {
   return (
-    <span role="status" aria-label="Loading" className="relative flex size-14 items-center justify-center rounded-(--pl-radius-full) bg-(--pl-surface) shadow-(--pl-shadow-sm)">
+    <span
+      role="status"
+      aria-label="Loading"
+      className="relative flex size-14 items-center justify-center rounded-(--pl-radius-full) bg-(--pl-surface) shadow-(--pl-shadow-sm)"
+    >
       <PolarLogo size={32} className="text-(--pl-text-faint)" />
       <PolarLogo size={32} className="pl-sheen absolute text-(--pl-text)" />
     </span>
@@ -92,21 +98,26 @@ function Steps({ steps, current }: { steps: string[]; current: number }) {
         const now = i === current;
         return (
           <li key={step} className="flex items-center gap-3 text-sm leading-5">
+            {/* three marks of one size (16px) on the spinner's geometry: done is filled with a check drawn ~2px thick (heavier than its 1.5px default, near the spinner's 2.7px line), the step under way
+                is the spinner itself, the ones to come are its ring, line for line */}
             <span className="flex size-5 shrink-0 items-center justify-center">
               {done ? (
-                <span className="flex size-5 items-center justify-center rounded-(--pl-radius-full) bg-(--pl-text) text-(--pl-primary-fg)">
-                  <CheckIcon size={12} strokeWidth={3} />
+                <span className="flex size-4 items-center justify-center rounded-(--pl-radius-full) bg-(--pl-text) text-(--pl-primary-fg)">
+                  <CheckIcon size={11} strokeWidth={4.5} />
                 </span>
               ) : now ? (
-                <span className="relative flex size-2.5">
-                  <span className="pl-ping absolute inset-0 rounded-(--pl-radius-full) bg-(--pl-text-muted)" />
-                  <span className="relative size-2.5 rounded-(--pl-radius-full) bg-(--pl-text)" />
-                </span>
+                <Spinner size={16} className="text-(--pl-text)" />
               ) : (
-                <span className="size-2.5 rounded-(--pl-radius-full) border border-(--pl-rule)" />
+                <svg width={16} height={16} viewBox="0 0 24 24" fill="none" aria-hidden className="text-(--pl-rule)">
+                  <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                </svg>
               )}
             </span>
-            <span className={done ? "text-(--pl-text-secondary)" : now ? "font-medium text-(--pl-text)" : "text-(--pl-text-faint)"}>{step}</span>
+            <span
+              className={done ? "text-(--pl-text-secondary)" : now ? "font-medium text-(--pl-text)" : "text-(--pl-text-faint)"}
+            >
+              {step}
+            </span>
           </li>
         );
       })}
@@ -114,15 +125,7 @@ function Steps({ steps, current }: { steps: string[]; current: number }) {
   );
 }
 
-function Heading({
-  icon,
-  title,
-  children,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  children: React.ReactNode;
-}) {
+function Heading({ icon, title, children }: { icon: React.ReactNode; title: string; children: React.ReactNode }) {
   return (
     <div className="flex flex-col items-center gap-3 text-center">
       <span className="flex size-12 items-center justify-center rounded-(--pl-radius-full) bg-(--pl-surface) shadow-(--pl-shadow-sm)">
@@ -188,35 +191,40 @@ function Benefits({ granting }: { granting: boolean }) {
         ) : undefined
       }
     >
-      {granting ? (
-        <div className="flex flex-col">
-          {[0, 1, 2].map((i) => (
-            <div key={i} className={`flex items-center gap-3 px-4 py-4 ${i ? "shadow-[inset_0_0.5px_0_var(--pl-hairline)]" : ""}`}>
-              <Skeleton width={32} height={32} radius={8} />
-              <div className="flex flex-1 flex-col gap-1.5">
-                <Skeleton width="45%" height={12} radius={4} />
-                <Skeleton width="70%" height={10} radius={4} />
+      <Morph id={granting ? "granting" : "granted"}>
+        {granting ? (
+          <div className="flex flex-col">
+            {[0, 1, 2].map((i) => (
+              <div
+                key={i}
+                className={`flex items-center gap-3 px-4 py-4 ${i ? "shadow-[inset_0_0.5px_0_var(--pl-hairline)]" : ""}`}
+              >
+                <Skeleton width={32} height={32} radius={8} />
+                <div className="flex flex-1 flex-col gap-1.5">
+                  <Skeleton width="45%" height={12} radius={4} />
+                  <Skeleton width="70%" height={10} radius={4} />
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div className="flex flex-col">
-          <Benefit first icon={<KeyIcon />} title="License key" detail="Activate Acme on up to 3 machines">
-            <CopyInput label="License key" value="ACME-7F3K-Q9DM-2LXP-H4RT" />
-          </Benefit>
-          <Benefit icon={<DownloadIcon />} title="Acme for macOS" detail="acme-2.4.0-universal.dmg · 48 MB">
-            <Button variant="secondary" size="sm" className="self-start" icon={<DownloadIcon size={14} />}>
-              Download
-            </Button>
-          </Benefit>
-          <Benefit icon={<GitHubGlyph />} title="Private repository" detail="Read access to acme/recipes on GitHub">
-            <Button variant="secondary" size="sm" className="self-start">
-              Connect GitHub account
-            </Button>
-          </Benefit>
-        </div>
-      )}
+            ))}
+          </div>
+        ) : (
+          <div className="flex flex-col">
+            <Benefit first icon={<KeyIcon />} title="License key" detail="Activate Acme on up to 3 machines">
+              <CopyInput label="License key" value="ACME-7F3K-Q9DM-2LXP-H4RT" />
+            </Benefit>
+            <Benefit icon={<DownloadIcon />} title="Acme for macOS" detail="acme-2.4.0-universal.dmg · 48 MB">
+              <Button variant="secondary" size="sm" className="self-start" icon={<DownloadIcon size={14} />}>
+                Download
+              </Button>
+            </Benefit>
+            <Benefit icon={<GitHubGlyph />} title="Private repository" detail="Read access to acme/recipes on GitHub">
+              <Button variant="secondary" size="sm" className="self-start">
+                Connect GitHub account
+              </Button>
+            </Benefit>
+          </div>
+        )}
+      </Morph>
     </Frame>
   );
 }
@@ -226,11 +234,14 @@ function SeatInvitations() {
   const remaining = SEATS.initial - 1;
   const [emails, setEmails] = useState(["sam@linstudio.example", ""]);
   return (
-    <Frame title="Invite your team" end={<span className="text-xs leading-4 text-(--pl-text-muted)">{remaining} seats left</span>}>
+    <Frame
+      title="Invite your team"
+      end={<span className="text-xs leading-4 text-(--pl-text-muted)">{remaining} seats left</span>}
+    >
       <div className="flex flex-col gap-3 p-4">
         <p className="text-sm leading-5 text-(--pl-text-secondary)">
-          You&apos;ve claimed your seat. Invite up to {remaining} more team members to the remaining seats. You can always manage this later
-          through the Customer Portal.
+          You&apos;ve claimed your seat. Invite up to {remaining} more team members to the remaining seats. You can always manage
+          this later through the Customer Portal.
         </p>
         {emails.map((email, i) => (
           <div key={i} className="flex items-center gap-2">
@@ -241,7 +252,12 @@ function SeatInvitations() {
               value={email}
               onChange={(e) => setEmails(emails.map((v, j) => (j === i ? e.target.value : v)))}
             />
-            <IconButton size={32} label="Remove" disabled={emails.length === 1} onClick={() => setEmails(emails.filter((_, j) => j !== i))}>
+            <IconButton
+              size={32}
+              label="Remove"
+              disabled={emails.length === 1}
+              onClick={() => setEmails(emails.filter((_, j) => j !== i))}
+            >
               <XIcon size={14} />
             </IconButton>
           </div>
@@ -269,16 +285,50 @@ function SeatInvitations() {
 const MOR =
   "This order is processed by our online reseller & Merchant of Record, Polar, who also handles order-related inquiries and returns.";
 
+/**
+ * After the button, as one page that moves between its moments rather than
+ * swapping them: the heading and what's under it each sit in a Morph, so
+ * processing becomes the receipt with the height easing and the content
+ * crossfading, and inside the benefits card the placeholders become the
+ * benefits the same way.
+ */
 export function Confirmation({ s, p }: { s: Scenario; p: Pricing }) {
   const [confirming, setConfirming] = useState(false);
+  const granting = s.step === "granting";
+  const thanks = s.step === "granting" || s.step === "success";
+
   // Failed: what happened, that nothing was charged, and the ways forward,
-  // with a reference to quote to support
-  if (s.step === "failed")
-    return (
-      <Centered>
-        <Heading icon={<CircleAlertIcon size={20} className="text-(--pl-danger)" />} title="Your order didn't go through">
-          A problem occurred while processing it, and nothing was charged. Your details are still filled in.
-        </Heading>
+  // with a reference to quote to support.
+  // Needs action: the bank holds the payment until the buyer confirms it,
+  // so the page leads with what's being confirmed and the one button.
+  // Confirming: Polar's mark while it waits, and where the order has got to.
+  // Then the receipt: thanks, and the benefits as they're granted.
+  const head =
+    s.step === "failed" ? (
+      <Heading icon={<CircleAlertIcon size={20} className="text-(--pl-danger)" />} title="Your order didn't go through">
+        A problem occurred while processing it, and nothing was charged. Your details are still filled in.
+      </Heading>
+    ) : s.step === "confirm-action" ? (
+      <Heading icon={<ShieldCheckIcon size={20} className="text-(--pl-text)" />} title="Confirm your payment">
+        Your bank wants to verify this payment before it goes through. It opens a short check of its own.
+      </Heading>
+    ) : s.step === "confirming" ? (
+      <div className="flex flex-col items-center gap-3 text-center">
+        <PolarLoader />
+        <h1 className="text-xl leading-7 font-medium text-balance text-(--pl-text)">We are processing your order</h1>
+        <p className="max-w-[360px] text-sm leading-5 text-pretty text-(--pl-text-muted)">
+          Please wait while we confirm your payment. This page updates on its own.
+        </p>
+      </div>
+    ) : (
+      <Heading icon={<CircleCheckIcon size={20} className="text-(--pl-success)" />} title="Thank you for your order!">
+        You now have access to {p.product.name}. A receipt is on its way to maya.lin@example.com.
+      </Heading>
+    );
+
+  const body =
+    s.step === "failed" ? (
+      <>
         <Frame
           title="What you can do"
           footer={
@@ -292,7 +342,10 @@ export function Confirmation({ s, p }: { s: Scenario; p: Pricing }) {
               ["Try again", "Most failures are momentary. The same card often works a minute later."],
               ["Use another payment method", "A different card, Link or Apple Pay."],
             ].map(([title, detail], i) => (
-              <div key={title} className={`flex flex-col gap-0.5 px-4 py-3 ${i ? "shadow-[inset_0_0.5px_0_var(--pl-hairline)]" : ""}`}>
+              <div
+                key={title}
+                className={`flex flex-col gap-0.5 px-4 py-3 ${i ? "shadow-[inset_0_0.5px_0_var(--pl-hairline)]" : ""}`}
+              >
                 <span className="text-sm leading-5 font-medium text-(--pl-text)">{title}</span>
                 <span className="text-xs leading-4 text-(--pl-text-muted)">{detail}</span>
               </div>
@@ -307,16 +360,9 @@ export function Confirmation({ s, p }: { s: Scenario; p: Pricing }) {
             Try again
           </Button>
         </div>
-      </Centered>
-    );
-  // Needs action: the bank holds the payment until the buyer confirms it,
-  // so the page leads with what's being confirmed and the one button
-  if (s.step === "confirm-action")
-    return (
-      <Centered>
-        <Heading icon={<ShieldCheckIcon size={20} className="text-(--pl-text)" />} title="Confirm your payment">
-          Your bank wants to verify this payment before it goes through. It opens a short check of its own.
-        </Heading>
+      </>
+    ) : s.step === "confirm-action" ? (
+      <>
         <Recap s={s} p={p} />
         <div className="flex flex-col gap-3">
           <Button
@@ -332,41 +378,39 @@ export function Confirmation({ s, p }: { s: Scenario; p: Pricing }) {
           </Button>
           <p className="text-center text-xs leading-4 text-(--pl-text-muted)">Nothing is charged until your bank approves it.</p>
         </div>
-      </Centered>
-    );
-  // Confirming: Polar's mark while it waits, and where the order has got to
-  if (s.step === "confirming")
-    return (
-      <Centered>
-        <div className="flex flex-col items-center gap-3 text-center">
-          <PolarLoader />
-          <h1 className="text-xl leading-7 font-medium text-balance text-(--pl-text)">We are processing your order</h1>
-          <p className="max-w-[360px] text-sm leading-5 text-pretty text-(--pl-text-muted)">
-            Please wait while we confirm your payment. This page updates on its own.
+      </>
+    ) : s.step === "confirming" ? (
+      <Frame
+        footer={
+          <p className="text-xs leading-4 text-(--pl-text-muted)">
+            You can close this page: the receipt and your access go to maya.lin@example.com either way.
           </p>
+        }
+      >
+        <div className="px-4 py-4">
+          <Steps steps={["Payment submitted", "Confirming with your bank", `Granting access to ${p.product.name}`]} current={1} />
         </div>
-        <Frame
-          footer={
-            <p className="text-xs leading-4 text-(--pl-text-muted)">
-              You can close this page: the receipt and your access go to maya.lin@example.com either way.
-            </p>
-          }
-        >
-          <div className="px-4 py-4">
-            <Steps steps={["Payment submitted", "Confirming with your bank", `Granting access to ${p.product.name}`]} current={1} />
+      </Frame>
+    ) : (
+      <>
+        <Benefits granting={granting} />
+        {s.offer === "seats" && !granting && (
+          <div className="pl-morph-in">
+            <SeatInvitations />
           </div>
-        </Frame>
-      </Centered>
+        )}
+        <p className="text-center text-xs leading-[1.6] text-pretty text-(--pl-text-muted)">{MOR}</p>
+      </>
     );
-  const granting = s.step === "granting";
+
+  // the receipt keeps one id from granting to success, so only what changes inside it moves
+  const moment = thanks ? "thanks" : s.step;
   return (
     <Centered>
-      <Heading icon={<CircleCheckIcon size={20} className="text-(--pl-success)" />} title="Thank you for your order!">
-        You now have access to {p.product.name}. A receipt is on its way to maya.lin@example.com.
-      </Heading>
-      <Benefits granting={granting} />
-      {s.offer === "seats" && !granting && <SeatInvitations />}
-      <p className="text-center text-xs leading-[1.6] text-pretty text-(--pl-text-muted)">{MOR}</p>
+      <Morph id={moment}>{head}</Morph>
+      <Morph id={moment}>
+        <div className="flex flex-col gap-8">{body}</div>
+      </Morph>
     </Centered>
   );
 }
@@ -376,14 +420,25 @@ export function Expired() {
     <Centered>
       <Heading
         icon={
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" aria-hidden className="text-(--pl-text-muted)">
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            strokeLinecap="round"
+            aria-hidden
+            className="text-(--pl-text-muted)"
+          >
             <circle cx="12" cy="12" r="10" />
             <path d="M12 6v6l4 2" />
           </svg>
         }
         title="This checkout has expired"
       >
-        Checkout sessions last 24 hours, and nothing was charged. Start again from {SELLER.name}&apos;s pricing page to get a fresh one.
+        Checkout sessions last 24 hours, and nothing was charged. Start again from {SELLER.name}&apos;s pricing page to get a
+        fresh one.
       </Heading>
       <div className="flex justify-center">
         <Button variant="secondary" onClick={() => setScenario({ step: "ready" })}>
@@ -408,7 +463,8 @@ export function ThreeDSecure({ p, open }: { p: Pricing; open: boolean }) {
         <div className="flex flex-col gap-2">
           <h2 className="text-lg leading-6 font-medium text-(--pl-text)">Confirm it&apos;s you</h2>
           <p className="text-sm leading-5 text-(--pl-text-muted)">
-            Approve the payment of {p.trial ? "$0.00 to save your card for" : <span className="text-(--pl-text)">{p.total.amount}</span>}{" "}
+            Approve the payment of{" "}
+            {p.trial ? "$0.00 to save your card for" : <span className="text-(--pl-text)">{p.total.amount}</span>}{" "}
             {p.trial ? "" : "to"} Polar (for {SELLER.name}) with Visa •••• 4242.
           </p>
         </div>

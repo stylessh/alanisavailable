@@ -543,6 +543,32 @@
     transform 0s var(--pl-fast);
 }
 
+/* Morph (ui/morph.tsx): content moving to what replaces it. The old fades
+   out quickly on top; the new comes in a beat later, from a softened 4px
+   below, while the height between them animates. */
+@keyframes pl-morph-in {
+  from {
+    opacity: 0;
+    filter: blur(2px);
+    transform: translateY(4px);
+  }
+}
+
+@keyframes pl-morph-out {
+  to {
+    opacity: 0;
+    filter: blur(2px);
+  }
+}
+
+.polar .pl-morph-in {
+  animation: pl-morph-in 280ms var(--pl-ease-out) 60ms both;
+}
+
+.polar .pl-morph-out {
+  animation: pl-morph-out 160ms var(--pl-ease-in) both;
+}
+
 /* Spinners turn once a second; skeletons pulse between full and half opacity */
 @keyframes pl-spin {
   to {
@@ -605,6 +631,11 @@
 
   .polar .pl-folded {
     filter: none;
+  }
+
+  .polar .pl-morph-in,
+  .polar .pl-morph-out {
+    animation: none;
   }
 
   .polar .pl-track,
