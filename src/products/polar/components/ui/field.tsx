@@ -14,8 +14,8 @@ import { CalendarIcon, SearchIcon } from "../icons";
 // label     14px/500 gray-900, leading 1, 8px above its control
 // help      12px or 14px gray-500, 8px below
 // error     the label and a 14px/500 message turn red-500; the message sits
-//           between the control and the help; the field's shadow turns red
-//           (aria-invalid takes the danger tint)
+//           between the control and the help; the field keeps its edge and
+//           a red ring sits 2px outside it (aria-invalid, styles.css)
 // disabled  half opacity, not-allowed, and flat: a plain gray-200 hairline inside, no shadow
 export const FIELD =
   "rounded-(--pl-radius-md) bg-(--pl-field) shadow-(--pl-shadow-sm) disabled:shadow-none disabled:inset-ring disabled:inset-ring-(--pl-border) has-disabled:shadow-none has-disabled:inset-ring has-disabled:inset-ring-(--pl-border)";
