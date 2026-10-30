@@ -2,6 +2,7 @@
 
 import { useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { MetricsPage } from "./pages/analytics";
+import { EventsPage } from "./pages/events";
 import { CustomersPage } from "./pages/customers";
 import { IncomePage } from "./pages/finance";
 import { HomePage } from "./pages/home";
@@ -39,6 +40,8 @@ function CurrentPage({ route }: { route: Route }) {
       return <CustomersPage />;
     case "analytics/metrics":
       return <MetricsPage />;
+    case "analytics/events":
+      return <EventsPage />;
     case "sales/orders":
       return <OrdersPage />;
     case "finance/income":

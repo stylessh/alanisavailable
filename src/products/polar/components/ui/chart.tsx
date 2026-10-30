@@ -81,7 +81,7 @@ function Ticks({ points, ticks, y }: { points: Point[]; ticks: Tick[]; y: number
  * The hover card (shadcn ChartTooltipContent, indicator "dot"): gray-50, a
  * half-strength gray-200 border, 9.6px corners, 10px by 6px of padding,
  * shadow-xl, at least 128px wide; a 12px/500 date, then each series as a
- * 10px square-cornered dot, its name in gray-500 and its value in 500 mono
+ * 10px square-cornered dot, its name in gray-500 and its value in 500 tabular
  * figures on the right.
  */
 export function ChartTooltip({
@@ -104,7 +104,7 @@ export function ChartTooltip({
           <LegendDot variant="dot" color={r.color ?? "var(--pl-chart)"} />
           <div className="flex flex-1 items-center justify-between gap-4 leading-none">
             <span className="text-(--pl-text-muted)">{r.name}</span>
-            <span className="font-mono font-medium text-(--pl-text) tabular-nums">{r.value}</span>
+            <span className="font-medium text-(--pl-text) tabular-nums">{r.value}</span>
           </div>
         </div>
       ))}

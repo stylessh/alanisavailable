@@ -23,9 +23,10 @@ export const VERSIONS: Record<string, { live: string; snapshots: Snapshot[] }> =
     ],
   },
   "polar": {
-    live: "Unified design system",
+    live: "Checkout",
     snapshots: [
       {"id":"v1","name":"First version","date":"2026-10-29","commit":"1179f17"},
+      {"id":"v2","name":"Unified design system","date":"2026-10-29","commit":"13afb11"},
     ],
   },
   "superlogical": {

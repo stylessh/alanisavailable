@@ -363,3 +363,157 @@ export const MONTHLY_REVENUE = [
 ];
 
 export const BALANCE = 418_260;
+
+// Analytics › Events: what Polar records as things happen (system events),
+// and what the product ingests itself (user events, here build minutes with
+// a cost). Built from the orders and customers above, so they agree.
+export type EventSource = "system" | "user";
+
+export type EventDetail =
+  | { kind: "checkout"; product: Product; amount: number }
+  | { kind: "order"; product: Product; amount: number; status: OrderStatus }
+  | { kind: "benefit"; benefit: string; product: Product }
+  | { kind: "customer"; changed?: string }
+  | { kind: "credit"; amount: number }
+  | { kind: "usage"; metadata: Record<string, string> };
+
+export type AppEvent = {
+  id: string;
+  /** "Order Paid" for system events, the ingested name ("build.completed") for user ones */
+  label: string;
+  source: EventSource;
+  date: Date;
+  customer: Customer;
+  /** what it brought in, in cents, when it's a payment */
+  amount?: number;
+  /** what it cost, in cents (user events that report a _cost) */
+  cost?: number;
+  detail: EventDetail;
+  /** the event's data as Polar stores it (made up, but shaped like the real thing) */
+  payload: { [key: string]: unknown };
+};
+
+/** a stable made-up UUID: the same seed always gives the same one */
+const uuid = (seed: string) => {
+  let h = 2166136261;
+  const hex = Array.from({ length: 32 }, (_, i) => {
+    for (const ch of seed + i) h = Math.imul(h ^ ch.charCodeAt(0), 16777619) >>> 0;
+    return (h % 16).toString(16);
+  }).join("");
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-4${hex.slice(13, 16)}-a${hex.slice(17, 20)}-${hex.slice(20, 32)}`;
+};
+
+const BENEFITS: Record<string, string> = {
+  "p-pro": "License Keys",
+  "p-pro-y": "License Keys",
+  "p-team": "Discord access",
+  "p-life": "License Keys",
+};
+
+const minutes = (d: Date, m: number) => new Date(d.getTime() + m * 60_000);
+
+export const EVENTS: AppEvent[] = (() => {
+  const list: AppEvent[] = [];
+  let n = 0;
+  const add = (e: Omit<AppEvent, "id">) => list.push({ ...e, id: `ev${++n}` });
+  const product = (p: Product) => uuid(`product-${p.id}`);
+  for (const o of ORDERS) {
+    add({
+      label: "Checkout Created",
+      source: "system",
+      date: minutes(o.date, -3),
+      customer: o.customer,
+      detail: { kind: "checkout", product: o.product, amount: o.amount },
+      payload: {
+        checkout_id: uuid(`checkout-${o.id}`),
+        checkout_status: "open",
+        product_id: product(o.product),
+        amount: o.amount,
+      },
+    });
+    add({
+      label: "Order Paid",
+      source: "system",
+      date: o.date,
+      customer: o.customer,
+      amount: o.amount,
+      detail: { kind: "order", product: o.product, amount: o.amount, status: o.status },
+      payload: {
+        order_id: uuid(`order-${o.id}`),
+        product_id: product(o.product),
+        billing_reason: o.product.interval ? "subscription_create" : "purchase",
+        amount: o.amount,
+        currency: "usd",
+        status: o.status,
+      },
+    });
+    if (BENEFITS[o.product.id])
+      add({
+        label: "Benefit Granted",
+        source: "system",
+        date: minutes(o.date, 1),
+        customer: o.customer,
+        detail: { kind: "benefit", benefit: BENEFITS[o.product.id], product: o.product },
+        payload: {
+          benefit_id: uuid(`benefit-${BENEFITS[o.product.id]}`),
+          benefit_grant_id: uuid(`grant-${o.id}`),
+          benefit_type: BENEFITS[o.product.id] === "License Keys" ? "license_keys" : "discord",
+          product_id: product(o.product),
+        },
+      });
+    if (o.product.id === "p-credits")
+      add({
+        label: "Balance Credit Order",
+        source: "system",
+        date: minutes(o.date, 1),
+        customer: o.customer,
+        amount: o.amount,
+        detail: { kind: "credit", amount: o.amount },
+        payload: { order_id: uuid(`order-${o.id}`), amount: o.amount, currency: "usd" },
+      });
+  }
+  const customerPayload = (c: Customer, updated: { [key: string]: unknown } = {}) => ({
+    customer_id: uuid(`customer-${c.id}`),
+    customer_email: c.email,
+    customer_name: c.name,
+    customer_external_id: null,
+    updated_fields: updated,
+  });
+  for (const c of CUSTOMERS.slice(0, 4))
+    add({
+      label: "Customer Created",
+      source: "system",
+      date: c.created,
+      customer: c,
+      detail: { kind: "customer" },
+      payload: customerPayload(c),
+    });
+  add({
+    label: "Customer Updated",
+    source: "system",
+    date: at(2, 9, 4),
+    customer: CUSTOMERS[2],
+    detail: { kind: "customer", changed: "Billing address" },
+    payload: customerPayload(CUSTOMERS[2], { billing_address: { country: "SE", city: "Malmö" } }),
+  });
+  // build minutes the product reports, each with what it cost to run
+  [
+    [0, 13, 52, "c1", 14, 6],
+    [0, 10, 17, "c2", 41, 17],
+    [1, 16, 40, "c1", 8, 3],
+    [2, 12, 5, "c4", 22, 9],
+    [3, 18, 33, "c2", 63, 26],
+  ].forEach(([days, h, m, c, mins, cost]) =>
+    add({
+      label: "build.completed",
+      source: "user",
+      date: at(days as number, h as number, m as number),
+      customer: find(CUSTOMERS, c as string),
+      cost: cost as number,
+      detail: { kind: "usage", metadata: { minutes: String(mins), runner: "linux-arm64" } },
+      // the product's own data; _cost is how it reports what the event cost (Polar's convention)
+      payload: { minutes: mins, runner: "linux-arm64", cached: (mins as number) < 20, _cost: { amount: cost, currency: "usd" } },
+    }),
+  );
+  return list.sort((a, b) => b.date.getTime() - a.date.getTime());
+})();

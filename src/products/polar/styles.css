@@ -6,8 +6,11 @@
 
 .polar {
   --pl-sans: var(--font-polar-sans), "Inter", sans-serif;
-  /* Tailwind's font-mono reads --font-mono, so it picks up Geist Mono here */
+  /* Geist Mono for font-mono. The site's theme is inline, so its font-mono
+     class is compiled to var(--font-geist-mono) rather than --font-mono;
+     pointing that variable here is what makes Polar's mono its own. */
   --font-mono: var(--font-polar-mono), ui-monospace, monospace;
+  --font-geist-mono: var(--font-polar-mono);
 
   /* The gray scale, Tailwind 4's gray (Polar's palette): the only grays the
      system uses. Every gray role below points into it. */
@@ -217,6 +220,15 @@
   --pl-chart-cursor: var(--pl-gray-200);
   --pl-bar: var(--pl-gray-400);
 
+  /* Code (an event's payload, on a FramedCard's raised card): quiet
+     syntax colors, keys in the text color, strings green, numbers amber,
+     null and booleans violet, punctuation faint */
+  --pl-code-key: var(--pl-text);
+  --pl-code-string: oklch(0.508 0.118 165.612); /* emerald-700 */
+  --pl-code-number: oklch(0.555 0.163 48.998); /* amber-700 */
+  --pl-code-literal: oklch(0.541 0.281 293.009); /* violet-600 */
+  --pl-code-punct: var(--pl-text-faint);
+
   /* A gray pill (100 under 600) and a neutral status chip (gray-200) */
   --pl-pill-gray-bg: var(--pl-gray-100);
   --pl-pill-gray: var(--pl-gray-600);
@@ -267,6 +279,11 @@
   --pl-pill-gray-bg: var(--pl-polar-700);
   --pl-pill-gray: var(--pl-polar-300);
   --pl-neutral-bg: var(--pl-polar-700);
+
+  /* code colors a step lighter, to read on the dark card */
+  --pl-code-string: oklch(0.765 0.177 163.223); /* emerald-400 */
+  --pl-code-number: oklch(0.828 0.189 84.429); /* amber-400 */
+  --pl-code-literal: oklch(0.702 0.183 293.541); /* violet-400 */
 
   --pl-shadow-xs: 0 0 0 0.5px var(--pl-hairline), 0 1px 2px -1px rgb(0 0 0 / 0.5);
   --pl-shadow-sm:
@@ -382,6 +399,18 @@
 
   .polar input::placeholder {
     color: var(--pl-text-faint);
+  }
+
+  /* Geist Mono beside Neue Montreal: no tracking (it's already even), a
+     step heavier (500 against 450) so it carries the same color, and set a
+     size under its sans neighbor (13 beside 14, 12 beside 13), since its
+     x-height runs about 4% taller at the same size. */
+  .polar .font-mono,
+  .polar code,
+  .polar pre,
+  .polar kbd {
+    letter-spacing: 0;
+    font-weight: 500;
   }
 }
 

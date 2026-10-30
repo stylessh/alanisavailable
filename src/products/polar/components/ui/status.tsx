@@ -13,14 +13,17 @@ const TONES: Record<Tone, string> = {
 
 /**
  * orbit Status ("Paid", "Active", "Refunded"): a tinted chip whose padding
- * and corners are in em (0.3em x 0.7em and 0.5em at 14px; 0.2em x 0.5em at
- * 12px), so it scales with its text. A 100 fill under 500 text.
+ * and corners scale with its text (0.3em x 0.7em, 8px corners at 14px;
+ * 0.2em x 0.5em, 6px at 12px). A 100 fill under 500 text, 950 under 500 in
+ * dark. This is the system's one badge: never a full capsule.
  */
 export function Status({ tone, size = "md", children }: { tone: Tone; size?: "sm" | "md"; children: React.ReactNode }) {
   return (
     <div
-      className={`inline-flex w-fit items-center justify-center rounded-(--pl-radius-sm) whitespace-nowrap ${
-        size === "md" ? "px-[0.7em] py-[0.3em] text-sm leading-5" : "px-[0.5em] py-[0.2em] text-xs leading-4"
+      className={`inline-flex w-fit items-center justify-center whitespace-nowrap ${
+        size === "md"
+          ? "rounded-(--pl-radius-sm) px-[0.7em] py-[0.3em] text-sm leading-5"
+          : "rounded-[6px] px-[0.5em] py-[0.2em] text-xs leading-4"
       } ${TONES[tone]}`}
     >
       {children}
@@ -40,23 +43,25 @@ const PILLS: Record<PillColor, string> = {
 };
 
 /**
- * orbit Pill ("One-time Product", plan badges): a 12px/500 capsule, 6px by
- * 2px, a 100 fill under 600 text (blue sits on 50).
+ * orbit Pill ("One-time Product", plan badges): a 12px/500 tag in the
+ * small Status chip's shape (6px corners, 0.2em x 0.5em), not Polar's
+ * capsule, so every badge in the system reads alike; a 100 fill under 600
+ * text (blue sits on 50).
  */
 export function Pill({ color, className = "", children }: { color: PillColor; className?: string; children: React.ReactNode }) {
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-(--pl-radius-full) px-1.5 py-0.5 text-xs leading-4 font-medium whitespace-nowrap ${PILLS[color]} ${className}`}
+      className={`inline-flex items-center gap-1 rounded-[6px] px-[0.5em] py-[0.2em] text-xs leading-4 font-medium whitespace-nowrap ${PILLS[color]} ${className}`}
     >
       {children}
     </span>
   );
 }
 
-/** A discount code ("PANETEST"): a gray pill in Geist Mono, 8px sides, set solid */
+/** A discount code ("PANETEST"): a gray pill, 8px sides, set solid and spaced a little, as a code reads */
 export function Code({ children }: { children: React.ReactNode }) {
   return (
-    <Pill color="gray" className="shrink-0 px-2 py-0.5 font-mono text-xs leading-none">
+    <Pill color="gray" className="shrink-0 px-2 py-0.5 text-xs leading-none tracking-[0.04em]">
       {children}
     </Pill>
   );

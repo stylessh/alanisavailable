@@ -26,13 +26,17 @@ export function Panel({ className = "", children }: { className?: string; childr
  * The inner card of a card-in-card: white, 12px corners (a step inside a
  * 16px frame, the radius scale's nesting rule), raised with the contained
  * shadow. The shadow is laid over the content, so a hovered row's fill
- * can't cover its edge. A table's body and a FramedCard's body.
+ * can't cover its edge. A table's body and a FramedCard's body. The frame
+ * is there to hold a header; with nothing to title (a headerless list),
+ * the Inset stands on the page alone, `outer`, with the frame's 16px
+ * corners, since a bare tinted ring around it reads as a focus state.
  */
-export function Inset({ className = "", children }: { className?: string; children: React.ReactNode }) {
+export function Inset({ className = "", outer, children }: { className?: string; outer?: boolean; children: React.ReactNode }) {
+  const radius = outer ? "rounded-(--pl-radius-lg)" : "rounded-(--pl-radius-md)";
   return (
     <div className={`relative flex min-h-0 flex-col ${className}`}>
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-(--pl-radius-md) bg-(--pl-surface)">{children}</div>
-      <span aria-hidden className="pointer-events-none absolute inset-0 rounded-(--pl-radius-md) shadow-(--pl-shadow-sm)" />
+      <div className={`flex min-h-0 flex-1 flex-col overflow-hidden ${radius} bg-(--pl-surface)`}>{children}</div>
+      <span aria-hidden className={`pointer-events-none absolute inset-0 ${radius} shadow-(--pl-shadow-sm)`} />
     </div>
   );
 }
@@ -49,19 +53,25 @@ export function Inset({ className = "", children }: { className?: string; childr
 export function FramedCard({
   title,
   description,
+  action,
   className = "",
   children,
 }: {
   title: string;
   description?: string;
+  /** on the header's right (a payload's copy button) */
+  action?: React.ReactNode;
   className?: string;
   children: React.ReactNode;
 }) {
   return (
     <section className={`flex min-w-0 flex-col rounded-(--pl-radius-lg) bg-(--pl-subtle) ${className}`}>
-      <header className="flex shrink-0 flex-col gap-0.5 px-4 pt-3 pb-3">
-        <h2 className="text-sm leading-5 font-[550] tracking-[0.01em] text-(--pl-text)">{title}</h2>
-        {description && <p className="text-xs leading-4 text-(--pl-text-muted)">{description}</p>}
+      <header className="flex shrink-0 items-center justify-between gap-4 py-3 pr-2 pl-4">
+        <div className="flex min-w-0 flex-col gap-0.5">
+          <h2 className="text-sm leading-5 font-[550] tracking-[0.01em] text-(--pl-text)">{title}</h2>
+          {description && <p className="text-xs leading-4 text-(--pl-text-muted)">{description}</p>}
+        </div>
+        {action && <div className="-my-1 shrink-0">{action}</div>}
       </header>
       <Inset className="mx-1 mb-1 flex-1">{children}</Inset>
     </section>

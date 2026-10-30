@@ -181,7 +181,11 @@ const TYPE: { label: string; className: string; sample: string }[] = [
   { label: "Label · 14/14 · 500", className: "text-sm leading-none font-medium", sample: "Success URL" },
   { label: "Button · 14/20 · 550 · 0.01em", className: "text-sm leading-5 font-[550] tracking-[0.01em]", sample: "New Product" },
   { label: "Caption · 12/16 · 450", className: "text-xs leading-4", sample: "Helpful if you have multiple links" },
-  { label: "Mono · Geist Mono 12/16", className: "font-mono text-xs leading-4", sample: "82d4d2fb-0925-464a-b607" },
+  {
+    label: "Code · Geist Mono 13/22, code blocks only",
+    className: "font-mono text-[13px] leading-[22px]",
+    sample: '"order_id": "82d4d2fb"',
+  },
 ];
 
 function Foundations() {
@@ -450,11 +454,11 @@ function Fields() {
             <Input placeholder="Disabled" disabled aria-label="Disabled example" />
           </div>
         </Specimen>
-        <Specimen label="Search, copy, mono">
+        <Specimen label="Search, copy, key">
           <div className="flex flex-col gap-3">
             <SearchInput placeholder="Search Products" aria-label="Search products" />
             <CopyInput label="Organization ID" value="82d4d2fb-0925-464a-b607-35d56e64f0e1" />
-            <Input mono value={meta} onChange={(e) => setMeta(e.target.value)} placeholder="key" aria-label="Metadata key" />
+            <Input value={meta} onChange={(e) => setMeta(e.target.value)} placeholder="key" aria-label="Metadata key" />
           </div>
         </Specimen>
       </div>

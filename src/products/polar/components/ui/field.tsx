@@ -42,14 +42,11 @@ export function Input({
   className = "",
   prefix,
   suffix,
-  mono,
   ...props
 }: Omit<InputHTMLAttributes<HTMLInputElement>, "prefix"> & {
   /** a glyph or text inside the left edge (the field indents to 40px) */
   prefix?: React.ReactNode;
   suffix?: React.ReactNode;
-  /** Geist Mono, as metadata keys and IDs are set */
-  mono?: boolean;
 }) {
   const wired = useFieldProps(props);
   const input = (
@@ -58,7 +55,7 @@ export function Input({
       {...wired}
       className={`h-10 w-full px-3 py-2 text-sm leading-5 text-(--pl-text) ${FIELD} ${FOCUS} ${
         prefix ? "pl-10" : ""
-      } ${suffix ? "pr-10" : ""} ${mono ? "font-mono" : ""} ${prefix || suffix ? "" : className}`}
+      } ${suffix ? "pr-10" : ""} ${prefix || suffix ? "" : className}`}
     />
   );
   if (!prefix && !suffix) return input;

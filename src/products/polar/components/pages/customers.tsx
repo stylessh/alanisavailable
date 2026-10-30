@@ -220,7 +220,7 @@ function NewCustomerSheet({
           <Input placeholder="Jane Doe" value={name} onChange={(e) => setName(e.target.value)} />
         </Field>
         <Field label="External ID" description="Optional. Your own ID for this customer, to find them by later." small>
-          <Input mono placeholder="usr_1337" value={externalId} onChange={(e) => setExternalId(e.target.value)} />
+          <Input placeholder="usr_1337" value={externalId} onChange={(e) => setExternalId(e.target.value)} />
         </Field>
         {/* Enter submits */}
         <button type="submit" hidden />

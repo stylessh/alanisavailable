@@ -14,6 +14,7 @@ import {
   LandmarkIcon,
   LinkIcon,
   PackageIcon,
+  PaletteIcon,
   PercentIcon,
   ReceiptIcon,
   SendIcon,
@@ -502,6 +503,16 @@ export function Sidebar({ compact = false, veiled = false }: { compact?: boolean
         <div className="flex flex-col gap-2 p-2">
           {!settings && (
             <>
+              {/* not Polar's: the way into this replica's design-system playground */}
+              <Tooltip content="Design system" side="right" disabled={!compact} className="flex">
+                <a
+                  href="#design-system"
+                  className="flex h-[22px] w-full items-center gap-4 rounded-(--pl-radius-sm) border border-transparent px-2 text-sm leading-5 font-medium whitespace-nowrap text-(--pl-text-muted) hover:text-(--pl-text)"
+                >
+                  <PaletteIcon size={14} className="shrink-0" />
+                  <span className={`pl-fold ${folded ? "pl-folded" : ""}`}>Design system</span>
+                </a>
+              </Tooltip>
               <Tooltip content="Support" side="right" disabled={!compact} className="flex">
                 <button
                   type="button"
