@@ -66,11 +66,11 @@ export function Tabs<T extends string>({
             className={
               variant === "text"
                 ? `cursor-pointer text-xl leading-[27.5px] font-normal transition-colors ${
-                    on ? "text-(--pl-text-strong)" : "text-(--pl-text-muted) hover:text-(--pl-text-strong)"
+                    on ? "text-(--pl-text)" : "text-(--pl-text-muted) hover:text-(--pl-text)"
                   }`
-                : `inline-flex cursor-pointer items-center justify-center rounded-xl px-4 py-1.5 font-medium whitespace-nowrap transition-all ${
+                : `inline-flex cursor-pointer items-center justify-center rounded-(--pl-radius-md) px-4 py-1.5 font-medium whitespace-nowrap transition-all ${
                     size === "default" ? "text-sm leading-5" : "text-xs leading-4"
-                  } ${on ? "bg-(--pl-shell) text-(--pl-text-strong)" : "text-(--pl-text-faint) hover:text-(--pl-text-strong)"}`
+                  } ${on ? "bg-(--pl-fill) text-(--pl-text)" : "text-(--pl-text-faint) hover:text-(--pl-text)"}`
             }
           >
             {t.label}

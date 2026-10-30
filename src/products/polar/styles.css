@@ -1,5 +1,5 @@
 /* Polar style guide. Every value here was read from the live dashboard
-   (polar.sh/dashboard, 1440x900, light theme) through the DOM's computed
+   (polar.sh/dashboard, 1440x900) through the DOM's computed
    styles, and matched to the tokens in Polar's open-source web client
    (clients/apps/web/src/styles/globals.css, Apache 2.0): its grays, blues and
    greens are Tailwind 4's own oklch palette, so they're written that way. */
@@ -9,52 +9,71 @@
   /* Tailwind's font-mono reads --font-mono, so it picks up Geist Mono here */
   --font-mono: var(--font-polar-mono), ui-monospace, monospace;
 
-  /* Surfaces: the shell (sidebar) and the white page card floating on it */
-  --pl-shell: oklch(0.967 0.003 264.542); /* gray-100 */
-  --pl-surface: #fff;
-  /* table headers, segmented tracks, avatar fills, settings panels */
-  --pl-subtle: oklch(0.985 0.002 247.839); /* gray-50 */
-  --pl-border: oklch(0.928 0.006 264.531); /* gray-200 */
-  /* the sub-navigation rail and checkbox outlines */
-  --pl-rule: oklch(0.872 0.01 258.338); /* gray-300 */
+  /* The gray scale, Tailwind 4's gray (Polar's palette): the only grays the
+     system uses. Every gray role below points into it. */
+  --pl-white: #fff;
+  --pl-gray-50: oklch(0.985 0.002 247.839);
+  --pl-gray-100: oklch(0.967 0.003 264.542);
+  --pl-gray-200: oklch(0.928 0.006 264.531);
+  --pl-gray-300: oklch(0.872 0.01 258.338);
+  --pl-gray-400: oklch(0.707 0.022 261.325);
+  --pl-gray-500: oklch(0.551 0.027 264.364);
+  --pl-gray-600: oklch(0.446 0.03 256.802);
+  --pl-gray-700: oklch(0.373 0.034 259.733);
+  --pl-gray-800: oklch(0.278 0.033 256.848);
+  --pl-gray-900: oklch(0.21 0.034 264.665);
+  --pl-gray-950: oklch(0.13 0.028 261.692);
 
-  /* Text: Polar's foreground is gray-900; active and button text is pure black */
-  --pl-text: oklch(0.21 0.034 264.665); /* gray-900 */
-  --pl-text-input: oklch(0.13 0.028 261.692); /* gray-950 */
-  --pl-text-strong: #000;
-  --pl-text-muted: oklch(0.551 0.027 264.364); /* gray-500 */
-  --pl-text-faint: oklch(0.707 0.022 261.325); /* gray-400 */
-  --pl-text-dim: oklch(0.446 0.03 256.802); /* gray-600 */
-  --pl-text-soft: oklch(0.373 0.034 259.733); /* gray-700 */
+  /* Polar's dark ramp (globals.css --color-polar-*): plain neutral grays,
+     no blue in them. Dark mode builds its roles from these instead. */
+  --pl-polar-50: hsl(0 0% 85%);
+  --pl-polar-100: hsl(0 0% 79%);
+  --pl-polar-200: hsl(0 0% 68%);
+  --pl-polar-300: hsl(0 0% 62%);
+  --pl-polar-400: hsl(0 0% 52%);
+  --pl-polar-500: hsl(0 0% 46%);
+  --pl-polar-600: hsl(0 0% 16%);
+  --pl-polar-700: hsl(0 0% 13%);
+  --pl-polar-800: hsl(0 0% 9.5%);
+  --pl-polar-900: hsl(0 0% 6.5%);
+  --pl-polar-950: hsl(0 0% 3.5%);
 
-  /* Buttons: primary is black, secondary a gray-100 pill with a 4% black hairline */
-  --pl-primary: #000;
-  --pl-primary-hover: oklch(0.21 0.034 264.665);
-  --pl-secondary: oklch(0.967 0.003 264.542);
-  --pl-secondary-hover: oklch(0.928 0.006 264.531);
-  --pl-secondary-border: rgb(0 0 0 / 0.04);
-  /* ghost and outline buttons fill gray-200 on hover */
-  --pl-ghost-hover: oklch(0.928 0.006 264.531);
   --pl-link: oklch(0.707 0.165 254.624); /* blue-400 */
   /* Delete Organization */
   --pl-destructive: oklch(0.637 0.237 25.331); /* red-500 */
   --pl-destructive-hover: oklch(0.577 0.245 27.325); /* red-600 */
 
-  /* Shadows: shadow-xs on cards and fields, Polar's shadow-lg on a segmented thumb */
-  --pl-shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-  --pl-shadow-lg: 0 0 20px rgb(0 0 0 / 0.04), 0 0 5px rgb(0 0 0 / 0.06);
+  /* Elevation, contained the way Linear draws it: a hairline ring for the
+     edge, a 1px contact shadow, and short offset drops with negative or
+     small spread, instead of wide centered glows. Black at 2–12%.
+       xs  the page cards on the gray shell: a half-pixel hairline as their
+           edge (--pl-hairline, the dividers' shade, which run right up to
+           it) and a 1px contact tucked under the bottom, nothing that
+           spreads. Outside the box, so a row's fill can't paint over it.
+       sm  raised without a border: fields, secondary buttons, the
+           segmented and switch thumbs, the current sidebar item. Its
+           hairline and its 1px contact sit inside the box, and its drop
+           stays tucked under it, so a white control's edge lands exactly
+           where a filled sibling's does: side by side, a secondary and a
+           primary button read the same size.
+     Filled controls (primary, danger) take no shadow: their color is
+     their edge, and a dark ring around a fill only muddies it.
+       md  floating: menus, selects, combobox, date picker, tooltips
+       lg  overlays: the sheet and the modal */
+  --pl-shadow-xs: 0 0 0 0.5px var(--pl-hairline), 0 1px 2px -1px rgb(0 0 0 / 0.06);
+  --pl-shadow-sm: inset 0 0 0 0.5px rgb(0 0 0 / 0.12), inset 0 -1px 0 0 rgb(0 0 0 / 0.04), 0 2px 3px -2px rgb(0 0 0 / 0.06);
+  --pl-shadow-md:
+    0 0 0 0.5px rgb(0 0 0 / 0.08), 0 1px 1px 0 rgb(0 0 0 / 0.04), 0 3px 9px 0 rgb(0 0 0 / 0.04), 0 6px 18px 0 rgb(0 0 0 / 0.02);
+  --pl-shadow-lg: 0 0 0 0.5px rgb(0 0 0 / 0.12), 0 8px 24px 0 rgb(0 0 0 / 0.12);
+
   /* the 10% black ring inside an avatar */
   --pl-avatar-ring: inset 0 0 0 1px rgb(0 0 0 / 0.1);
 
-  /* Charts (Recharts in Polar): a blue-600 line over a gradient of itself,
-     dashed gray-200 verticals at half strength, #666 tick labels */
+  /* Charts (Recharts in Polar): a blue-600 line over a gradient of itself */
   --pl-chart: #2563eb;
-  --pl-chart-grid: oklch(0.928 0.006 264.531 / 0.5);
-  --pl-chart-tick: #666;
   /* the legend ring beside each metric's date range */
   --pl-legend: oklch(0.623 0.214 259.815); /* blue-500 */
-  /* Revenue widget bars: past months gray-400, the current month indigo-400 */
-  --pl-bar: oklch(0.707 0.022 261.325);
+  /* Revenue widget bars: the current month indigo-400 */
   --pl-bar-current: oklch(0.673 0.182 276.935);
   --pl-hatch: rgb(0 0 0 / 0.08);
 
@@ -71,39 +90,25 @@
   --pl-purple-bg: oklch(0.943 0.029 294.588); /* violet-100 */
   --pl-purple: oklch(0.606 0.25 292.717); /* violet-500 */
 
-  --pl-focus: oklch(0.623 0.214 259.815);
-
   /* Accent: Polar's shadcn --primary and --accent are both blue-600. It fills
      a checked switch, a calendar range and the highlighted row of every
      select, menu and combobox (with white text). */
   --pl-accent: oklch(0.546 0.245 262.881); /* blue-600 */
-  --pl-accent-fg: #fff;
   --pl-accent-soft: oklch(0.546 0.245 262.881 / 0.5); /* a range's outside days */
-  /* Text fields: a blue-300 border inside a 3px blue-100 ring while focused */
-  --pl-field-focus: oklch(0.809 0.105 251.813); /* blue-300 */
-  --pl-field-ring: oklch(0.932 0.032 255.585); /* blue-100 */
   --pl-error: oklch(0.637 0.237 25.331); /* red-500, labels and messages */
   /* the destructive button lightens on hover, to red-400 */
   --pl-destructive-light: oklch(0.704 0.191 22.216);
 
-  /* Overlays: popovers are white with gray-950 text; menus sit on gray-50 */
-  --pl-popover: #fff;
-  --pl-popover-text: oklch(0.13 0.028 261.692); /* gray-950 */
-  --pl-menu: oklch(0.985 0.002 247.839); /* gray-50 */
-  --pl-shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
-  --pl-shadow-md: 0 0 15px rgb(0 0 0 / 0.04), 0 0 2px rgb(0 0 0 / 0.06);
-  --pl-shadow-xl: 0 0 30px rgb(0 0 0 / 0.04), 0 0 10px rgb(0 0 0 / 0.06);
   /* the dimmers: 70% behind a modal, 50% behind a sheet */
   --pl-scrim-modal: rgb(0 0 0 / 0.7);
   --pl-scrim-sheet: rgb(0 0 0 / 0.5);
-  /* the hover line across a chart */
-  --pl-chart-cursor: #e5e7eb;
+  /* selected text: blue-200 under the text color, whatever gray the text
+     was, so a muted label stays readable while it's selected */
+  --pl-selection: oklch(0.882 0.059 254.128);
 
   /* Pills (orbit Pill): a 100 fill and 600 text, blue at 50 */
   --pl-pill-blue-bg: oklch(0.97 0.014 254.604);
   --pl-pill-blue: oklch(0.546 0.245 262.881);
-  --pl-pill-gray-bg: oklch(0.967 0.003 264.542);
-  --pl-pill-gray: oklch(0.446 0.03 256.802);
   --pl-pill-green-bg: oklch(0.95 0.052 163.051);
   --pl-pill-green: oklch(0.596 0.145 163.225);
   --pl-pill-red-bg: oklch(0.936 0.032 17.717);
@@ -112,8 +117,24 @@
   --pl-pill-yellow: oklch(0.795 0.184 86.047);
   --pl-pill-purple-bg: oklch(0.946 0.033 307.174);
   --pl-pill-purple: oklch(0.558 0.288 302.321);
-  /* a neutral status chip is gray-200 */
-  --pl-neutral-bg: oklch(0.928 0.006 264.531);
+
+  /* Corners: one scale. Nested corners follow the outer one less the gap
+     between them, so a 12px popover with 4px of padding holds 8px rows.
+       xs  4   checkboxes, tiny chips
+       sm  8   rows in popovers and menus, tooltips, nav items, icon tiles
+       md  12  fields, popovers, alerts, pill tabs, accordion rows
+       lg  16  cards, panels, the page card, tables, lists, settings groups
+       xl  24  the modal frame (its card 4px inside), big gray surfaces
+       full    buttons, segmented tracks, pills, switches */
+  --pl-radius-xs: 4px;
+  --pl-radius-sm: 8px;
+  --pl-radius-md: 12px;
+  --pl-radius-lg: 16px;
+  --pl-radius-xl: 24px;
+  --pl-radius-full: 9999px;
+
+  /* Popovers: never narrower than this, so short lists still breathe */
+  --pl-popover-min: 200px;
 
   /* Motion (orbit durations and easings) */
   --pl-fast: 120ms;
@@ -135,6 +156,208 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* The gray roles, declared again wherever a playground column (data-pl-scope)
+   brings its own scale: a custom property built from var() resolves where
+   it's declared, so each scope works its roles out from its own grays. */
+.polar,
+.polar [data-pl-scope] {
+  /* Surfaces: the shell (sidebar), the white page card floating on it, the
+     gray-50 of table headers and tracks, the hairline and the stronger rule */
+  --pl-surface: var(--pl-white);
+  --pl-subtle: var(--pl-gray-50);
+  --pl-shell: var(--pl-gray-100);
+  /* gray-100 again, but inside a card (a metric's box, an alert, a
+     skeleton): the same as the shell in light, apart in dark, where the
+     shell sinks below the card and fills inside it rise above it */
+  --pl-fill: var(--pl-gray-100);
+  /* what fields, and chips raised off a track (a segmented thumb), are
+     made of: white, like the card, in light */
+  --pl-field: var(--pl-surface);
+  --pl-raised: var(--pl-surface);
+  --pl-border: var(--pl-gray-200);
+  /* the page card's edge, and the dividers inside a card that run to that
+     edge: one shade, the shell 8% toward black, at half a pixel (a 0.5px
+     border rounds up to 1px, so dividers draw it as an inset shadow) */
+  --pl-hairline: color-mix(in srgb, var(--pl-shell), black 8%);
+  --pl-rule: var(--pl-gray-300);
+
+  /* Text, four roles: titles, values and body; supporting text; labels and
+     descriptions; placeholders and quiet glyphs */
+  --pl-text: var(--pl-gray-950);
+  --pl-text-secondary: var(--pl-gray-600);
+  --pl-text-muted: var(--pl-gray-500);
+  --pl-text-faint: var(--pl-gray-400);
+
+  /* Focus, rather than Polar's blue: one outline, nothing else (no ring or
+     halo beside it), 2px of this muted gray 2px out, on whatever you tab to,
+     fields included, following its shape (its corners; a box whose input
+     inside has focus outlines the box). The muted text gray: quiet, but 3:1
+     or more against every surface it lands on, in either theme. */
+  --pl-focus: var(--pl-text-muted);
+
+  /* Buttons: primary is the text color; secondary a white raised chip
+     (shadow-sm), gray-50 on hover */
+  --pl-primary: var(--pl-gray-950);
+  /* what's drawn on primary: a label, a check, a calendar's chosen day */
+  --pl-primary-fg: var(--pl-white);
+  --pl-secondary: var(--pl-white);
+  --pl-secondary-hover: var(--pl-gray-50);
+  --pl-ghost-hover: var(--pl-gray-200);
+
+  /* Overlays: every popover is white; the row under the pointer or the
+     keyboard is gray-100, never the accent */
+  --pl-popover: var(--pl-white);
+  --pl-highlight: var(--pl-gray-100);
+  --pl-accent-fg: var(--pl-white);
+
+  /* Charts: dashed gray-200 verticals at half strength, gray-500 ticks, a
+     solid gray-200 hover line; past months' bars gray-400 */
+  --pl-chart-grid: color-mix(in oklab, var(--pl-gray-200) 50%, transparent);
+  --pl-chart-tick: var(--pl-gray-500);
+  --pl-chart-cursor: var(--pl-gray-200);
+  --pl-bar: var(--pl-gray-400);
+
+  /* A gray pill (100 under 600) and a neutral status chip (gray-200) */
+  --pl-pill-gray-bg: var(--pl-gray-100);
+  --pl-pill-gray: var(--pl-gray-600);
+  --pl-neutral-bg: var(--pl-gray-200);
+}
+
+/* Dark, as Polar draws it (data-theme on .polar, set from Settings › Profile
+   or the system). The roles move onto the neutral polar ramp, step for step
+   as Polar's own dark: classes pair them: the shell polar-950, the card
+   polar-900 edged in 800, fields and fills 800, borders and secondary
+   buttons 700; text white, then 300 and 500. Primary turns white with black
+   on it. Status chips go to a 950 fill under 500 text, pills to a 900 fill
+   under 300 (Status.tsx, Pill.tsx). Shadows can't darken a dark surface, so
+   the edge becomes a faint white ring and the drop gets heavier. */
+.polar[data-theme="dark"],
+.polar[data-theme="dark"] [data-pl-scope] {
+  --pl-surface: var(--pl-polar-900);
+  --pl-subtle: var(--pl-polar-800);
+  --pl-shell: var(--pl-polar-950);
+  --pl-fill: var(--pl-polar-800);
+  --pl-field: var(--pl-polar-800);
+  --pl-raised: var(--pl-polar-700);
+  --pl-border: var(--pl-polar-700);
+  --pl-hairline: var(--pl-polar-800);
+  --pl-rule: var(--pl-polar-600);
+
+  --pl-text: var(--pl-white);
+  --pl-text-secondary: var(--pl-polar-300);
+  --pl-text-muted: var(--pl-polar-500);
+  /* Polar has no step for this (its placeholders share 500 with labels):
+     a little under 500, so a quiet glyph still steps up when it wakes */
+  --pl-text-faint: hsl(0 0% 36%);
+
+  --pl-primary: var(--pl-white);
+  --pl-primary-fg: var(--pl-polar-950);
+  --pl-secondary: var(--pl-polar-700);
+  --pl-secondary-hover: var(--pl-polar-600);
+  --pl-ghost-hover: var(--pl-polar-700);
+
+  --pl-popover: var(--pl-polar-900);
+  --pl-highlight: var(--pl-polar-800);
+
+  --pl-chart-grid: color-mix(in oklab, var(--pl-polar-700) 60%, transparent);
+  --pl-chart-tick: var(--pl-polar-500);
+  --pl-chart-cursor: var(--pl-polar-700);
+  --pl-bar: var(--pl-polar-500);
+
+  --pl-pill-gray-bg: var(--pl-polar-700);
+  --pl-pill-gray: var(--pl-polar-300);
+  --pl-neutral-bg: var(--pl-polar-700);
+
+  --pl-shadow-xs: 0 0 0 0.5px var(--pl-hairline), 0 1px 2px -1px rgb(0 0 0 / 0.5);
+  --pl-shadow-sm:
+    inset 0 0 0 0.5px rgb(255 255 255 / 0.08), inset 0 0.5px 0 0 rgb(255 255 255 / 0.05), 0 2px 3px -2px rgb(0 0 0 / 0.5);
+  --pl-shadow-md:
+    0 0 0 0.5px rgb(255 255 255 / 0.1), 0 1px 1px 0 rgb(0 0 0 / 0.3), 0 3px 9px 0 rgb(0 0 0 / 0.3), 0 6px 18px 0 rgb(0 0 0 / 0.2);
+  --pl-shadow-lg: 0 0 0 0.5px rgb(255 255 255 / 0.1), 0 8px 24px 0 rgb(0 0 0 / 0.5);
+  --pl-avatar-ring: inset 0 0 0 1px rgb(255 255 255 / 0.1);
+  --pl-hatch: rgb(255 255 255 / 0.06);
+
+  /* red-600 for destructive, lightening to red-500 (Button.tsx) */
+  --pl-destructive: oklch(0.577 0.245 27.325);
+  --pl-destructive-light: oklch(0.637 0.237 25.331);
+  --pl-selection: oklch(0.488 0.243 264.376); /* blue-700, white reads on it */
+  --pl-scrim-modal: rgb(0 0 0 / 0.8);
+  --pl-scrim-sheet: rgb(0 0 0 / 0.6);
+
+  --pl-success-bg: oklch(0.262 0.051 172.552); /* emerald-950 */
+  --pl-warning-bg: oklch(0.286 0.066 53.813); /* yellow-950 */
+  --pl-danger-bg: oklch(0.258 0.092 26.042); /* red-950 */
+  --pl-info-bg: oklch(0.257 0.09 281.288); /* indigo-950 */
+  --pl-purple-bg: oklch(0.283 0.141 291.089); /* violet-950 */
+  --pl-purple: oklch(0.702 0.183 293.541); /* violet-400 */
+
+  --pl-pill-blue-bg: oklch(0.379 0.146 265.522); /* blue-900 */
+  --pl-pill-blue: oklch(0.882 0.059 254.128); /* blue-200 */
+  --pl-pill-green-bg: oklch(0.378 0.077 168.94); /* emerald-900 */
+  --pl-pill-green: oklch(0.845 0.143 164.978); /* emerald-300 */
+  --pl-pill-red-bg: oklch(0.505 0.213 27.518); /* red-700 */
+  --pl-pill-red: oklch(0.808 0.114 19.571); /* red-300 */
+  --pl-pill-yellow-bg: oklch(0.286 0.066 53.813); /* yellow-950 */
+  --pl-pill-purple-bg: oklch(0.496 0.265 301.924); /* purple-700 */
+  --pl-pill-purple: oklch(0.827 0.119 306.383); /* purple-300 */
+
+  color-scheme: dark;
+}
+
+/* Tinted elevation: a raised control in a color (an invalid field, an accent
+   chip) draws its edge and shadow in a deeper shade of that color instead
+   of black, so an invalid field sits on a red edge rather than a gray one.
+   pl-tint-* sets the color; the rule after it redraws sm from it
+   on that element. The plain tokens stay as they are, so the playground
+   still edits them for everything untinted. */
+.polar .pl-tint-primary {
+  --pl-shadow-tint: var(--pl-primary);
+}
+
+.polar .pl-tint-accent {
+  --pl-shadow-tint: var(--pl-accent);
+}
+
+.polar .pl-tint-danger,
+.polar [aria-invalid="true"] {
+  --pl-shadow-tint: var(--pl-destructive);
+}
+
+.polar .pl-tint-primary,
+.polar .pl-tint-accent,
+.polar .pl-tint-danger,
+.polar [aria-invalid="true"] {
+  /* the tint a quarter of the way to black: shadows are darker than the thing casting them */
+  --pl-shadow-ink: color-mix(in oklab, var(--pl-shadow-tint), black 25%);
+  --pl-shadow-sm:
+    inset 0 0 0 0.5px color-mix(in oklab, var(--pl-shadow-ink) 40%, transparent),
+    inset 0 -1px 0 0 color-mix(in oklab, var(--pl-shadow-ink) 12%, transparent),
+    0 2px 3px -2px color-mix(in oklab, var(--pl-shadow-ink) 18%, transparent);
+}
+
+/* Avatars draw their edge from their own fill, as tinted controls do: a
+   softer half-pixel hairline in a deeper shade of the fill, a faint inner
+   lower edge, and a small contact shadow under the circle. A tinted fill
+   (set --pl-avatar-fill on the avatar) gets an edge of its own hue. */
+.polar .pl-avatar {
+  --pl-avatar-fill: var(--pl-subtle);
+  --pl-avatar-ink: color-mix(in oklab, var(--pl-avatar-fill), black 45%);
+  --pl-avatar-shadow:
+    inset 0 0 0 0.5px color-mix(in oklab, var(--pl-avatar-ink) 18%, transparent),
+    inset 0 -1px 0 0 color-mix(in oklab, var(--pl-avatar-ink) 8%, transparent),
+    0 1px 2px -1px color-mix(in oklab, var(--pl-avatar-ink) 30%, transparent);
+}
+
+/* In dark only the hairline turns light (Polar's white/10 ring), drawn from
+   the fill; the inner edge catches light along the top, as a dark raised
+   control's does, and the contact shadow stays black: a light one glows. */
+.polar[data-theme="dark"] .pl-avatar {
+  --pl-avatar-ink: color-mix(in oklab, var(--pl-avatar-fill), white 70%);
+  --pl-avatar-shadow:
+    inset 0 0 0 0.5px color-mix(in oklab, var(--pl-avatar-ink) 14%, transparent),
+    inset 0 0.5px 0 0 color-mix(in oklab, var(--pl-avatar-ink) 6%, transparent), 0 1px 2px -1px rgb(0 0 0 / 0.6);
+}
+
 /* Base rules sit in the base layer, under Tailwind's utilities, so a class
    like border-transparent still wins over the default border color. */
 @layer base {
@@ -142,11 +365,14 @@
   .polar *::before,
   .polar *::after {
     border-color: var(--pl-border);
+    /* set before focus, so a control that animates its colors doesn't fade
+       the focus outline in from its text color */
+    outline-color: var(--pl-focus);
   }
 
   .polar ::selection {
-    background: oklch(0.882 0.059 254.128);
-    color: inherit;
+    background: var(--pl-selection);
+    color: var(--pl-text);
   }
 
   .polar :focus-visible {
@@ -162,7 +388,7 @@
 /* the scroll areas inside the page card: thin and quiet, as in Polar on macOS */
 .polar .pl-scroll {
   scrollbar-width: thin;
-  scrollbar-color: oklch(0.872 0.01 258.338) transparent;
+  scrollbar-color: var(--pl-rule) transparent;
 }
 
 /* Revenue widget: Polar's 2px-on-8px diagonal hatch behind each month's bar */
@@ -219,6 +445,57 @@
   animation: pl-scrim var(--pl-slow) var(--pl-ease-out) both;
 }
 
+/* The sidebar folding to its rail. What changes between the two forms
+   (labels, the bell and search, the sub-pages, the rail's group) fades and
+   softens out in place, and back in once the column has its new width; the
+   app sequences the steps, so these are plain transitions. */
+.polar .pl-fold {
+  transition:
+    opacity var(--pl-fast) var(--pl-ease-out),
+    filter var(--pl-fast) var(--pl-ease-out);
+}
+
+.polar .pl-folded {
+  opacity: 0;
+  filter: blur(2px);
+}
+
+/* The sub-pages appearing. On the rail, the group's track starts as just
+   the ring around the section's chip (the top 40px, clipped) and grows down
+   to its pages over 280ms; the pages, on the rail or in the expanded list,
+   drop 6px into place and fade in, 35ms apart. Closing, they just fade, at
+   once. */
+.polar .pl-track {
+  clip-path: inset(0 round var(--pl-radius-md));
+  transition:
+    clip-path 280ms var(--pl-ease-out),
+    opacity var(--pl-fast) var(--pl-ease-out);
+}
+
+.polar .pl-track.pl-closed {
+  clip-path: inset(0 0 calc(100% - 40px) 0 round var(--pl-radius-md));
+  opacity: 0;
+  transition:
+    clip-path 0s var(--pl-fast),
+    opacity var(--pl-fast) var(--pl-ease-out);
+}
+
+.polar .pl-rise {
+  transition:
+    opacity 200ms var(--pl-ease-out),
+    transform 240ms var(--pl-ease-out);
+  /* on the rail the first waits 80ms for the track to lead; in the list it starts at once */
+  transition-delay: calc(var(--pl-rise-lead, 80ms) + var(--pl-i, 0) * 35ms);
+}
+
+.polar .pl-rise.pl-closed {
+  opacity: 0;
+  transform: translateY(-6px);
+  transition:
+    opacity var(--pl-fast) var(--pl-ease-out),
+    transform 0s var(--pl-fast);
+}
+
 /* Spinners turn once a second; skeletons pulse between full and half opacity */
 @keyframes pl-spin {
   to {
@@ -260,6 +537,21 @@
   .polar .pl-scrim,
   .polar .pl-ping {
     animation: none;
+  }
+
+  .polar .pl-folded {
+    filter: none;
+  }
+
+  .polar .pl-track,
+  .polar .pl-track.pl-closed {
+    clip-path: none;
+  }
+
+  .polar .pl-rise,
+  .polar .pl-rise.pl-closed {
+    transform: none;
+    transition-delay: 0s;
   }
 
   .polar .pl-spin {

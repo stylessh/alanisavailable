@@ -31,7 +31,7 @@ export function Segmented<T extends string>({
     <div
       role="radiogroup"
       aria-label={label}
-      className={`flex shrink-0 items-center gap-1 rounded-full p-1 ${variant === "tabs" ? "w-full bg-(--pl-shell)" : "bg-(--pl-subtle)"}`}
+      className={`flex shrink-0 items-center gap-1 rounded-(--pl-radius-full) p-1 ${variant === "tabs" ? "w-full bg-(--pl-shell)" : "bg-(--pl-subtle)"}`}
     >
       {options.map((o) => {
         const on = o.id === value;
@@ -42,9 +42,9 @@ export function Segmented<T extends string>({
             role="radio"
             aria-checked={on}
             onClick={() => onChange(o.id)}
-            className={`cursor-pointer rounded-full font-medium whitespace-nowrap transition-[color,background-color,box-shadow] duration-150 ${pad} ${
+            className={`cursor-pointer rounded-(--pl-radius-full) font-medium whitespace-nowrap transition-[color,background-color,box-shadow] duration-150 ${pad} ${
               variant === "tabs" ? "grow" : ""
-            } ${on ? "bg-(--pl-surface) text-(--pl-text-strong) shadow-(--pl-shadow-lg)" : "text-(--pl-text-muted) hover:text-(--pl-text)"}`}
+            } ${on ? "bg-(--pl-raised) text-(--pl-text) shadow-(--pl-shadow-sm)" : "text-(--pl-text-muted) hover:text-(--pl-text)"}`}
           >
             {o.label}
           </button>

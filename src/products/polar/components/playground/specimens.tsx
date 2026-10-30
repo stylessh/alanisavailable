@@ -4,19 +4,28 @@ import { useState } from "react";
 import { METRICS, NEW_CUSTOMERS, ORDERS, PRODUCTS, TODAY } from "../data";
 import {
   AddIcon,
+  ArchiveIcon,
   ArrowOutwardIcon,
   BenefitIcon,
   ChevronRightIcon,
+  CodeIcon,
   CopyIcon,
   DownloadIcon,
+  DuplicateIcon,
   LinkIcon,
+  MonitorIcon,
+  MoonIcon,
   MoreVertIcon,
   PackageIcon,
+  PencilIcon,
   SearchIcon,
   ShieldCheckIcon,
+  SubscriptionsIcon,
+  SunIcon,
   TagIcon,
 } from "../icons";
 import { Avatar } from "../ui/avatar";
+import { PopoverGroup } from "../ui/popover";
 import { Button, IconButton, type ButtonVariant } from "../ui/button";
 import { Calendar, DATE_PRESETS, DatePopover, DatePresets, DateRangePicker, type DateRange } from "../ui/calendar";
 import {
@@ -39,47 +48,37 @@ import { Checkbox, RadioCard, RadioGroup, Switch } from "../ui/controls";
 import { Accordion, AccordionItem, OptionRow, ReorderRow } from "../ui/disclosure";
 import { Alert, EmptyHero, EmptyState, Skeleton, Spinner } from "../ui/feedback";
 import { CopyInput, Field, Input, SearchInput, TextArea } from "../ui/field";
-import { Menu, MenuItem, MenuPanel, MenuSeparator } from "../ui/menu";
+import { Menu, MenuItem, MenuLabel, MenuPanel, MenuSeparator } from "../ui/menu";
 import { StatCard } from "../ui/metric";
 import { Modal, ModalFooter, Sheet, Tooltip, TooltipBubble } from "../ui/overlay";
-import { PageCard } from "../ui/page";
 import { Segmented } from "../ui/segmented";
 import { Select, SelectList } from "../ui/select";
 import { Code, LegendDot, Pill, Status, StatusDot, StatusLabel, type Tone } from "../ui/status";
 import { DataTable, Pagination } from "../ui/table";
 import { Tabs } from "../ui/tabs";
-import { ORDER_COLUMNS } from "./sales";
+import { ORDER_COLUMNS } from "../pages/sales";
 
-// The design system, v1: every primitive in components/ui, in each state the
-// recording of Polar showed, built from Polar's own components (orbit and
-// its shadcn layer) and checked against the live dashboard's DOM.
+// Each part of the design system, as the playground's frames show it: every
+// primitive in components/ui in each state the recording of Polar showed,
+// built from Polar's own components (orbit and its shadcn layer) and checked
+// against the live dashboard's DOM.
 
-const GROUPS = [
-  { id: "foundations", label: "Foundations" },
-  { id: "buttons", label: "Buttons" },
-  { id: "fields", label: "Fields" },
-  { id: "pickers", label: "Pickers" },
-  { id: "toggles", label: "Toggles" },
-  { id: "navigation", label: "Navigation" },
-  { id: "badges", label: "Badges" },
-  { id: "surfaces", label: "Surfaces" },
-  { id: "data", label: "Data" },
-  { id: "feedback", label: "Feedback" },
-  { id: "overlays", label: "Overlays" },
-] as const;
+type GroupId =
+  | "foundations"
+  | "buttons"
+  | "fields"
+  | "pickers"
+  | "toggles"
+  | "navigation"
+  | "badges"
+  | "surfaces"
+  | "data"
+  | "feedback"
+  | "overlays";
 
-type GroupId = (typeof GROUPS)[number]["id"];
-
-function Group({ id, title, children }: { id: GroupId; title: string; children: React.ReactNode }) {
-  return (
-    <section
-      id={`ds-${id}`}
-      className="flex scroll-mt-24 flex-col gap-6 border-t border-(--pl-border) pt-10 first:border-t-0 first:pt-0"
-    >
-      <h2 className="text-2xl leading-[33px] font-normal text-(--pl-text-strong)">{title}</h2>
-      {children}
-    </section>
-  );
+/** A frame's content; its title is the frame's label on the canvas */
+function Group({ children }: { id: GroupId; title: string; children: React.ReactNode }) {
+  return <div className="flex flex-col gap-8">{children}</div>;
 }
 
 /** One specimen: a 12px gray-500 caption over the thing itself */
@@ -125,11 +124,8 @@ const SWATCHES: { group: string; tokens: [string, string][] }[] = [
   {
     group: "Text",
     tokens: [
-      ["--pl-text-strong", "Strong · black"],
-      ["--pl-text-input", "Input · gray-950"],
-      ["--pl-text", "Text · gray-900"],
-      ["--pl-text-soft", "Soft · gray-700"],
-      ["--pl-text-dim", "Dim · gray-600"],
+      ["--pl-text", "Text · gray-950"],
+      ["--pl-text-secondary", "Secondary · gray-600"],
       ["--pl-text-muted", "Muted · gray-500"],
       ["--pl-text-faint", "Faint · gray-400"],
     ],
@@ -137,17 +133,40 @@ const SWATCHES: { group: string; tokens: [string, string][] }[] = [
   {
     group: "Accent and intent",
     tokens: [
-      ["--pl-primary", "Primary · black"],
+      ["--pl-primary", "Primary · gray-950"],
       ["--pl-accent", "Accent · blue-600"],
       ["--pl-legend", "Legend · blue-500"],
-      ["--pl-field-focus", "Focus · blue-300"],
-      ["--pl-field-ring", "Focus ring · blue-100"],
+      ["--pl-focus", "Focus · muted gray"],
       ["--pl-destructive", "Destructive · red-500"],
       ["--pl-success", "Success · emerald-500"],
       ["--pl-warning", "Warning · yellow-500"],
       ["--pl-info", "Info · indigo-500"],
     ],
   },
+];
+
+const GRAYS = [
+  "white",
+  "gray-50",
+  "gray-100",
+  "gray-200",
+  "gray-300",
+  "gray-400",
+  "gray-500",
+  "gray-600",
+  "gray-700",
+  "gray-800",
+  "gray-900",
+  "gray-950",
+];
+
+const RADII: [string, string][] = [
+  ["xs", "4"],
+  ["sm", "8"],
+  ["md", "12"],
+  ["lg", "16"],
+  ["xl", "24"],
+  ["full", "full"],
 ];
 
 const TYPE: { label: string; className: string; sample: string }[] = [
@@ -168,6 +187,16 @@ const TYPE: { label: string; className: string; sample: string }[] = [
 function Foundations() {
   return (
     <Group id="foundations" title="Foundations">
+      <Specimen label="Gray scale" note="Tailwind's gray, the only grays the system uses; every gray role points into it">
+        <div className="grid grid-cols-12 overflow-hidden rounded-(--pl-radius-md) shadow-(--pl-avatar-ring)">
+          {GRAYS.map((g) => (
+            <div key={g} className="flex flex-col">
+              <span className="h-14" style={{ background: `var(--pl-${g})` }} />
+              <span className="px-2 py-1.5 text-xs leading-4 text-(--pl-text-muted)">{g.replace("gray-", "")}</span>
+            </div>
+          ))}
+        </div>
+      </Specimen>
       <div className="grid gap-8 xl:grid-cols-3">
         {SWATCHES.map((s) => (
           <Specimen key={s.group} label={s.group}>
@@ -175,7 +204,7 @@ function Foundations() {
               {s.tokens.map(([token, name]) => (
                 <div key={token} className="flex items-center gap-3">
                   <span
-                    className="size-8 shrink-0 rounded-lg shadow-(--pl-avatar-ring)"
+                    className="size-8 shrink-0 rounded-(--pl-radius-sm) shadow-(--pl-avatar-ring)"
                     style={{ background: `var(${token})` }}
                   />
                   <div className="flex min-w-0 flex-col">
@@ -189,43 +218,42 @@ function Foundations() {
         ))}
       </div>
       <Specimen label="Type" note="PP Neue Montreal, 0.24px tracking inherited from the body; Geist Mono for codes">
-        <div className="flex flex-col divide-y divide-(--pl-border) rounded-2xl border border-(--pl-border)">
+        <div className="flex flex-col divide-y divide-(--pl-border) rounded-(--pl-radius-lg) border border-(--pl-border)">
           {TYPE.map((t) => (
             <div key={t.label} className="flex flex-wrap items-baseline justify-between gap-x-8 gap-y-1 px-6 py-4">
-              <span className={`${t.className} text-(--pl-text-strong)`}>{t.sample}</span>
+              <span className={`${t.className} text-(--pl-text)`}>{t.sample}</span>
               <span className="text-xs leading-4 text-(--pl-text-muted)">{t.label}</span>
             </div>
           ))}
         </div>
       </Specimen>
       <div className="grid gap-8 lg:grid-cols-3">
-        <Specimen label="Radii" note="Polar's --radius is 0.6rem, so rounded-md is 7.6px and rounded-lg 9.6px">
+        <Specimen label="Radii" note="one scale; a nested corner is the outer one less the gap between them">
           <Row>
-            {[
-              ["2", "2px"],
-              ["7.6", "7.6px"],
-              ["9.6", "9.6px"],
-              ["12", "12px"],
-              ["16", "16px"],
-              ["24", "24px"],
-              ["32", "32px"],
-              ["full", "9999px"],
-            ].map(([n, r]) => (
+            {RADII.map(([n, px]) => (
               <div key={n} className="flex flex-col items-center gap-1">
-                <span className="size-12 border border-(--pl-rule) bg-(--pl-subtle)" style={{ borderRadius: r }} />
-                <span className="text-xs leading-4 text-(--pl-text-muted)">{n}</span>
+                <span
+                  className="size-12 border border-(--pl-rule) bg-(--pl-subtle)"
+                  style={{ borderRadius: `var(--pl-radius-${n})` }}
+                />
+                <span className="text-xs leading-4 text-(--pl-text-muted)">
+                  {n} · {px}
+                </span>
               </div>
             ))}
           </Row>
         </Specimen>
         <Specimen
           label="Shadows"
-          note="xs on fields and cards, sm on sheets, md on popovers, lg on menus and thumbs, xl on chart cards"
+          note="contained, as Linear draws them: xs raised, sm raised without a border, md floating, lg overlays"
         >
           <Row className="gap-4">
-            {["xs", "sm", "md", "lg", "xl"].map((s) => (
+            {["xs", "sm", "md", "lg"].map((s) => (
               <div key={s} className="flex flex-col items-center gap-2">
-                <span className="size-14 rounded-xl bg-(--pl-surface)" style={{ boxShadow: `var(--pl-shadow-${s})` }} />
+                <span
+                  className="size-14 rounded-(--pl-radius-md) bg-(--pl-surface)"
+                  style={{ boxShadow: `var(--pl-shadow-${s})` }}
+                />
                 <span className="text-xs leading-4 text-(--pl-text-muted)">{s}</span>
               </div>
             ))}
@@ -252,17 +280,15 @@ function Foundations() {
 const HOVER: Record<ButtonVariant, string> = {
   primary: "opacity-85",
   secondary: "bg-(--pl-secondary-hover)!",
-  outline: "border-(--pl-border)! bg-(--pl-border)!",
   ghost: "bg-(--pl-ghost-hover)!",
   danger: "bg-(--pl-destructive-light)!",
-  underline: "border-(--pl-text-strong)!",
+  underline: "border-(--pl-text)!",
   link: "underline",
 };
 
 const VARIANT_LABELS: [ButtonVariant, string][] = [
   ["primary", "Primary"],
   ["secondary", "Secondary"],
-  ["outline", "Outline"],
   ["ghost", "Ghost"],
   ["danger", "Danger"],
   ["underline", "Underline"],
@@ -335,17 +361,45 @@ function Buttons() {
             <Button variant="secondary" size="sm" icon={<DownloadIcon />}>
               Export
             </Button>
-            <Button
-              variant={loading ? "secondary" : "primary"}
-              loading={loading}
-              onClick={() => {
-                setLoading(true);
-                setTimeout(() => setLoading(false), 1400);
-              }}
-            >
-              Click to load
-            </Button>
           </Row>
+        </Specimen>
+        <Specimen label="Loading" note="label only: the arc replaces the label; with a glyph: the arc replaces the glyph">
+          <div className="flex flex-col gap-3">
+            <Row>
+              <Button loading>Save</Button>
+              <Button icon={<AddIcon />} loading>
+                New Product
+              </Button>
+              <Button variant="secondary" size="sm" icon={<DownloadIcon />} loading>
+                Export
+              </Button>
+              <IconButton label="Copy" variant="secondary" loading>
+                <CopyIcon />
+              </IconButton>
+            </Row>
+            <Row>
+              <Button
+                loading={loading}
+                onClick={() => {
+                  setLoading(true);
+                  setTimeout(() => setLoading(false), 1600);
+                }}
+              >
+                Click to load
+              </Button>
+              <Button
+                icon={<DownloadIcon />}
+                variant="secondary"
+                loading={loading}
+                onClick={() => {
+                  setLoading(true);
+                  setTimeout(() => setLoading(false), 1600);
+                }}
+              >
+                Export CSV
+              </Button>
+            </Row>
+          </div>
         </Specimen>
         <Specimen label="Icon buttons" note="24 · 32 · 40, ghost, secondary or primary">
           <Row>
@@ -364,7 +418,7 @@ function Buttons() {
             <IconButton label="New" variant="primary" size={24}>
               <AddIcon size={14} />
             </IconButton>
-            <IconButton label="Copy" variant="outline">
+            <IconButton label="Copy" variant="secondary">
               <CopyIcon />
             </IconButton>
           </Row>
@@ -391,11 +445,7 @@ function Fields() {
         </Specimen>
         <Specimen label="States" note="focused · invalid · disabled">
           <div className="flex flex-col gap-3">
-            <Input
-              placeholder="Focused"
-              className="border-(--pl-field-focus)! ring-[3px] ring-(--pl-field-ring)"
-              aria-label="Focused example"
-            />
+            <Input placeholder="Focused" className="outline-2 outline-offset-2" aria-label="Focused example" />
             <Input placeholder="Invalid" aria-invalid aria-label="Invalid example" />
             <Input placeholder="Disabled" disabled aria-label="Disabled example" />
           </div>
@@ -437,20 +487,26 @@ function Fields() {
 
 const STATUS_OPTIONS = [
   { id: "all", label: "All" },
-  { id: "active", label: "Active" },
-  { id: "archived", label: "Archived" },
+  { id: "active", label: "Active", icon: <StatusDot tone="success" /> },
+  { id: "archived", label: "Archived", icon: <StatusDot tone="neutral" /> },
+];
+
+const THEMES = [
+  { id: "system", label: "System", icon: <MonitorIcon /> },
+  { id: "light", label: "Light", icon: <SunIcon /> },
+  { id: "dark", label: "Dark", icon: <MoonIcon /> },
 ];
 
 const COMBO_GROUPS: ComboboxGroup[] = [
   {
     id: "recurring",
     label: "Subscription",
-    items: PRODUCTS.filter((p) => p.interval).map((p) => ({ id: p.id, label: p.name })),
+    items: PRODUCTS.filter((p) => p.interval).map((p) => ({ id: p.id, label: p.name, icon: <SubscriptionsIcon /> })),
   },
   {
     id: "one_time",
     label: "One-time purchase",
-    items: PRODUCTS.filter((p) => !p.interval).map((p) => ({ id: p.id, label: p.name })),
+    items: PRODUCTS.filter((p) => !p.interval).map((p) => ({ id: p.id, label: p.name, icon: <PackageIcon /> })),
   },
 ];
 
@@ -463,40 +519,55 @@ function Pickers() {
   return (
     <Group id="pickers" title="Pickers">
       <div className="grid gap-8 lg:grid-cols-3">
-        <Specimen label="Select" note="try it: arrows, Enter, Escape">
-          <Row>
-            <Select label="Status" options={STATUS_OPTIONS} value={status} onChange={setStatus} />
-            <Select
-              label="Sort"
-              options={[
-                { id: "name-asc", label: "Name A-Z" },
-                { id: "name-desc", label: "Name Z-A" },
-                { id: "newest", label: "Newest" },
-                { id: "oldest", label: "Oldest" },
-                { id: "price-asc", label: "Price: Low to High" },
-                { id: "price-desc", label: "Price: High to Low" },
-              ]}
-              value={sort}
-              onChange={setSort}
-            />
-            <Select label="Rows" size="sm" options={STATUS_OPTIONS} value="all" onChange={() => {}} disabled />
-          </Row>
+        <Specimen label="Select" note="a popover group: open one, then hover the other; arrows, Enter, Escape">
+          <PopoverGroup>
+            <Row>
+              <Select label="Status" options={STATUS_OPTIONS} value={status} onChange={setStatus} />
+              <Select
+                label="Sort"
+                options={[
+                  { id: "name-asc", label: "Name A-Z" },
+                  { id: "name-desc", label: "Name Z-A" },
+                  { id: "newest", label: "Newest" },
+                  { id: "oldest", label: "Oldest" },
+                  { id: "price-asc", label: "Price: Low to High" },
+                  { id: "price-desc", label: "Price: High to Low" },
+                ]}
+                value={sort}
+                onChange={setSort}
+              />
+              <Select label="Rows" size="sm" options={STATUS_OPTIONS} value="all" onChange={() => {}} disabled />
+            </Row>
+          </PopoverGroup>
         </Specimen>
-        <Specimen label="Select, open" note="tick on the chosen row, blue-600 on the highlighted one">
-          <div className="w-32">
-            <SelectList label="Status" options={STATUS_OPTIONS} value="active" active={2} onPick={() => {}} />
+        <Specimen label="Select, open" note="glyph, label, a check on the chosen row; gray-100 under the pointer">
+          <div className="flex flex-wrap items-start gap-4">
+            <div className="w-40">
+              <SelectList label="Status" options={STATUS_OPTIONS} value="active" active={2} onPick={() => {}} />
+            </div>
+            <div className="w-40">
+              <SelectList label="Theme" options={THEMES} value="system" active={1} onPick={() => {}} />
+            </div>
           </div>
         </Specimen>
-        <Specimen label="Menu, open" note="gray-50 panel, a destructive item">
-          <div className="w-40">
+        <Specimen label="Menu, open" note="glyphs, shortcuts, hairlines; a destructive row stays red">
+          <div className="w-56">
             <MenuPanel>
-              <MenuItem>Copy Product ID</MenuItem>
-              <MenuItem highlighted>Integrate Checkout</MenuItem>
+              <MenuItem icon={<CopyIcon />}>Copy Product ID</MenuItem>
+              <MenuItem icon={<CodeIcon />} highlighted>
+                Integrate Checkout
+              </MenuItem>
               <MenuSeparator />
-              <MenuItem>Edit Product</MenuItem>
-              <MenuItem>Duplicate Product</MenuItem>
+              <MenuItem icon={<PencilIcon />} shortcut="E">
+                Edit Product
+              </MenuItem>
+              <MenuItem icon={<DuplicateIcon />} shortcut="D">
+                Duplicate Product
+              </MenuItem>
               <MenuSeparator />
-              <MenuItem destructive>Archive Product</MenuItem>
+              <MenuItem icon={<ArchiveIcon />} destructive>
+                Archive Product
+              </MenuItem>
             </MenuPanel>
           </div>
         </Specimen>
@@ -512,10 +583,15 @@ function Pickers() {
                 </IconButton>
               )}
             >
-              <MenuItem icon={<DownloadIcon />}>Export</MenuItem>
-              <MenuItem icon={<CopyIcon />}>Copy Product ID</MenuItem>
+              <MenuLabel>Chart</MenuLabel>
+              <MenuItem icon={<DownloadIcon />} shortcut="⌘E">
+                Export
+              </MenuItem>
+              <MenuItem icon={<CopyIcon />}>Copy link</MenuItem>
               <MenuSeparator />
-              <MenuItem destructive>Archive Product</MenuItem>
+              <MenuItem icon={<ArchiveIcon />} destructive>
+                Remove from Overview
+              </MenuItem>
             </Menu>
           </Row>
         </Specimen>
@@ -554,7 +630,7 @@ function Pickers() {
           </DatePopover>
         </Specimen>
         <Specimen label="Quick ranges">
-          <DatePopover padded={false}>
+          <DatePopover>
             <DatePresets presets={DATE_PRESETS} onPick={() => {}} />
           </DatePopover>
         </Specimen>
@@ -881,18 +957,7 @@ function Surfaces() {
               <Switch checked={notify} onChange={setNotify} label="New One-Time Purchases" />
             </SettingsItem>
             <SettingsItem title="Theme" description="Override your browser's preferred theme settings" layout="inline">
-              <Select
-                label="Theme"
-                size="sm"
-                align="end"
-                options={[
-                  { id: "system", label: "System" },
-                  { id: "light", label: "Light" },
-                  { id: "dark", label: "Dark" },
-                ]}
-                value={theme}
-                onChange={setTheme}
-              />
+              <Select label="Theme" size="sm" align="end" options={THEMES} value={theme} onChange={setTheme} />
             </SettingsItem>
             <SettingsItem
               title="Delete Account"
@@ -1096,7 +1161,7 @@ function Overlays() {
             <Button onClick={() => setSheet(true)}>Create Checkout Link</Button>
           </Row>
         </Specimen>
-        <Specimen label="Tooltip" note="hover or focus; 150ms delay">
+        <Specimen label="Tooltip" note="rest 600ms or focus; then none moving between them">
           <Row className="gap-6">
             <Tooltip content="Share Chart">
               <IconButton label="Share chart" size={40}>
@@ -1238,45 +1303,17 @@ function Overlays() {
   );
 }
 
-/** components/ui laid out with each state: the design system, v1 */
-export function DesignSystemPage() {
-  const [current, setCurrent] = useState<GroupId>("foundations");
-  return (
-    <PageCard className="px-8">
-      <div className="flex w-full flex-col pt-8">
-        <header className="sticky top-0 z-10 -mx-8 flex flex-col gap-4 bg-(--pl-surface) px-8 pb-4">
-          <div className="flex flex-wrap items-baseline justify-between gap-4">
-            <h1 className="text-2xl leading-8 font-medium text-(--pl-text)">Design System</h1>
-            <span className="text-sm leading-5 text-(--pl-text-muted)">v1 · light theme</span>
-          </div>
-          <div className="overflow-x-auto">
-            <Tabs
-              label="Sections"
-              variant="pill"
-              size="small"
-              value={current}
-              onChange={(id) => {
-                setCurrent(id);
-                document.getElementById(`ds-${id}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
-              }}
-              tabs={GROUPS.map((g) => ({ id: g.id, label: g.label }))}
-            />
-          </div>
-        </header>
-        <div className="flex flex-col gap-10 pt-6 pb-16">
-          <Foundations />
-          <Buttons />
-          <Fields />
-          <Pickers />
-          <Toggles />
-          <Navigation />
-          <Badges />
-          <Surfaces />
-          <Data />
-          <Feedback />
-          <Overlays />
-        </div>
-      </div>
-    </PageCard>
-  );
-}
+/** The frames, in the order the canvas lays them out, with the width each is drawn at */
+export const SPECIMENS: { id: GroupId; title: string; width: number; Component: () => React.ReactNode }[] = [
+  { id: "foundations", title: "Foundations", width: 1200, Component: Foundations },
+  { id: "buttons", title: "Buttons", width: 1200, Component: Buttons },
+  { id: "fields", title: "Fields", width: 1200, Component: Fields },
+  { id: "pickers", title: "Pickers", width: 1200, Component: Pickers },
+  { id: "toggles", title: "Toggles", width: 1200, Component: Toggles },
+  { id: "navigation", title: "Navigation", width: 1200, Component: Navigation },
+  { id: "badges", title: "Badges and lights", width: 1200, Component: Badges },
+  { id: "surfaces", title: "Surfaces", width: 1200, Component: Surfaces },
+  { id: "data", title: "Data", width: 1200, Component: Data },
+  { id: "feedback", title: "Feedback", width: 1200, Component: Feedback },
+  { id: "overlays", title: "Overlays", width: 1200, Component: Overlays },
+];

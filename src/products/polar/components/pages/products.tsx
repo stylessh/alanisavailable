@@ -2,17 +2,21 @@
 
 import { useState } from "react";
 import { PRODUCTS, priceLabel } from "../data";
-import { AddIcon, MoreVertIcon, ProductsIcon } from "../icons";
+import { AddIcon, ArchiveIcon, CodeIcon, CopyIcon, DuplicateIcon, MoreVertIcon, PencilIcon, ProductsIcon } from "../icons";
 import { Button, IconButton } from "../ui/button";
 import { SearchInput } from "../ui/field";
-import { Select } from "../ui/select";
-import { EmptyState, Page } from "../ui/page";
+import { Menu, MenuItem, MenuSeparator } from "../ui/menu";
+import { PopoverGroup } from "../ui/popover";
+import { Select, type SelectOption } from "../ui/select";
+import { EmptyState, Page, PageAction } from "../ui/page";
+import { StatusDot } from "../ui/status";
 
-const STATUS = [
-  { id: "active", label: "Active" },
-  { id: "archived", label: "Archived" },
+// each status by its light, as a product's state shows elsewhere
+const STATUS: SelectOption<"active" | "archived" | "all">[] = [
+  { id: "active", label: "Active", icon: <StatusDot tone="success" /> },
+  { id: "archived", label: "Archived", icon: <StatusDot tone="neutral" /> },
   { id: "all", label: "All" },
-] as const;
+];
 
 const SORT = [
   { id: "az", label: "Name A-Z" },
@@ -47,54 +51,89 @@ export function CataloguePage() {
     );
 
   return (
-    <Page title="Catalogue">
+    <Page
+      title="Catalogue"
+      filters={
+        <>
+          <SearchInput
+            placeholder="Search Products"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            className="w-[196px]"
+          />
+          <Select label="Status" options={STATUS} value={status} onChange={setStatus} />
+          <Select label="Sort" options={[...SORT]} value={sort} onChange={setSort} />
+        </>
+      }
+      actions={
+        <PageAction primary label="New Product">
+          <AddIcon />
+        </PageAction>
+      }
+    >
       <div className="flex flex-col gap-8">
-        <div className="flex flex-wrap items-center justify-between gap-6">
-          <div className="flex flex-wrap items-center gap-4">
-            <SearchInput
-              placeholder="Search Products"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              className="w-[196px]"
-            />
-            <Select label="Status" options={[...STATUS]} value={status} onChange={setStatus} />
-            <Select label="Sort" options={[...SORT]} value={sort} onChange={setSort} />
-          </div>
-          <Button icon={<AddIcon />}>New Product</Button>
-        </div>
         {products.length === 0 ? (
           <EmptyState icon={<ProductsIcon size={24} />} title="No products found">
             Start selling digital products today
           </EmptyState>
         ) : (
-          <div className="flex flex-col rounded-2xl border border-(--pl-border)">
-            {products.map((p) => (
-              <a
-                key={p.id}
-                href="#"
-                onClick={(e) => e.preventDefault()}
-                className="group flex items-center gap-6 border-b border-(--pl-border) py-4 pr-3 transition-colors last:border-b-0 hover:bg-(--pl-subtle)"
-              >
-                {/* 48px tall in a 40px row, as Polar's: it overhangs by 4px top and bottom */}
-                <div className="-my-1 flex items-center py-4 pr-1 pl-4">
-                  <span className="size-4 rounded-[2px] border border-(--pl-rule) opacity-0 transition-opacity group-hover:opacity-100" />
-                </div>
-                <div className="flex min-w-0 flex-1 items-center gap-4">
-                  <span className="truncate text-sm leading-5 text-(--pl-text)">{p.name}</span>
-                  {p.archived && <span className="text-sm leading-5 text-(--pl-text-muted)">Archived</span>}
-                </div>
-                <div className="flex shrink-0 items-center gap-6">
-                  <span className="text-sm leading-[19.25px] text-(--pl-text)">{priceLabel(p)}</span>
-                  <Button variant="secondary" size="sm" onClick={(e) => e.preventDefault()}>
-                    Share
-                  </Button>
-                  <IconButton label="More" size={40} className="opacity-50 hover:opacity-100" onClick={(e) => e.preventDefault()}>
-                    <MoreVertIcon />
-                  </IconButton>
-                </div>
-              </a>
-            ))}
-          </div>
+          <PopoverGroup>
+            <div className="flex flex-col rounded-(--pl-radius-lg) border border-(--pl-border)">
+              {products.map((p) => (
+                <a
+                  key={p.id}
+                  href="#"
+                  onClick={(e) => e.preventDefault()}
+                  className="group flex items-center gap-6 border-b border-(--pl-border) py-4 pr-3 transition-colors last:border-b-0 hover:bg-(--pl-subtle)"
+                >
+                  {/* 48px tall in a 40px row, as Polar's: it overhangs by 4px top and bottom */}
+                  <div className="-my-1 flex items-center py-4 pr-1 pl-4">
+                    <span className="size-4 rounded-(--pl-radius-xs) border border-(--pl-rule) opacity-0 transition-opacity group-hover:opacity-100" />
+                  </div>
+                  <div className="flex min-w-0 flex-1 items-center gap-4">
+                    <span className="truncate text-sm leading-5 text-(--pl-text)">{p.name}</span>
+                    {p.archived && <span className="text-sm leading-5 text-(--pl-text-muted)">Archived</span>}
+                  </div>
+                  <div className="flex shrink-0 items-center gap-6">
+                    <span className="text-sm leading-[19.25px] text-(--pl-text)">{priceLabel(p)}</span>
+                    <Button variant="secondary" size="sm" onClick={(e) => e.preventDefault()}>
+                      Share
+                    </Button>
+                    {/* Polar's product menu, with a glyph for each action */}
+                    <Menu
+                      align="end"
+                      trigger={(t) => (
+                        <IconButton
+                          {...t}
+                          label="More"
+                          size={40}
+                          className="opacity-50 hover:opacity-100 aria-expanded:opacity-100"
+                        >
+                          <MoreVertIcon />
+                        </IconButton>
+                      )}
+                    >
+                      <MenuItem icon={<CopyIcon />} onSelect={() => navigator.clipboard?.writeText(p.id)}>
+                        Copy Product ID
+                      </MenuItem>
+                      <MenuItem icon={<CodeIcon />}>Integrate Checkout</MenuItem>
+                      <MenuSeparator />
+                      <MenuItem icon={<PencilIcon />} shortcut="E">
+                        Edit Product
+                      </MenuItem>
+                      <MenuItem icon={<DuplicateIcon />} shortcut="D">
+                        Duplicate Product
+                      </MenuItem>
+                      <MenuSeparator />
+                      <MenuItem icon={<ArchiveIcon />} destructive>
+                        Archive Product
+                      </MenuItem>
+                    </Menu>
+                  </div>
+                </a>
+              ))}
+            </div>
+          </PopoverGroup>
         )}
       </div>
     </Page>

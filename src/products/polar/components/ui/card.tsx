@@ -11,7 +11,9 @@ import { Checkbox } from "./controls";
  */
 export function Panel({ className = "", children }: { className?: string; children: React.ReactNode }) {
   return (
-    <div className={`overflow-hidden rounded-2xl border border-(--pl-border) bg-(--pl-surface) ${className}`}>{children}</div>
+    <div className={`overflow-hidden rounded-(--pl-radius-lg) border border-(--pl-border) bg-(--pl-surface) ${className}`}>
+      {children}
+    </div>
   );
 }
 
@@ -20,8 +22,54 @@ export function Panel({ className = "", children }: { className?: string; childr
  * header is 24px padded with 6px between title and description; its content
  * sits under it with no top padding.
  */
+/**
+ * The inner card of a card-in-card: white, 12px corners (a step inside a
+ * 16px frame, the radius scale's nesting rule), raised with the contained
+ * shadow. The shadow is laid over the content, so a hovered row's fill
+ * can't cover its edge. A table's body and a FramedCard's body.
+ */
+export function Inset({ className = "", children }: { className?: string; children: React.ReactNode }) {
+  return (
+    <div className={`relative flex min-h-0 flex-col ${className}`}>
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-(--pl-radius-md) bg-(--pl-surface)">{children}</div>
+      <span aria-hidden className="pointer-events-none absolute inset-0 rounded-(--pl-radius-md) shadow-(--pl-shadow-sm)" />
+    </div>
+  );
+}
+
+/**
+ * A titled card in a tinted frame, built as a table is: the frame (16px
+ * corners, no border, just the gray-50 tint) holds a header, a 14px/550 title
+ * over its 12px gray-500 description (set small, as a table's column labels
+ * are, so it never reads as the page's tabs; stacked, so neither is cut
+ * short in a narrow column), and under it,
+ * 4px in from the frame on the sides and bottom, the body in an Inset.
+ * It fills its height, so cards side by side match.
+ */
+export function FramedCard({
+  title,
+  description,
+  className = "",
+  children,
+}: {
+  title: string;
+  description?: string;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className={`flex min-w-0 flex-col rounded-(--pl-radius-lg) bg-(--pl-subtle) ${className}`}>
+      <header className="flex shrink-0 flex-col gap-0.5 px-4 pt-3 pb-3">
+        <h2 className="text-sm leading-5 font-[550] tracking-[0.01em] text-(--pl-text)">{title}</h2>
+        {description && <p className="text-xs leading-4 text-(--pl-text-muted)">{description}</p>}
+      </header>
+      <Inset className="mx-1 mb-1 flex-1">{children}</Inset>
+    </section>
+  );
+}
+
 export function Card({ className = "", children }: { className?: string; children: React.ReactNode }) {
-  return <div className={`rounded-4xl bg-(--pl-shell) text-(--pl-text-input) ${className}`}>{children}</div>;
+  return <div className={`rounded-(--pl-radius-xl) bg-(--pl-fill) text-(--pl-text) ${className}`}>{children}</div>;
 }
 
 export function CardHeader({ className = "", children }: { className?: string; children: React.ReactNode }) {
@@ -42,7 +90,9 @@ export function CardFooter({ className = "", children }: { className?: string; c
  */
 export function Well({ className = "", children }: { className?: string; children: React.ReactNode }) {
   return (
-    <div className={`w-full rounded-xl border border-transparent bg-(--pl-subtle) p-8 lg:rounded-4xl ${className}`}>
+    <div
+      className={`w-full rounded-(--pl-radius-md) border border-transparent bg-(--pl-subtle) p-8 lg:rounded-(--pl-radius-xl) ${className}`}
+    >
       {children}
     </div>
   );
@@ -64,7 +114,7 @@ export function List({
   return (
     <div
       className={`flex flex-col divide-y divide-(--pl-border) overflow-hidden border border-(--pl-border) ${
-        size === "default" ? "rounded-4xl" : "rounded-2xl"
+        size === "default" ? "rounded-(--pl-radius-xl)" : "rounded-(--pl-radius-lg)"
       } ${className}`}
     >
       {children}
@@ -119,7 +169,7 @@ export function ListItem({
 
 /** orbit ListGroup: a 1px gray-200 ring at 16px corners; items are 20px padded under a hairline */
 export function ListGroup({ children }: { children: React.ReactNode }) {
-  return <div className="w-full overflow-hidden rounded-2xl ring-1 ring-(--pl-border)">{children}</div>;
+  return <div className="w-full overflow-hidden rounded-(--pl-radius-lg) ring-1 ring-(--pl-border)">{children}</div>;
 }
 
 export function ListGroupItem({ children }: { children: React.ReactNode }) {
@@ -130,7 +180,7 @@ export function ListGroupItem({ children }: { children: React.ReactNode }) {
 export function IconTile({ children, size = 32 }: { children: React.ReactNode; size?: 32 | 40 }) {
   return (
     <div
-      className="flex shrink-0 items-center justify-center rounded-lg bg-(--pl-subtle) text-(--pl-text-muted)"
+      className="flex shrink-0 items-center justify-center rounded-(--pl-radius-sm) bg-(--pl-subtle) text-(--pl-text-muted)"
       style={{ width: size, height: size }}
     >
       {children}
@@ -156,11 +206,11 @@ export function SettingsGroup({
     <section className="flex w-full flex-col gap-3">
       {(title || description) && (
         <div className="flex flex-col gap-1">
-          {title && <h2 className="text-base leading-6 text-(--pl-text-strong)">{title}</h2>}
+          {title && <h2 className="text-base leading-6 text-(--pl-text)">{title}</h2>}
           {description && <p className="text-xs leading-[1.375] text-(--pl-text-muted)">{description}</p>}
         </div>
       )}
-      <div className="flex w-full flex-col overflow-hidden rounded-2xl border border-(--pl-border) bg-(--pl-subtle)">
+      <div className="flex w-full flex-col overflow-hidden rounded-(--pl-radius-lg) border border-(--pl-border) bg-(--pl-subtle)">
         {Children.toArray(children).map((child, i) => (
           <Fragment key={isValidElement(child) ? child.key : i}>
             {i > 0 && <div className="border-t border-(--pl-border)" />}
@@ -199,7 +249,7 @@ export function SettingsItem({
   return (
     <div className={`flex gap-y-4 px-6 py-4 ${row}`}>
       <div className={`flex flex-col gap-1 ${layout === "inline" ? "min-w-0 flex-1" : "w-full md:max-w-1/2"}`}>
-        <h3 className="text-sm leading-[1.5] font-medium text-(--pl-text-strong)">{title}</h3>
+        <h3 className="text-sm leading-[1.5] font-medium text-(--pl-text)">{title}</h3>
         {description && <p className="text-sm leading-[1.5] text-(--pl-text-muted)">{description}</p>}
       </div>
       {children && (

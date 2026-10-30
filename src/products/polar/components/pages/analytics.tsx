@@ -1,13 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { METRICS, PRODUCTS, rangeLabel } from "../data";
+import { METRICS, PRODUCTS, TODAY } from "../data";
 import { AddIcon, MoreVertIcon } from "../icons";
-import { IconButton } from "../ui/button";
-import { DateRangeField } from "../ui/field";
+import { DateRangePicker, type DateRange } from "../ui/calendar";
 import { Select } from "../ui/select";
 import { MetricBox, MetricCell, MetricGrid } from "../ui/metric";
-import { Page, Section } from "../ui/page";
+import { Page, PageAction, Section } from "../ui/page";
+import { PopoverGroup } from "../ui/popover";
 
 const INTERVALS = [
   { id: "hour", label: "Hourly" },
@@ -32,41 +32,44 @@ export function MetricsPage() {
   const [interval, setInterval] = useState("day");
   const [product, setProduct] = useState("all");
   const range = "30d";
+  // the last 30 days, to today
+  const [dates, setDates] = useState<DateRange>(() => ({ from: new Date(TODAY.getTime() - 29 * 86_400_000), to: TODAY }));
   return (
     <Page
       title="Metrics"
+      filters={
+        <>
+          <Select label="Interval" options={INTERVALS} value={interval} onChange={setInterval} />
+          <DateRangePicker value={dates} onChange={setDates} />
+          <Select label="Product" options={PRODUCT_FILTER} value={product} onChange={setProduct} strong className="w-[226px]" />
+        </>
+      }
       actions={
-        // the filters and the two buttons sit 24px apart here, not the usual 16
-        <div className="flex flex-wrap items-center gap-x-6 gap-y-4">
-          <div className="flex flex-wrap items-center gap-2">
-            <Select label="Interval" options={INTERVALS} value={interval} onChange={setInterval} />
-            <DateRangeField label={rangeLabel(range).replace(/, \d{4}$/, "")} />
-            <Select label="Product" options={PRODUCT_FILTER} value={product} onChange={setProduct} strong className="w-[226px]" />
-          </div>
-          <div className="flex items-center gap-2">
-            <IconButton label="Add metric" variant="secondary">
-              <AddIcon />
-            </IconButton>
-            <IconButton label="More" variant="secondary">
-              <MoreVertIcon />
-            </IconButton>
-          </div>
-        </div>
+        <>
+          <PageAction primary label="Add metric">
+            <AddIcon />
+          </PageAction>
+          <PageAction label="More">
+            <MoreVertIcon />
+          </PageAction>
+        </>
       }
     >
-      <div className="flex flex-col gap-16">
-        {SECTIONS.map((s) => (
-          <Section key={s.title} title={s.title} large>
-            <MetricGrid>
-              {s.metrics.map((m, i) => (
-                <MetricCell key={m.id} wide={i === 0 && s.metrics.length % 2 === 1}>
-                  <MetricBox metric={m} range={range} />
-                </MetricCell>
-              ))}
-            </MetricGrid>
-          </Section>
-        ))}
-      </div>
+      <PopoverGroup>
+        <div className="flex flex-col gap-16">
+          {SECTIONS.map((s) => (
+            <Section key={s.title} title={s.title} large>
+              <MetricGrid>
+                {s.metrics.map((m, i) => (
+                  <MetricCell key={m.id} wide={i === 0 && s.metrics.length % 2 === 1}>
+                    <MetricBox metric={m} range={range} />
+                  </MetricCell>
+                ))}
+              </MetricGrid>
+            </Section>
+          ))}
+        </div>
+      </PopoverGroup>
     </Page>
   );
 }

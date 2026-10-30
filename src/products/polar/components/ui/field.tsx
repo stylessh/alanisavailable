@@ -1,27 +1,35 @@
 "use client";
 
 import { createContext, useContext, useId, useState, type InputHTMLAttributes, type TextareaHTMLAttributes } from "react";
-import { CalendarIcon, SearchMaterialIcon } from "../icons";
+import { CalendarIcon, SearchIcon } from "../icons";
 
 // Polar's form fields (orbit Input, TextArea; shadcn Form), measured in the
 // Create Checkout Link sheet:
-// field     40px, white, a gray-200 border, 12px corners, shadow-xs, 12px
-//           sides, 14px gray-950 text, gray-400 placeholder
-// focus     the border turns blue-300 inside a 3px blue-100 ring
+// field     40px, white, 12px corners, raised like a secondary button
+//           (shadow-sm, its hairline inside the box), 12px sides, 14px
+//           gray-950 text, gray-400 placeholder
+// focus     the shared outline, nothing else: 2px of the muted focus gray,
+//           2px out, following the 12px corners (a field whose input sits
+//           inside a box, CopyInput, outlines the box)
 // label     14px/500 gray-900, leading 1, 8px above its control
 // help      12px or 14px gray-500, 8px below
 // error     the label and a 14px/500 message turn red-500; the message sits
-//           between the control and the help, and the field keeps its border
-// disabled  half opacity, not-allowed
-export const FIELD = "rounded-xl border border-(--pl-border) bg-(--pl-surface) shadow-(--pl-shadow-xs)";
+//           between the control and the help; the field's shadow turns red
+//           (aria-invalid takes the danger tint)
+// disabled  half opacity, not-allowed, and flat: a plain gray-200 hairline inside, no shadow
+export const FIELD =
+  "rounded-(--pl-radius-md) bg-(--pl-field) shadow-(--pl-shadow-sm) disabled:shadow-none disabled:inset-ring disabled:inset-ring-(--pl-border) has-disabled:shadow-none has-disabled:inset-ring has-disabled:inset-ring-(--pl-border)";
 
-const FOCUS =
-  "outline-none focus:border-(--pl-field-focus) focus:ring-[3px] focus:ring-(--pl-field-ring) disabled:cursor-not-allowed disabled:opacity-50";
+const FOCUS = "disabled:cursor-not-allowed disabled:opacity-50";
+
+/** The focus outline drawn on a box whose input inside has focus, so it takes the box's shape */
+export const BOX_FOCUS = "has-[input:focus-visible]:outline-2 has-[input:focus-visible]:outline-offset-2";
 
 /** Field wires its label, help and message to the control inside it */
 const FieldContext = createContext<{ id: string; describedBy?: string; invalid: boolean } | null>(null);
 
-function useFieldProps(props: Pick<React.AriaAttributes, "aria-describedby" | "aria-invalid"> & { id?: string }) {
+/** The id, description and invalid state a Field gives the control inside it */
+export function useFieldProps(props: Pick<React.AriaAttributes, "aria-describedby" | "aria-invalid"> & { id?: string }) {
   const field = useContext(FieldContext);
   return {
     id: props.id ?? field?.id,
@@ -48,7 +56,7 @@ export function Input({
     <input
       {...props}
       {...wired}
-      className={`h-10 w-full px-3 py-2 text-sm leading-5 text-(--pl-text-input) ${FIELD} ${FOCUS} ${
+      className={`h-10 w-full px-3 py-2 text-sm leading-5 text-(--pl-text) ${FIELD} ${FOCUS} ${
         prefix ? "pl-10" : ""
       } ${suffix ? "pr-10" : ""} ${mono ? "font-mono" : ""} ${prefix || suffix ? "" : className}`}
     />
@@ -82,7 +90,7 @@ export function TextArea({
     <textarea
       {...props}
       {...wired}
-      className={`min-h-[120px] w-full rounded-2xl border border-(--pl-border) bg-(--pl-surface) p-4 text-sm leading-5 text-(--pl-text-input) shadow-(--pl-shadow-xs) ${FOCUS} ${
+      className={`min-h-[120px] w-full rounded-(--pl-radius-lg) bg-(--pl-field) p-4 text-sm leading-5 text-(--pl-text) shadow-(--pl-shadow-sm) disabled:shadow-none disabled:inset-ring disabled:inset-ring-(--pl-border) ${FOCUS} ${
         resizable ? "" : "resize-none"
       } ${className}`}
     />
@@ -142,16 +150,40 @@ export function Field({
   );
 }
 
-/** A field with Polar's 20px Material search glyph inside its left edge */
-export function SearchInput({ className = "", ...props }: InputHTMLAttributes<HTMLInputElement>) {
+/**
+ * A field with Polar's search glyph (the sidebar's, 16px) inside its left edge.
+ * ghost  no chrome at all, for a search that is a list's toolbar: it fills
+ *        its box, the glyph centred in a 32px slot 16px in, so the text
+ *        starts where a list row's does after its 32px avatar (60px); the
+ *        glyph darkens while you type. Actions (ghost icon buttons) sit inside
+ *        its right end, 12px in, and the text stops short of them.
+ */
+export function SearchInput({
+  className = "",
+  variant = "field",
+  actions,
+  ...props
+}: InputHTMLAttributes<HTMLInputElement> & { variant?: "field" | "ghost"; actions?: React.ReactNode }) {
+  if (variant === "ghost")
+    return (
+      <div className={`relative flex items-center gap-1 pr-3 ${className}`}>
+        <input
+          type="search"
+          className="peer h-full min-w-0 flex-1 bg-transparent pl-15 text-sm leading-5 text-(--pl-text) outline-none placeholder:text-(--pl-text-faint) [&::-webkit-search-cancel-button]:hidden"
+          {...props}
+        />
+        <SearchIcon className="pointer-events-none absolute left-6 text-(--pl-text-faint) transition-colors peer-focus:text-(--pl-text-muted)" />
+        {actions}
+      </div>
+    );
   return (
     <div className={`relative flex items-center ${className}`}>
       <input
         type="search"
-        className={`h-10 w-full pr-3 pl-10 text-sm leading-5 text-(--pl-text-input) [&::-webkit-search-cancel-button]:hidden ${FIELD} ${FOCUS}`}
+        className={`h-10 w-full pr-3 pl-10 text-sm leading-5 text-(--pl-text) [&::-webkit-search-cancel-button]:hidden ${FIELD} ${FOCUS}`}
         {...props}
       />
-      <SearchMaterialIcon size={20} className="pointer-events-none absolute left-3 text-(--pl-text-muted)" />
+      <SearchIcon className="pointer-events-none absolute left-3.5 text-(--pl-text-muted)" />
     </div>
   );
 }
@@ -163,12 +195,12 @@ export function SearchInput({ className = "", ...props }: InputHTMLAttributes<HT
 export function CopyInput({ value, label, className = "" }: { value: string; label: string; className?: string }) {
   const [copied, setCopied] = useState(false);
   return (
-    <div className={`flex h-10 w-full items-center overflow-hidden ${FIELD} ${className}`}>
+    <div className={`flex h-10 w-full items-center overflow-hidden ${FIELD} ${BOX_FOCUS} ${className}`}>
       <input
         readOnly
         value={value}
         aria-label={label}
-        className="h-full min-w-0 flex-1 truncate bg-transparent px-3 text-sm leading-5 text-(--pl-text-dim) outline-none"
+        className="h-full min-w-0 flex-1 truncate bg-transparent px-3 text-sm leading-5 text-(--pl-text-secondary) outline-none"
       />
       <button
         type="button"
@@ -177,7 +209,7 @@ export function CopyInput({ value, label, className = "" }: { value: string; lab
           setCopied(true);
           setTimeout(() => setCopied(false), 1500);
         }}
-        className="mr-1 inline-flex h-8 shrink-0 cursor-pointer items-center rounded-full px-3 text-xs leading-4 font-[550] tracking-[0.01em] text-(--pl-text-strong) transition-colors hover:bg-(--pl-ghost-hover)"
+        className="mr-1 inline-flex h-8 shrink-0 cursor-pointer items-center rounded-(--pl-radius-full) px-3 text-xs leading-4 font-[550] tracking-[0.01em] text-(--pl-text) transition-colors hover:bg-(--pl-ghost-hover)"
       >
         <span aria-live="polite">{copied ? "Copied" : "Copy"}</span>
       </button>
@@ -190,6 +222,8 @@ export function DateRangeField({
   label,
   onClick,
   onLabelClick,
+  onPointerEnter,
+  onLabelPointerEnter,
   expanded,
   className = "",
   triggerRef,
@@ -199,6 +233,9 @@ export function DateRangeField({
   onClick?: () => void;
   /** the label, which opens the quick ranges in Analytics */
   onLabelClick?: () => void;
+  /** hovering each half, for moving between pickers while one is open */
+  onPointerEnter?: (e: React.PointerEvent<HTMLElement>) => void;
+  onLabelPointerEnter?: (e: React.PointerEvent<HTMLElement>) => void;
   expanded?: boolean;
   className?: string;
   triggerRef?: React.Ref<HTMLDivElement>;
@@ -210,7 +247,9 @@ export function DateRangeField({
         aria-label="Choose dates"
         aria-expanded={expanded}
         onClick={onClick}
-        className="flex cursor-pointer items-center border-r border-(--pl-border) px-4 text-(--pl-text)"
+        onPointerEnter={onPointerEnter}
+        // each half takes its side of the field's corners, so its focus outline is its own shape
+        className="flex cursor-pointer items-center rounded-l-(--pl-radius-md) border-r border-(--pl-border) px-4 text-(--pl-text)"
       >
         <CalendarIcon />
       </button>
@@ -218,7 +257,8 @@ export function DateRangeField({
         type="button"
         aria-expanded={expanded}
         onClick={onLabelClick ?? onClick}
-        className="flex flex-1 cursor-pointer items-center px-4 text-sm leading-5 whitespace-nowrap text-(--pl-text)"
+        onPointerEnter={onLabelPointerEnter ?? onPointerEnter}
+        className="flex flex-1 cursor-pointer items-center rounded-r-(--pl-radius-md) px-4 text-sm leading-5 whitespace-nowrap text-(--pl-text)"
       >
         {label}
       </button>

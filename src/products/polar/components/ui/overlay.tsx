@@ -3,7 +3,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { XIcon } from "../icons";
-import { Floating, useFloating, type Side } from "./popover";
+import { Floating, scopeVars, useFloating, type Side } from "./popover";
 
 // Polar's overlays: orbit Modal (Customize, Share), orbit InlineModal, the
 // right-hand sheet (Create Checkout Link), and orbit Tooltip.
@@ -17,7 +17,8 @@ function useOverlay(open: boolean, onClose: () => void, panel: React.RefObject<H
   useEffect(() => {
     if (!open) return;
     const before = document.activeElement as HTMLElement | null;
-    panel.current?.focus();
+    // a field inside that took focus itself (autoFocus) keeps it
+    if (!panel.current?.contains(document.activeElement)) panel.current?.focus();
     const key = (e: KeyboardEvent) => {
       if (e.key === "Escape") closeRef.current();
       if (e.key !== "Tab" || !panel.current) return;
@@ -48,6 +49,17 @@ function useOverlay(open: boolean, onClose: () => void, panel: React.RefObject<H
 
 const root = () => document.querySelector(".polar") ?? document.body;
 
+/** On opening, the token overrides around whatever opened it (a playground column), so the overlay matches it */
+function useOpenerVars(open: boolean) {
+  const [vars, setVars] = useState<Record<string, string>>({});
+  const [was, setWas] = useState(open);
+  if (open !== was) {
+    setWas(open);
+    if (open) setVars(scopeVars(document.activeElement));
+  }
+  return vars as React.CSSProperties;
+}
+
 /**
  * orbit Modal: a 70% black scrim; an 800px gray-100 frame (24px corners, 4px
  * padding) with the title in 14px gray-500 on its top edge and a 32px close;
@@ -70,10 +82,11 @@ export function Modal({
 }) {
   const panel = useRef<HTMLDivElement>(null);
   const titleId = useId();
+  const vars = useOpenerVars(open);
   useOverlay(open, onClose, panel);
   if (!open) return null;
   return createPortal(
-    <div className="fixed inset-0 z-50 overflow-hidden" role="presentation">
+    <div className="fixed inset-0 z-50 overflow-hidden" role="presentation" data-pl-scope="" style={vars}>
       <div className="flex h-full flex-col items-center bg-(--pl-scrim-modal) p-2" onClick={onClose}>
         <div className="block h-20 w-2 shrink-0 lg:max-h-[10%] lg:grow-2" />
         <div
@@ -83,7 +96,7 @@ export function Modal({
           aria-labelledby={titleId}
           tabIndex={-1}
           onClick={(e) => e.stopPropagation()}
-          className={`pl-modal relative z-10 flex max-h-full w-full flex-col gap-y-1 overflow-x-hidden overflow-y-auto rounded-3xl bg-(--pl-shell) p-1 shadow-(--pl-shadow-sm) outline-none lg:w-[800px] lg:max-w-full ${className}`}
+          className={`pl-modal relative z-10 flex max-h-full w-full flex-col gap-y-1 overflow-x-hidden overflow-y-auto rounded-(--pl-radius-xl) bg-(--pl-shell) p-1 shadow-(--pl-shadow-lg) outline-none lg:w-[800px] lg:max-w-full ${className}`}
         >
           <div className="flex items-center justify-between pt-1 pr-1 pl-4 text-sm leading-5">
             <span id={titleId} className="text-(--pl-text-muted)">
@@ -93,12 +106,14 @@ export function Modal({
               type="button"
               aria-label="Close"
               onClick={onClose}
-              className="flex size-8 cursor-pointer items-center justify-center rounded-full text-(--pl-text-muted) transition-colors hover:bg-(--pl-ghost-hover) hover:text-(--pl-text-dim)"
+              className="flex size-8 cursor-pointer items-center justify-center rounded-(--pl-radius-full) text-(--pl-text-muted) transition-colors hover:bg-(--pl-ghost-hover) hover:text-(--pl-text-secondary)"
             >
               <XIcon />
             </button>
           </div>
-          <div className="flex flex-col overflow-y-auto rounded-[20px] bg-(--pl-surface)">{children}</div>
+          <div className="flex flex-col overflow-y-auto rounded-[calc(var(--pl-radius-xl)-4px)] bg-(--pl-surface)">
+            {children}
+          </div>
         </div>
       </div>
     </div>,
@@ -133,10 +148,11 @@ export function Sheet({
 }) {
   const panel = useRef<HTMLDivElement>(null);
   const titleId = useId();
+  const vars = useOpenerVars(open);
   useOverlay(open, onClose, panel);
   if (!open) return null;
   return createPortal(
-    <div className="fixed inset-0 z-50 overflow-hidden" role="presentation">
+    <div className="fixed inset-0 z-50 overflow-hidden" role="presentation" data-pl-scope="" style={vars}>
       <div
         className="pl-scrim relative flex h-full bg-(--pl-scrim-sheet)"
         onMouseDown={(e) => e.target === e.currentTarget && onClose()}
@@ -147,7 +163,7 @@ export function Sheet({
           aria-modal
           aria-labelledby={titleId}
           tabIndex={-1}
-          className="pl-sheet fixed inset-y-0 right-0 z-10 flex w-full flex-col overflow-y-auto bg-(--pl-surface) text-(--pl-text) shadow-(--pl-shadow-sm) outline-none md:w-[540px]"
+          className="pl-sheet fixed inset-y-0 right-0 z-10 flex w-full flex-col overflow-y-auto bg-(--pl-surface) text-(--pl-text) shadow-(--pl-shadow-lg) outline-none md:w-[540px]"
         >
           <div className="flex w-full items-center justify-between px-8 py-6">
             <h1 id={titleId} className="text-xl leading-7">
@@ -179,41 +195,66 @@ export function Sheet({
   );
 }
 
+/*
+ * Tooltips are warm for a moment after one closes: moving from one target to
+ * the next (a header's actions, a toolbar's buttons) shows the next at once,
+ * without the delay or the pop-in, so the label just changes. A target
+ * whose popover is open doesn't show its tooltip over it.
+ */
+const WARM_MS = 300;
+/** how long the pointer rests on a target first: long enough that passing over one shows nothing (Polar waits 150ms) */
+const HOVER_MS = 600;
+let warmUntil = 0;
+
 /**
  * orbit Tooltip: white, gray-950 14px text, a gray-200 border, 7.6px corners,
  * 12px by 6px of padding and shadow-md, 4px from its target. It shows after
- * 150ms of hover (Polar's delay) or at once on keyboard focus.
+ * the pointer rests 600ms (HOVER_MS), at once on keyboard focus, and at once
+ * with no pop-in while tooltips are warm.
  */
 export function Tooltip({
   content,
   side = "top",
+  disabled,
+  className = "inline-flex",
   children,
 }: {
   content: React.ReactNode;
   side?: Side;
+  /** off for now (a nav row that shows its label already), without remounting what it wraps */
+  disabled?: boolean;
+  /** the wrapper's layout: inline-flex, or flex for a row that should stretch */
+  className?: string;
   /** one element; it gets the hover and focus listeners */
   children: React.ReactElement<React.HTMLAttributes<HTMLElement>>;
 }) {
   const [open, setOpen] = useState(false);
+  const [instant, setInstant] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const id = useId();
   const { triggerRef, floatingRef, style, side: placed } = useFloating<HTMLSpanElement>(open, { side, align: "center" });
   const show = (delay: number) => {
     clearTimeout(timer.current);
-    timer.current = setTimeout(() => setOpen(true), delay);
+    const warm = Date.now() < warmUntil;
+    setInstant(warm);
+    if (warm || delay === 0) setOpen(true);
+    else timer.current = setTimeout(() => setOpen(true), delay);
   };
   const hide = () => {
     clearTimeout(timer.current);
+    if (open) warmUntil = Date.now() + WARM_MS;
     setOpen(false);
   };
+  // the target's own popover is open (a menu's trigger): that says enough
+  const covered = children.props["aria-expanded"] === true;
   useEffect(() => () => clearTimeout(timer.current), []);
   return (
     <>
       <span
         ref={triggerRef}
-        className="inline-flex"
+        className={className}
         aria-describedby={open ? id : undefined}
-        onPointerEnter={() => show(150)}
+        onPointerEnter={() => show(HOVER_MS)}
         onPointerLeave={hide}
         onFocus={() => show(0)}
         onBlur={hide}
@@ -221,8 +262,16 @@ export function Tooltip({
       >
         {children}
       </span>
-      {open && (
-        <Floating floatingRef={floatingRef} style={style} side={placed} role="tooltip" id={id} className="pointer-events-none">
+      {open && !covered && !disabled && (
+        <Floating
+          floatingRef={floatingRef}
+          style={style}
+          side={placed}
+          instant={instant}
+          role="tooltip"
+          id={id}
+          className="pointer-events-none"
+        >
           <TooltipBubble>{content}</TooltipBubble>
         </Floating>
       )}
@@ -232,7 +281,7 @@ export function Tooltip({
 
 export function TooltipBubble({ children }: { children: React.ReactNode }) {
   return (
-    <div className="overflow-hidden rounded-[7.6px] border border-(--pl-border) bg-(--pl-popover) px-3 py-1.5 text-sm leading-5 whitespace-nowrap text-(--pl-popover-text) shadow-(--pl-shadow-md)">
+    <div className="overflow-hidden rounded-(--pl-radius-sm) bg-(--pl-popover) px-3 py-1.5 text-sm leading-5 whitespace-nowrap text-(--pl-text) shadow-(--pl-shadow-md)">
       {children}
     </div>
   );

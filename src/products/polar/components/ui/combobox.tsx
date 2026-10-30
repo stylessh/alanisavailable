@@ -1,22 +1,33 @@
 "use client";
 
 import { useId, useMemo, useState } from "react";
-import { CheckIcon, SearchIcon } from "../icons";
 import { FIELD } from "./field";
-import { Floating, useDismiss, useFloating, useListNavigation } from "./popover";
+import {
+  Floating,
+  POPOVER,
+  PopoverEmpty,
+  PopoverLabel,
+  PopoverSearch,
+  RowEnd,
+  RowIcon,
+  rowClass,
+  useDismiss,
+  matches,
+  useFloating,
+  useListNavigation,
+  usePopoverOpen,
+} from "./popover";
 
 // Polar's searchable multi-select (ProductSelect: "All products", a checkout
 // link's products, a discount picker), over cmdk in a shadcn Popover:
-// trigger  a 40px field, 14px/500 label, half-strength chevron, gray-300
-//          border on hover
-// panel    white, a gray-200 border, 7.6px corners, shadow-md, 288px (or the
-//          trigger's width if wider)
-// search   a 44px row ruled underneath: a 16px glyph at half strength, then
-//          the 14px query
-// group    4px padded; its first row is the group's name (500) with "Select
-//          all N" at 70% on the right, then one row per item with a tick
-//          when chosen. The keyboard row turns blue-600 with white text.
-export type ComboboxGroup = { id: string; label: string; items: { id: string; label: string }[] };
+// trigger  a 40px field, 14px/500 label, half-strength chevron, gray-50 on hover
+// panel    the shared popover, 288px (or the trigger's width if wider)
+// search   a 36px row over a hairline: a muted 16px glyph, then the query
+// group    a small muted label with "Select all N" (or "Deselect all") as
+//          quiet text on its right, then the shared rows: an optional
+//          glyph, the label, a check on the right when chosen; gray-100
+//          under the pointer or keys
+export type ComboboxGroup = { id: string; label: string; items: { id: string; label: string; icon?: React.ReactNode }[] };
 
 export function ComboboxPanel({
   groups,
@@ -49,66 +60,50 @@ export function ComboboxPanel({
   empty?: string;
 }) {
   let index = -1;
-  const row = (on: boolean) =>
-    `relative flex w-full cursor-pointer items-center justify-between gap-2 rounded-xs px-2 text-sm leading-5 outline-none select-none ${
-      on ? "bg-(--pl-accent) text-(--pl-accent-fg)" : "text-(--pl-text-strong)"
-    }`;
+  // when some items have a glyph, the rest keep its slot so every label lines up
+  const glyphs = groups.some((g) => g.items.some((i) => i.icon));
   return (
-    <div
-      ref={listRef}
-      className="w-full min-w-72 overflow-hidden rounded-[7.6px] border border-(--pl-border) bg-(--pl-popover) text-(--pl-popover-text) shadow-(--pl-shadow-md)"
-    >
-      <div className="flex items-center border-b border-(--pl-border) px-3">
-        <SearchIcon className="mr-2 shrink-0 opacity-50" />
-        <input
-          autoFocus={autoFocus}
-          value={query}
-          onChange={(e) => onQuery(e.target.value)}
-          placeholder={placeholder}
-          aria-label={placeholder}
-          className="flex h-11 w-full bg-transparent py-3 text-sm leading-5 outline-none placeholder:text-(--pl-text-muted)"
-        />
-      </div>
-      <div id={listId} role="listbox" aria-multiselectable className="max-h-[300px] overflow-x-hidden overflow-y-auto">
-        {groups.every((g) => g.items.length === 0) && <p className="py-6 text-center text-sm">{empty}</p>}
-        {groups.map((g, gi) => {
+    <div ref={listRef} className={`w-full overflow-hidden ${POPOVER} min-w-72! p-0!`}>
+      <PopoverSearch value={query} onChange={onQuery} placeholder={placeholder} autoFocus={autoFocus} />
+      <div id={listId} role="listbox" aria-multiselectable className="max-h-[300px] overflow-x-hidden overflow-y-auto p-1">
+        {groups.every((g) => g.items.length === 0) && <PopoverEmpty>{empty}</PopoverEmpty>}
+        {groups.map((g) => {
           if (!g.items.length) return null;
           const all = g.items.every((i) => selected.includes(i.id));
-          index++;
-          const head = index;
           return (
-            <div key={g.id}>
-              {gi > 0 && <div className="-mx-1 h-px bg-(--pl-border)" />}
-              <div className="p-1">
-                <div
-                  role="option"
-                  aria-selected={all}
-                  onClick={() => onToggleGroup(g)}
-                  onPointerMove={() => onHover?.(head)}
-                  className={`${row(active === head)} py-2`}
-                >
-                  <span className="font-medium">{g.label}</span>
-                  <span className="text-xs leading-4 opacity-70">{all ? "Deselect all" : `Select all ${g.items.length}`}</span>
-                </div>
-                {g.items.map((item) => {
-                  index++;
-                  const i = index;
-                  const on = selected.includes(item.id);
-                  return (
-                    <div
-                      key={item.id}
-                      role="option"
-                      aria-selected={on}
-                      onClick={() => onToggle(item.id)}
-                      onPointerMove={() => onHover?.(i)}
-                      className={`${row(active === i)} py-1.5`}
-                    >
-                      {item.label}
-                      <CheckIcon className={on ? "visible" : "invisible"} />
-                    </div>
-                  );
-                })}
-              </div>
+            <div key={g.id} role="group" aria-label={g.label}>
+              <PopoverLabel
+                end={
+                  <button
+                    type="button"
+                    onClick={() => onToggleGroup(g)}
+                    className="cursor-pointer text-xs leading-4 font-normal text-(--pl-text-muted) hover:text-(--pl-text)"
+                  >
+                    {all ? "Deselect all" : `Select all ${g.items.length}`}
+                  </button>
+                }
+              >
+                {g.label}
+              </PopoverLabel>
+              {g.items.map((item) => {
+                index++;
+                const i = index;
+                const on = selected.includes(item.id);
+                return (
+                  <div
+                    key={item.id}
+                    role="option"
+                    aria-selected={on}
+                    onClick={() => onToggle(item.id)}
+                    onPointerMove={() => onHover?.(i)}
+                    className={rowClass(active === i)}
+                  >
+                    {glyphs && <RowIcon>{item.icon}</RowIcon>}
+                    <span className="truncate">{item.label}</span>
+                    <RowEnd checked={on} />
+                  </div>
+                );
+              })}
             </div>
           );
         })}
@@ -135,7 +130,7 @@ export function Combobox({
   placeholder?: string;
   className?: string;
 }) {
-  const [open, setOpen] = useState(false);
+  const { open, setOpen, onPointerEnter, instant } = usePopoverOpen();
   const [query, setQuery] = useState("");
   const listId = useId();
   const { triggerRef, floatingRef, style, side } = useFloating<HTMLButtonElement>(open, { matchWidth: true });
@@ -143,7 +138,7 @@ export function Combobox({
   useDismiss(open, () => setOpen(false), [triggerRef, floatingRef]);
 
   const filtered = useMemo(
-    () => groups.map((g) => ({ ...g, items: g.items.filter((i) => i.label.toLowerCase().includes(query.trim().toLowerCase())) })),
+    () => groups.map((g) => ({ ...g, items: g.items.filter((i) => matches(i.label, query)) })),
     [groups, query],
   );
   const names = groups.flatMap((g) => g.items).filter((i) => selected.includes(i.id));
@@ -163,8 +158,9 @@ export function Combobox({
         aria-expanded={open}
         aria-controls={listId}
         aria-label={label}
-        onClick={() => setOpen((o) => !o)}
-        className={`flex h-10 cursor-pointer items-center justify-between gap-x-2 px-3 py-2 text-sm leading-5 font-medium text-(--pl-text-strong) transition-colors outline-none hover:border-(--pl-rule) focus-visible:border-(--pl-field-focus) focus-visible:ring-[3px] focus-visible:ring-(--pl-field-ring) ${FIELD} ${className}`}
+        onClick={() => setOpen(!open)}
+        onPointerEnter={onPointerEnter}
+        className={`flex h-10 cursor-pointer items-center justify-between gap-x-2 px-3 py-2 text-sm leading-5 font-medium text-(--pl-text) transition-colors hover:bg-(--pl-subtle) ${FIELD} ${className}`}
       >
         <span className="truncate">{names.length === 0 ? allLabel : names.map((n) => n.label).join(", ")}</span>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden className="ml-2 shrink-0 opacity-50">
@@ -172,7 +168,7 @@ export function Combobox({
         </svg>
       </button>
       {open && (
-        <Floating floatingRef={floatingRef} style={style} side={side} onKeyDown={onKeyDown}>
+        <Floating floatingRef={floatingRef} style={style} side={side} instant={instant} onKeyDown={onKeyDown}>
           <ComboboxPanel
             groups={filtered}
             selected={selected}

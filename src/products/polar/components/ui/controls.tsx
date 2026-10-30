@@ -6,8 +6,6 @@ import { CheckIcon, MinusIcon } from "../icons";
 // The small controls, from orbit and Polar's shadcn layer, checked live in
 // the Create Checkout Link sheet.
 
-const RING = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--pl-border) focus-visible:ring-offset-2";
-
 /**
  * orbit Switch: a 37x18 track (2px clear border) holding an 8px gray-50
  * thumb with shadow-lg, 4px in from the left when off and 22px when on. On
@@ -35,12 +33,12 @@ export function Switch({
       aria-label={label}
       disabled={disabled}
       onClick={() => onChange(!checked)}
-      className={`inline-flex h-[18px] w-[37px] shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${RING} ${
+      className={`inline-flex h-[18px] w-[37px] shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
         checked ? "bg-(--pl-accent)" : "bg-(--pl-border)"
       }`}
     >
       <span
-        className={`pointer-events-none block size-2 rounded-full bg-(--pl-subtle) shadow-(--pl-shadow-lg) transition-transform ${
+        className={`pointer-events-none block size-2 rounded-full bg-(--pl-subtle) shadow-(--pl-shadow-sm) transition-transform ${
           checked ? "translate-x-[22px]" : "translate-x-1"
         }`}
       />
@@ -82,12 +80,12 @@ export function Checkbox({
         e.stopPropagation();
         onChange(!on);
       }}
-      className={`flex size-4 shrink-0 cursor-pointer items-center justify-center rounded-xs border disabled:cursor-not-allowed disabled:opacity-50 ${RING} ${
-        on ? "border-(--pl-text-strong) bg-(--pl-text-strong) text-white" : "border-(--pl-rule) bg-transparent"
+      className={`flex size-4 shrink-0 cursor-pointer items-center justify-center rounded-(--pl-radius-xs) border disabled:cursor-not-allowed disabled:opacity-50 ${
+        on ? "border-(--pl-text) bg-(--pl-text) text-(--pl-primary-fg)" : "border-(--pl-rule) bg-transparent"
       } ${className}`}
     >
       {on && <CheckIcon />}
-      {checked === "indeterminate" && <MinusIcon size={12} strokeWidth={3} className="text-(--pl-text-strong)" />}
+      {checked === "indeterminate" && <MinusIcon size={12} strokeWidth={3} className="text-(--pl-text)" />}
     </button>
   );
   if (!label) return box;
@@ -137,7 +135,7 @@ export function Radio({ value, disabled, id }: { value: string; disabled?: boole
       aria-checked={on}
       disabled={disabled}
       onClick={() => group?.onChange(value)}
-      className={`flex aspect-square size-4 shrink-0 cursor-pointer items-center justify-center rounded-full border border-(--pl-accent) text-(--pl-accent) disabled:cursor-not-allowed disabled:opacity-50 ${RING}`}
+      className={`flex aspect-square size-4 shrink-0 cursor-pointer items-center justify-center rounded-full border border-(--pl-accent) text-(--pl-accent) disabled:cursor-not-allowed disabled:opacity-50`}
     >
       {on && <span className="size-2.5 rounded-full bg-current" />}
     </button>
@@ -157,10 +155,10 @@ export function RadioCard({ value, disabled, children }: { value: string; disabl
     <label
       htmlFor={id}
       aria-disabled={disabled || undefined}
-      className={`flex flex-col gap-3 rounded-2xl border p-4 transition-colors not-aria-disabled:cursor-pointer ${
+      className={`flex flex-col gap-3 rounded-(--pl-radius-lg) border p-4 transition-colors not-aria-disabled:cursor-pointer ${
         on
           ? "border-(--pl-border) bg-(--pl-subtle) text-(--pl-text)"
-          : "border-(--pl-shell) text-(--pl-text-muted) not-aria-disabled:hover:border-(--pl-border)"
+          : "border-(--pl-fill) text-(--pl-text-muted) not-aria-disabled:hover:border-(--pl-border)"
       }`}
     >
       <div className="flex items-center gap-2.5 text-sm leading-none font-medium">

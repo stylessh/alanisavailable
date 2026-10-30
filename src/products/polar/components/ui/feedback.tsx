@@ -6,7 +6,7 @@ import { Button, type ButtonVariant } from "./button";
 type AlertVariant = "info" | "warning" | "danger" | "success";
 
 const ALERTS: Record<AlertVariant, { Icon: typeof InfoIcon; accent: string }> = {
-  info: { Icon: InfoIcon, accent: "text-(--pl-text-strong)" },
+  info: { Icon: InfoIcon, accent: "text-(--pl-text)" },
   warning: { Icon: TriangleAlertIcon, accent: "text-(--pl-warning)" },
   danger: { Icon: CircleAlertIcon, accent: "text-(--pl-danger)" },
   success: { Icon: CircleCheckIcon, accent: "text-(--pl-success)" },
@@ -39,7 +39,7 @@ export function Alert({
   return (
     <div
       role={variant === "danger" ? "alert" : "status"}
-      className={`grid flex-1 content-start items-center gap-x-3 gap-y-1 rounded-lg bg-(--pl-shell) px-6 py-4 ${
+      className={`grid flex-1 content-start items-center gap-x-3 gap-y-1 rounded-(--pl-radius-md) bg-(--pl-fill) px-6 py-4 ${
         onDismiss ? "grid-cols-[auto_1fr_auto]" : "grid-cols-[auto_1fr]"
       }`}
     >
@@ -108,7 +108,7 @@ export function Skeleton({
   radius?: number | string;
   className?: string;
 }) {
-  return <div aria-hidden className={`pl-pulse bg-(--pl-shell) ${className}`} style={{ width, height, borderRadius: radius }} />;
+  return <div aria-hidden className={`pl-pulse bg-(--pl-fill) ${className}`} style={{ width, height, borderRadius: radius }} />;
 }
 
 /** The text-only loading row Polar shows in a table or list ("Loading...") */
@@ -120,7 +120,8 @@ export function LoadingText({ children = "Loading..." }: { children?: React.Reac
  * EmptyState (Shared/EmptyState.tsx): inside a gray-200 frame with 12px
  * corners and 48px of padding, a 48px gray-500 icon 12px over a 16px title
  * and a gray-500 line, then any actions 16px further down. `fill` grows it to
- * its column's height, as on Customers' At Risk and Cost Drivers.
+ * its column's height, as on Customers' At Risk and Cost Drivers; `bare`
+ * drops the frame, for one already inside a card (a FramedCard's body).
  */
 export function EmptyState({
   icon,
@@ -128,20 +129,24 @@ export function EmptyState({
   children,
   actions,
   fill,
+  bare,
 }: {
   icon?: React.ReactNode;
   title: string;
   children?: React.ReactNode;
   actions?: React.ReactNode;
   fill?: boolean;
+  bare?: boolean;
 }) {
   return (
     <div
-      className={`flex flex-col items-center justify-center gap-3 rounded-xl border border-(--pl-border) p-12 text-center ${fill ? "flex-1" : ""}`}
+      className={`flex flex-col items-center justify-center gap-3 p-12 text-center ${
+        bare ? "" : "rounded-(--pl-radius-md) border border-(--pl-border)"
+      } ${fill ? "flex-1" : ""}`}
     >
       {icon && <div className="text-5xl text-(--pl-text-muted) [&_svg]:size-[1em]">{icon}</div>}
       <div className="flex flex-col">
-        <h3 className="text-base leading-6 text-(--pl-text-strong)">{title}</h3>
+        <h3 className="text-base leading-6 text-(--pl-text)">{title}</h3>
         {children && <p className="text-sm leading-[1.5] text-(--pl-text-muted)">{children}</p>}
       </div>
       {actions && <div className="mt-4 flex gap-4">{actions}</div>}

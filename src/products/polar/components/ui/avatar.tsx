@@ -1,7 +1,9 @@
-// orbit Avatar: a gray-50 circle with a 10% black ring drawn inside it,
-// showing an image or initials in gray-700 (10px at 24px and 32px). Initials
+// orbit Avatar: a gray-50 circle showing an image or initials in gray-700
+// (10px at 24px and 32px). Its edge is contained, as a raised control's: a
+// half-pixel hairline inside, drawn in a deeper shade of the fill rather
+// than black, and a small contact shadow (pl-avatar in styles.css). Initials
 // are the first and last names' first letters; an email counts its local
-// part ("adaaanniel@gmail.com" reads "A").
+// part ("maya@example.com" reads "M").
 export function initials(name: string) {
   const parts = name
     .split("@")[0]
@@ -15,18 +17,20 @@ export function initials(name: string) {
     .join("");
 }
 
-export function Avatar({ name, src, size = 32 }: { name: string; src?: string; size?: 24 | 32 | 40 | 64 }) {
+export function Avatar({ name, src, size = 32 }: { name: string; src?: string; size?: 16 | 24 | 32 | 40 | 64 }) {
   const text =
-    size === 24
-      ? "text-[10px] leading-3"
-      : size === 32
-        ? "text-[10px] leading-[15px]"
-        : size === 40
-          ? "text-xs leading-4"
-          : "text-xl leading-7";
+    size === 16
+      ? "text-[8px] leading-none"
+      : size === 24
+        ? "text-[10px] leading-3"
+        : size === 32
+          ? "text-[10px] leading-[15px]"
+          : size === 40
+            ? "text-xs leading-4"
+            : "text-xl leading-7";
   return (
     <div
-      className="relative flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-(--pl-subtle) text-(--pl-text-soft)"
+      className="pl-avatar relative flex shrink-0 items-center justify-center rounded-full bg-(--pl-avatar-fill) text-(--pl-text-secondary)"
       style={{ width: size, height: size }}
     >
       {src ? (
@@ -35,7 +39,8 @@ export function Avatar({ name, src, size = 32 }: { name: string; src?: string; s
       ) : (
         <span className={text}>{initials(name)}</span>
       )}
-      <span aria-hidden className="absolute inset-0 rounded-full shadow-(--pl-avatar-ring)" />
+      {/* over the image too, so a photo gets the same edge */}
+      <span aria-hidden className="absolute inset-0 rounded-full shadow-(--pl-avatar-shadow)" />
     </div>
   );
 }

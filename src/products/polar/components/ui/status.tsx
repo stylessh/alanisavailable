@@ -19,7 +19,7 @@ const TONES: Record<Tone, string> = {
 export function Status({ tone, size = "md", children }: { tone: Tone; size?: "sm" | "md"; children: React.ReactNode }) {
   return (
     <div
-      className={`inline-flex w-fit items-center justify-center rounded-[0.5em] whitespace-nowrap ${
+      className={`inline-flex w-fit items-center justify-center rounded-(--pl-radius-sm) whitespace-nowrap ${
         size === "md" ? "px-[0.7em] py-[0.3em] text-sm leading-5" : "px-[0.5em] py-[0.2em] text-xs leading-4"
       } ${TONES[tone]}`}
     >
@@ -46,7 +46,7 @@ const PILLS: Record<PillColor, string> = {
 export function Pill({ color, className = "", children }: { color: PillColor; className?: string; children: React.ReactNode }) {
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-xs leading-4 font-medium whitespace-nowrap ${PILLS[color]} ${className}`}
+      className={`inline-flex items-center gap-1 rounded-(--pl-radius-full) px-1.5 py-0.5 text-xs leading-4 font-medium whitespace-nowrap ${PILLS[color]} ${className}`}
     >
       {children}
     </span>
@@ -103,6 +103,6 @@ export function LegendDot({ color = "var(--pl-legend)", variant = "ring" }: { co
   return variant === "ring" ? (
     <span className="size-3 shrink-0 rounded-full border-2" style={{ borderColor: color }} />
   ) : (
-    <span className="size-2.5 shrink-0 rounded-[2px]" style={{ background: color }} />
+    <span className="size-2.5 shrink-0 rounded-(--pl-radius-xs)" style={{ background: color }} />
   );
 }

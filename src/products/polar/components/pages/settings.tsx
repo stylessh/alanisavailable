@@ -2,15 +2,17 @@
 
 import { useState } from "react";
 import { ORG } from "../data";
-import { AddIcon, CloseIcon } from "../icons";
+import { AddIcon, CloseIcon, MonitorIcon, MoonIcon, SunIcon } from "../icons";
+import { useTheme, type Theme } from "../theme";
 import { Avatar } from "../ui/avatar";
 import { Button, IconButton } from "../ui/button";
-import { FIELD, Input } from "../ui/field";
+import { SettingsGroup, SettingsItem } from "../ui/card";
+import { BOX_FOCUS, FIELD, Input } from "../ui/field";
 import { Select } from "../ui/select";
 import { Page, Section } from "../ui/page";
 
 // Settings panels: a gray-50 box with a gray-200 border and 16px corners
-const PANEL = "flex flex-col rounded-2xl border border-(--pl-border) bg-(--pl-subtle)";
+const PANEL = "flex flex-col rounded-(--pl-radius-lg) border border-(--pl-border) bg-(--pl-subtle)";
 
 /** A labelled read-only value with Copy, as in Identifiers */
 function IdentifierRow({ title, description, value }: { title: string; description: string; value: string }) {
@@ -18,14 +20,15 @@ function IdentifierRow({ title, description, value }: { title: string; descripti
   return (
     <div className="flex flex-col gap-4 px-6 py-4 md:flex-row md:items-start md:justify-between md:gap-12">
       <div className="flex flex-1 flex-col gap-1">
-        <h3 className="text-sm leading-[21px] font-medium text-(--pl-text-strong)">{title}</h3>
+        <h3 className="text-sm leading-[21px] font-medium text-(--pl-text)">{title}</h3>
         <p className="text-sm leading-[21px] text-(--pl-text-muted)">{description}</p>
       </div>
-      <div className={`flex h-[42px] flex-1 items-center ${FIELD}`}>
+      {/* the read-only value takes focus; the field around it draws the outline */}
+      <div className={`flex h-[42px] flex-1 items-center ${FIELD} ${BOX_FOCUS}`}>
         <input
           readOnly
           value={value}
-          className="h-10 min-w-0 flex-1 rounded-xl bg-transparent px-3 text-sm leading-5 text-(--pl-text-dim) outline-none"
+          className="h-10 min-w-0 flex-1 rounded-(--pl-radius-md) bg-transparent px-3 text-sm leading-5 text-(--pl-text-secondary) outline-none"
         />
         <Button
           variant="ghost"
@@ -111,7 +114,7 @@ export function GeneralSettingsPage() {
             <div className="flex flex-col gap-4">
               <div className="flex flex-col gap-2">
                 <p className="text-sm leading-5 font-medium text-(--pl-text)">Social Media</p>
-                <p className="text-xs leading-4 text-(--pl-text-dim)">
+                <p className="text-xs leading-4 text-(--pl-text-secondary)">
                   Your personal social media links are used for identity verification. They will never be shown publicly.
                 </p>
               </div>
@@ -146,7 +149,7 @@ export function GeneralSettingsPage() {
           <div className={PANEL}>
             <div className="flex flex-col gap-4 px-6 py-4 md:flex-row md:items-start md:justify-between md:gap-12">
               <div className="flex flex-1 flex-col gap-1">
-                <h3 className="text-sm leading-[21px] font-medium text-(--pl-text-strong)">Delete Organization</h3>
+                <h3 className="text-sm leading-[21px] font-medium text-(--pl-text)">Delete Organization</h3>
                 <p className="text-sm leading-[21px] text-(--pl-text-muted)">
                   Permanently delete this organization and all its associated data. This action cannot be undone.
                 </p>
@@ -160,6 +163,26 @@ export function GeneralSettingsPage() {
           </div>
         </Section>
       </div>
+    </Page>
+  );
+}
+
+const THEMES: { id: Theme; label: string; icon: React.ReactNode }[] = [
+  { id: "system", label: "System", icon: <MonitorIcon /> },
+  { id: "light", label: "Light", icon: <SunIcon /> },
+  { id: "dark", label: "Dark", icon: <MoonIcon /> },
+];
+
+/** Settings › Profile: Polar's Appearance group, where the theme is picked */
+export function ProfileSettingsPage() {
+  const [theme, setTheme] = useTheme();
+  return (
+    <Page title="Profile" narrow>
+      <SettingsGroup title="Appearance">
+        <SettingsItem title="Theme" description="Override your browser's preferred theme settings" layout="inline">
+          <Select label="Theme" size="sm" align="end" options={THEMES} value={theme} onChange={setTheme} className="w-32" />
+        </SettingsItem>
+      </SettingsGroup>
     </Page>
   );
 }

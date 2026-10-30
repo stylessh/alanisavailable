@@ -92,9 +92,6 @@ export const BenefitIcon = material(
 export const PersonIcon = material(
   "M12 5.9c1.16 0 2.1.94 2.1 2.1s-.94 2.1-2.1 2.1S9.9 9.16 9.9 8s.94-2.1 2.1-2.1m0 9c2.97 0 6.1 1.46 6.1 2.1v1.1H5.9V17c0-.64 3.13-2.1 6.1-2.1M12 4C9.79 4 8 5.79 8 8s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4m0 9c-2.67 0-8 1.34-8 4v3h16v-3c0-2.66-5.33-4-8-4",
 );
-export const SearchMaterialIcon = material(
-  "M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14",
-);
 export const FilterIcon = material("M10 18h4v-2h-4zM3 6v2h18V6zm3 7h12v-2H6z");
 export const ArrowDownwardIcon = material("m20 12-1.41-1.41L13 16.17V4h-2v12.17l-5.58-5.59L4 12l8 8z");
 export const SelectArrowIcon = material("M16.59 8.59 12 13.17 7.41 8.59 6 10l6 6 6-6z");
@@ -130,12 +127,6 @@ export const TuneIcon = lucide(
   </>,
 );
 export const ChevronDownIcon = lucide(<path d="m6 9 6 6 6-6" />);
-export const SortDownIcon = lucide(
-  <>
-    <path d="M8 18L12 22L16 18" />
-    <path d="M12 2V22" />
-  </>,
-);
 export const ChevronsLeftIcon = lucide(
   <>
     <path d="m11 17-5-5 5-5" />
@@ -341,5 +332,139 @@ export const PackageIcon = lucide(
     <path d="M12 22V12" />
     <path d="m3.3 7 7.703 4.734a2 2 0 0 0 1.994 0L20.7 7" />
     <path d="m7.5 4.27 9 5.15" />
+  </>,
+);
+
+// Menu glyphs (Lucide, as orbit imports them): what each row of a menu does
+export const PencilIcon = lucide(
+  <>
+    <path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z" />
+    <path d="m15 5 4 4" />
+  </>,
+);
+export const DuplicateIcon = lucide(
+  <>
+    <line x1="15" x2="15" y1="12" y2="18" />
+    <line x1="12" x2="18" y1="15" y2="15" />
+    <rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
+    <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
+  </>,
+);
+export const ArchiveIcon = lucide(
+  <>
+    <rect width="20" height="5" x="2" y="3" rx="1" />
+    <path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8" />
+    <path d="M10 12h4" />
+  </>,
+);
+export const SunIcon = lucide(
+  <>
+    <circle cx="12" cy="12" r="4" />
+    <path d="M12 2v2" />
+    <path d="M12 20v2" />
+    <path d="m4.93 4.93 1.41 1.41" />
+    <path d="m17.66 17.66 1.41 1.41" />
+    <path d="M2 12h2" />
+    <path d="M20 12h2" />
+    <path d="m6.34 17.66-1.41 1.41" />
+    <path d="m19.07 4.93-1.41 1.41" />
+  </>,
+);
+export const MoonIcon = lucide(<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />);
+export const MonitorIcon = lucide(
+  <>
+    <rect width="20" height="14" x="2" y="3" rx="2" />
+    <line x1="8" x2="16" y1="21" y2="21" />
+    <line x1="12" x2="12" y1="17" y2="21" />
+  </>,
+);
+export const LogOutIcon = lucide(
+  <>
+    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+    <polyline points="16 17 21 12 16 7" />
+    <line x1="21" x2="9" y1="12" y2="12" />
+  </>,
+);
+export const PlusIcon = lucide(
+  <>
+    <path d="M5 12h14" />
+    <path d="M12 5v14" />
+  </>,
+);
+export const FlaskIcon = lucide(
+  <>
+    <path d="M10 2v7.527a2 2 0 0 1-.211.896L4.72 20.55a1 1 0 0 0 .9 1.45h12.76a1 1 0 0 0 .9-1.45l-5.069-10.127A2 2 0 0 1 14 9.527V2" />
+    <path d="M8.5 2h7" />
+    <path d="M7 16h10" />
+  </>,
+);
+
+// The sub-pages' glyphs (Lucide, as above): one per page under a section,
+// shown beside its name in the sidebar and alone on the compact rail
+export const GiftIcon = lucide(
+  <>
+    <rect x="3" y="8" width="18" height="4" rx="1" />
+    <path d="M12 8v13" />
+    <path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7" />
+    <path d="M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 8a4.8 8 0 0 1 4.5-5 2.5 2.5 0 0 1 0 5" />
+  </>,
+);
+export const GaugeIcon = lucide(
+  <>
+    <path d="m12 14 4-4" />
+    <path d="M3.34 19a10 10 0 1 1 17.32 0" />
+  </>,
+);
+export const ChartLineIcon = lucide(
+  <>
+    <path d="M3 3v16a2 2 0 0 0 2 2h16" />
+    <path d="m19 9-5 5-4-4-3 3" />
+  </>,
+);
+export const ActivityIcon = lucide(
+  <path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2" />,
+);
+export const ReceiptIcon = lucide(
+  <>
+    <path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z" />
+    <path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8" />
+    <path d="M12 17.5v-11" />
+  </>,
+);
+export const CartIcon = lucide(
+  <>
+    <circle cx="8" cy="21" r="1" />
+    <circle cx="19" cy="21" r="1" />
+    <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12" />
+  </>,
+);
+export const BanknoteIcon = lucide(
+  <>
+    <rect width="20" height="12" x="2" y="6" rx="2" />
+    <circle cx="12" cy="12" r="2" />
+    <path d="M6 12h.01M18 12h.01" />
+  </>,
+);
+export const SendIcon = lucide(
+  <>
+    <path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z" />
+    <path d="m21.854 2.147-10.94 10.939" />
+  </>,
+);
+export const PercentIcon = lucide(
+  <>
+    <line x1="19" x2="5" y1="5" y2="19" />
+    <circle cx="6.5" cy="6.5" r="2.5" />
+    <circle cx="17.5" cy="17.5" r="2.5" />
+  </>,
+);
+export const LandmarkIcon = lucide(
+  <>
+    <line x1="3" x2="21" y1="22" y2="22" />
+    <line x1="6" x2="6" y1="18" y2="11" />
+    <line x1="10" x2="10" y1="18" y2="11" />
+    <line x1="14" x2="14" y1="18" y2="11" />
+    <line x1="18" x2="18" y1="18" y2="11" />
+    <polygon points="12 2 20 7 4 7" />
   </>,
 );

@@ -34,7 +34,7 @@ export function AccordionItem({
         aria-expanded={open}
         aria-controls={id}
         onClick={() => setOpen((o) => !o)}
-        className="flex h-9 w-full cursor-pointer items-center justify-between rounded-xl bg-(--pl-shell) px-4 text-left text-sm leading-5 text-(--pl-text-input) transition-colors hover:bg-(--pl-border)"
+        className="flex h-9 w-full cursor-pointer items-center justify-between rounded-(--pl-radius-md) bg-(--pl-fill) px-4 text-left text-sm leading-5 text-(--pl-text) transition-colors hover:bg-(--pl-border)"
       >
         {title}
         <ChevronDownIcon className={`shrink-0 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
@@ -66,10 +66,10 @@ export function OptionRow({
       type="button"
       onClick={onSelect}
       aria-pressed={selected}
-      className="group/opt flex w-full cursor-pointer flex-col gap-0.5 rounded-xl px-6 py-2 text-left transition-colors hover:bg-(--pl-subtle)"
+      className="group/opt flex w-full cursor-pointer flex-col gap-0.5 rounded-(--pl-radius-md) px-6 py-2 text-left transition-colors hover:bg-(--pl-subtle)"
     >
       <span
-        className={`text-sm leading-5 transition-colors group-hover/opt:text-(--pl-text-strong) ${selected ? "text-(--pl-text-strong)" : "text-(--pl-text-muted)"}`}
+        className={`text-sm leading-5 transition-colors group-hover/opt:text-(--pl-text) ${selected ? "text-(--pl-text)" : "text-(--pl-text-muted)"}`}
       >
         {title}
       </span>
@@ -81,7 +81,7 @@ export function OptionRow({
 /** A chosen item you can reorder or drop ("Selected" in Customize): 40px gray-100, 12px corners, a grip, the name, a remove */
 export function ReorderRow({ children, onRemove }: { children: React.ReactNode; onRemove?: () => void }) {
   return (
-    <div className="flex h-10 items-center gap-3 rounded-xl bg-(--pl-shell) px-4 text-sm leading-5 text-(--pl-text-strong)">
+    <div className="flex h-10 items-center gap-3 rounded-(--pl-radius-md) bg-(--pl-fill) px-4 text-sm leading-5 text-(--pl-text)">
       <GripIcon className="shrink-0 cursor-grab text-(--pl-text-faint)" aria-hidden />
       <span className="min-w-0 flex-1 truncate">{children}</span>
       {onRemove && (

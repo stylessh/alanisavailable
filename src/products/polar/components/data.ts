@@ -283,8 +283,26 @@ export const ORDERS: Order[] = [
   amount: amount as number,
 }));
 
-export const formatDateTime = (d: Date) =>
-  `${d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}, ${d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}`;
+const clock = (d: Date) => d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+
+/**
+ * A moment as you'd say it, from the dashboard's today: "Today, 2:09 PM",
+ * "Yesterday, 9:41 AM", the weekday within the week ("Monday, 11:18 PM"),
+ * the month and day this year ("Oct 21, 12:26 PM"), the year only before it.
+ */
+export function formatWhen(d: Date) {
+  const day = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const days = Math.round((day(TODAY) - day(d)) / DAY);
+  if (days === 0) return `Today, ${clock(d)}`;
+  if (days === 1) return `Yesterday, ${clock(d)}`;
+  if (days > 1 && days < 7) return `${d.toLocaleDateString("en-US", { weekday: "long" })}, ${clock(d)}`;
+  if (d.getFullYear() === TODAY.getFullYear())
+    return `${d.toLocaleDateString("en-US", { month: "short", day: "numeric" })}, ${clock(d)}`;
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
+/** the whole date and time, for a tooltip on a natural one ("Thursday, October 29, 2026 at 2:09 PM") */
+export const formatDateTime = (d: Date) => d.toLocaleString("en-US", { dateStyle: "full", timeStyle: "short" });
 
 // Home timeline
 export type TimelineEvent =
