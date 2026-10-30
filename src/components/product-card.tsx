@@ -110,39 +110,3 @@ export function ProductCard({
     </li>
   );
 }
-
-/**
- * The next product, not yet revealed: the same card, on a quiet neutral fill
- * with the same lift and a hairline edge, and a question mark set in the
- * page's own typeface, filled in muted ink, over a faint grid. Not a link.
- */
-export function SurpriseCard() {
-  return (
-    <li className="w-[78vw] max-w-[22rem] shrink-0 snap-start" aria-label="A new one is on its way">
-      <div className="shadow-card relative grid aspect-video place-items-center overflow-hidden rounded-2xl bg-[#f3f3f3] text-(--ink) [--card-shadow-alpha:0.06] [--ink:#cfcfcf] dark:bg-[#141414] dark:[--ink:#333333]">
-        {/* a faint grid across the card, fading out toward its edges */}
-        <span
-          aria-hidden
-          className="pointer-events-none absolute inset-0 opacity-[0.07] dark:opacity-[0.12]"
-          style={{
-            backgroundImage: "linear-gradient(to right, currentColor 1px, transparent 1px), linear-gradient(to bottom, currentColor 1px, transparent 1px)",
-            backgroundSize: "16px 16px",
-            backgroundPosition: "center",
-            maskImage: "radial-gradient(60% 75% at 50% 50%, #000 15%, transparent 90%)",
-          }}
-        />
-        <span
-          aria-hidden
-          className="relative text-[112px] leading-none font-medium select-none"
-          style={{ color: "var(--ink)" }}
-        >
-          ?
-        </span>
-        <span
-          aria-hidden
-          className="pointer-events-none absolute inset-0 rounded-[inherit] shadow-[inset_0_0_0_1px_rgb(0_0_0/0.06)] dark:shadow-[inset_0_0_0_1px_rgb(255_255_255/0.07)]"
-        />
-      </div>
-    </li>
-  );
-}
