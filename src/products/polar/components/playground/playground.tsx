@@ -391,7 +391,7 @@ export function Playground() {
         </ToolButton>
         <span aria-hidden className="mx-1 h-4 w-px bg-white/15" />
         <a
-          href="#"
+          href="#dashboard"
           className="flex h-7 items-center rounded-lg px-2.5 hover:bg-white/10 hover:text-white"
           title="Back to the dashboard"
         >
